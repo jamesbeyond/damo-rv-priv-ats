@@ -67,16 +67,16 @@ extern uintptr_t g_menvcfg_reset_value;
  * =================================================================== */
 static inline uintptr_t menvcfg_read(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x30A" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v));
     return v;
 }
 
 static inline void menvcfg_set(uintptr_t mask) {
-    asm volatile ("csrs 0x30A, %0" :: "r"(mask) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 static inline void menvcfg_clear(uintptr_t mask) {
-    asm volatile ("csrc 0x30A, %0" :: "r"(mask) : "memory");
+    asm volatile ("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 /* Set or clear menvcfg.ADUE and issue the required SFENCE.VMA

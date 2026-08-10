@@ -146,10 +146,10 @@ bool test_hcross_sssta_06(void)
     /* hstateen0h is CSR 0x61C */
     uintptr_t val;
     M_EXPECT_NO_TRAP({
-        asm volatile("csrr %0, 0x61C" : "=r"(val) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0H) : "=r"(val) :: "memory");
     });
     M_EXPECT_NO_TRAP({
-        asm volatile("csrw 0x61C, %0" :: "r"(val) : "memory");
+        asm volatile("csrw " CSR_STR(CSR_HSTATEEN0H) ", %0" :: "r"(val) : "memory");
     });
 
     mstateen_write(0, saved_mstateen0);

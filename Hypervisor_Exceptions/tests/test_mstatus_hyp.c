@@ -16,7 +16,7 @@
 static uintptr_t hs_read_hgatp(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile("csrr %0, 0x680" : "=r"(v));  /* hgatp */
+    asm volatile("csrr %0, " CSR_STR(CSR_HGATP) : "=r"(v));  /* hgatp */
     return v;
 }
 
@@ -104,7 +104,7 @@ bool mstatus_mret_v_from_mpv(void) {
         "mret\n\t"                 /* MPP=S, MPV=1 -> V=1, S-mode */
         "1:\n\t"
         /* Now in VS-mode (V=1).  Access hgatp -> cause=22. */
-        "csrr t0, 0x680\n\t"       /* hgatp: virtual-inst if V=1 */
+        "csrr t0, " CSR_STR(CSR_HGATP) "\n\t"       /* hgatp: virtual-inst if V=1 */
         /* After trap handler advances mepc, ecall returns to M. */
         "li   t0, 1\n\t"           /* ECALL_GOTO_PRIV = 1 */
         "la   t1, ecall_args\n\t"

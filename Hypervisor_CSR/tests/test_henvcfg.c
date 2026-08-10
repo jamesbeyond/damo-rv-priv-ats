@@ -136,7 +136,7 @@ static uintptr_t vs_exec_cbo_flush(uintptr_t addr) {
 static uintptr_t vs_read_stimecmp(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, 0x14D" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_STIMECMP) : "=r"(v));
     return v;
 }
 
@@ -193,9 +193,9 @@ static void setup_vs_two_stage(two_stage_ctx_t *ctx) {
 
     /* Allow VS-mode to access U-flagged pages (load/store only). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus |= SSTATUS_SUM;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 }
 
 /* ===================================================================
@@ -719,12 +719,12 @@ bool henvcfg_16_dte_disabled(void) {
 
     /* Try to set vsstatus.SDT=1 via direct CSR write (CSR 0x200). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus | VSSTATUS_SDT));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus | VSSTATUS_SDT));
 
     /* Read back — SDT should be zero. */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     TEST_ASSERT_EQ("vsstatus.SDT reads zero when DTE=0",
                    readback & VSSTATUS_SDT, 0UL);
 
@@ -751,16 +751,16 @@ bool henvcfg_17_dte_enabled(void) {
 
     /* Write vsstatus.SDT=1 and read back. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus | VSSTATUS_SDT));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus | VSSTATUS_SDT));
 
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     TEST_ASSERT_EQ("vsstatus.SDT=1 when DTE=1",
                    readback & VSSTATUS_SDT, VSSTATUS_SDT);
 
     /* Clear SDT to avoid side effects. */
-    asm volatile ("csrw 0x200, %0" :: "r"(readback & ~VSSTATUS_SDT));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(readback & ~VSSTATUS_SDT));
 
     HYP_TEST_END();
 }

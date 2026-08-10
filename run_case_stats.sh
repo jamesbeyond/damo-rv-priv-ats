@@ -32,6 +32,10 @@ EXT_CFI="cfi.Zicfilp cfi.Zicfiss"
 EXT_ZPM="zpm.Smmpm zpm.Smnpm zpm.Ssnpm"
 # cmo extensions
 EXT_CMO="cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz"
+# Zi extensions
+EXT_ZI="Zkr Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop"
+# Zc extensions
+EXT_ZC="Zcmop Zcmp Zcmt"
 
 # Hypervisor extensions
 EXT_HYP="Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa"
@@ -45,7 +49,7 @@ EXT_HYP_SS="Hypervisor_Ssccptr  Hypervisor_Sscsrind  Hypervisor_Ssdbltrp  Hyperv
 EXT_HYP_SV="Hypervisor_Svadu  Hypervisor_Svinval  Hypervisor_Svnapot  Hypervisor_Svpbmt"
 EXT_HYP_ZI="Hypervisor_Zicbom  Hypervisor_Zicbop  Hypervisor_Zicboz  Hypervisor_Zicfilp  Hypervisor_Zicfiss  Hypervisor_Zkr"
 
-ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO}"
+ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZC}"
 
 usage()
 {

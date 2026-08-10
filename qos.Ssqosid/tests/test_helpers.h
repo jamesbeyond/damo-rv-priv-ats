@@ -42,12 +42,12 @@
 
 static inline uintptr_t srmcfg_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x181" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SRMCFG) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void srmcfg_write(uintptr_t v) {
-    asm volatile("csrw 0x181, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SRMCFG) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t srmcfg_get_rcid(uintptr_t v) {
@@ -67,20 +67,20 @@ static inline uintptr_t srmcfg_get_mcid(uintptr_t v) {
 
 static inline uintptr_t mstateen0_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x30C" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mstateen0_write(uintptr_t v) {
-    asm volatile("csrw 0x30C, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void mstateen0_set(uintptr_t bits) {
-    asm volatile("csrs 0x30C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void mstateen0_clear(uintptr_t bits) {
-    asm volatile("csrc 0x30C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================

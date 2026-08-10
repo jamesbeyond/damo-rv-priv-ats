@@ -57,7 +57,7 @@ bool test_hcross_smsta_06(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x61C" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0H) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -99,7 +99,7 @@ bool test_hcross_smsta_07(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x60A" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HENVCFG) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -136,7 +136,7 @@ bool test_hcross_smsta_08(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x250" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_VSISELECT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -172,7 +172,7 @@ bool test_hcross_smsta_09(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x25C" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_VSTOPEI) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -208,7 +208,7 @@ bool test_hcross_smsta_10(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x6A8" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HCONTEXT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -244,7 +244,7 @@ bool test_hcross_smsta_11(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x613" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HIDELEGH) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -276,7 +276,7 @@ bool test_hcross_smsta_12(void) {
      * implemented. Probe from M-mode first. */
     M_TRAP_EXPECT_BEGIN();
     uintptr_t dummy;
-    asm volatile("csrr %0, 0x613" : "=r"(dummy) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_HIDELEGH) : "=r"(dummy) :: "memory");
     bool hedelegh_exists = !trap_was_triggered();
     trap_expect_end();
     (void)dummy;
@@ -289,7 +289,7 @@ bool test_hcross_smsta_12(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x613" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_HIDELEGH) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);

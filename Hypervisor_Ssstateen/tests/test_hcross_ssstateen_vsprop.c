@@ -19,9 +19,9 @@
 /* VS-mode helper: write then read sstateen0 */
 static uintptr_t _vs_write_read_sstateen0(uintptr_t write_val)
 {
-    asm volatile("csrw 0x10C, %0" :: "r"(write_val));
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN0) ", %0" :: "r"(write_val));
     uintptr_t rb;
-    asm volatile("csrr %0, 0x10C" : "=r"(rb));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(rb));
     return rb;
 }
 

@@ -83,15 +83,15 @@ static void setup_vs_int_deleg_test(uintptr_t hideleg_mask)
     g_vs_int_triggered = false;
 
     /* Clear interrupt sources */
-    asm volatile ("csrw 0x604, zero" ::: "memory");   /* hie = 0 */
-    asm volatile ("csrw 0x645, zero" ::: "memory");   /* hvip = 0 */
-    asm volatile ("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero" ::: "memory");   /* hie = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero" ::: "memory");   /* hvip = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
 
     /* Dual-layer delegation: M->HS->VS */
     uintptr_t mideleg;
-    asm volatile ("csrr %0, 0x303" : "=r"(mideleg));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MIDELEG) : "=r"(mideleg));
     mideleg |= hideleg_mask;
-    asm volatile ("csrw 0x303, %0" :: "r"(mideleg) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_MIDELEG) ", %0" :: "r"(mideleg) : "memory");
     hideleg_write(hideleg_mask);
 
     /* Install VS interrupt handler */
@@ -99,9 +99,9 @@ static void setup_vs_int_deleg_test(uintptr_t hideleg_mask)
 
     /* Enable VS-mode interrupts: vsstatus.SIE (bit 1) */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus |= 0x2;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus) : "memory");
 
     /* Set mstatus.MPIE=1 */
     uintptr_t mstatus_val;
@@ -119,7 +119,7 @@ bool hideleg_vssi_deleg(void)
     TEST_BEGIN("DELEG-08: Delegate VSSI to VS (vscause=1, translated)");
 
     setup_vs_int_deleg_test(VS_VSSIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSSIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
     hvip_set_vssi(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -140,7 +140,7 @@ bool hideleg_vsti_deleg(void)
     TEST_BEGIN("DELEG-09: Delegate VSTI to VS (vscause=5, translated)");
 
     setup_vs_int_deleg_test(VS_VSTIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSTIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
     hvip_set_vsti(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -161,7 +161,7 @@ bool hideleg_vsei_deleg(void)
     TEST_BEGIN("DELEG-10: Delegate VSEI to VS (vscause=9, translated)");
 
     setup_vs_int_deleg_test(VS_VSEIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSEIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
     hvip_set_vsei(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -188,7 +188,7 @@ bool hideleg_not_deleg_trap_to_hs(void)
 
     /* Verify VSSIP is pending in hip (HS-visible) */
     uintptr_t hip_val;
-    asm volatile ("csrr %0, 0x644" : "=r"(hip_val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip_val));
     TEST_ASSERT_EQ("hip.VSSIP should be pending (HS-visible)",
                    hip_val & VS_VSSIP, VS_VSSIP);
 
@@ -212,7 +212,7 @@ bool interrupt_translation_vssi(void)
     TEST_BEGIN("DELEG-12: VSSI->SSI translation (vscause=1, not 2)");
 
     setup_vs_int_deleg_test(VS_VSSIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSSIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSSIP) : "memory");
     hvip_set_vssi(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -234,7 +234,7 @@ bool interrupt_translation_vsti(void)
     TEST_BEGIN("DELEG-13: VSTI->STI translation (vscause=5, not 6)");
 
     setup_vs_int_deleg_test(VS_VSTIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSTIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSTIP) : "memory");
     hvip_set_vsti(1);
 
     run_in_vs_mode(vs_nop_fn, 0);
@@ -255,7 +255,7 @@ bool interrupt_translation_vsei(void)
     TEST_BEGIN("DELEG-14: VSEI->SEI translation (vscause=9, not 10)");
 
     setup_vs_int_deleg_test(VS_VSEIP);
-    asm volatile ("csrs 0x604, %0" :: "r"(VS_VSEIP) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(VS_VSEIP) : "memory");
     hvip_set_vsei(1);
 
     run_in_vs_mode(vs_nop_fn, 0);

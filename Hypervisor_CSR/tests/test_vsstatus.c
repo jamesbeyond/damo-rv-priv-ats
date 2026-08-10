@@ -97,24 +97,24 @@ bool vsst_01_basic_rw(void)
     uintptr_t test_val = VSSTATUS_WRITABLE_MASK;
 
     /* Write vsstatus (CSR 0x200). */
-    asm volatile ("csrw 0x200, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
 
     /* Read back and verify writable fields. */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
 
     uintptr_t hw_writable = readback & VSSTATUS_WRITABLE_MASK;
 
     /* Write zero and verify all hardware-writable bits clear. */
-    asm volatile ("csrw 0x200, zero");
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", zero");
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
 
     TEST_ASSERT_EQ("vsstatus cleared to zero",
                    readback & hw_writable, 0UL);
 
     /* Re-write and verify consistent readback (WARL stability). */
-    asm volatile ("csrw 0x200, %0" :: "r"(test_val));
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
 
     TEST_ASSERT_EQ("vsstatus writable fields consistent readback",
                    readback & VSSTATUS_WRITABLE_MASK, hw_writable);
@@ -135,10 +135,10 @@ bool vsst_02_substitution(void)
 
     /* Write a known value to vsstatus from M-mode. */
     uintptr_t test_val = (1UL << 5) | (1UL << 19);  /* SPIE | MXR */
-    asm volatile ("csrw 0x200, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(test_val));
 
     uintptr_t written;
-    asm volatile ("csrr %0, 0x200" : "=r"(written));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(written));
 
     /* VS-mode reads sstatus — should return vsstatus value. */
     uintptr_t vs_read = run_in_vs_mode(vs_read_sstatus, 0);
@@ -148,12 +148,12 @@ bool vsst_02_substitution(void)
                    written & VSSTATUS_WRITABLE_MASK);
 
     /* VS-mode writes sstatus, verify vsstatus is modified. */
-    asm volatile ("csrw 0x200, zero");
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", zero");
     uintptr_t write_val = (1UL << 18);  /* SUM */
     run_in_vs_mode(vs_write_sstatus, write_val);
 
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
 
     TEST_ASSERT_EQ("VS sstatus write lands on vsstatus",
                    readback & (1UL << 18), write_val & (1UL << 18));
@@ -184,9 +184,9 @@ bool vsst_03_fs_off_fp_illegal(void)
 
     /* Set vsstatus.FS = Off (VS-level disables FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_OFF;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* VS-mode FP should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
@@ -219,9 +219,9 @@ bool vsst_04_sstatus_fs_off_fp_illegal(void)
 
     /* Set vsstatus.FS = Initial (VS-level allows FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* VS-mode FP should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_fp_inst, 0));
@@ -254,9 +254,9 @@ bool vsst_05_both_fs_nonzero_fp_ok(void)
 
     /* Set vsstatus.FS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* VS-mode FP should complete without any trap. */
     VS_EXPECT_NO_TRAP(run_in_vs_mode(vs_exec_fp_inst, 0));
@@ -289,9 +289,9 @@ bool vsst_06_fp_makes_both_fs_dirty(void)
 
     /* Set vsstatus.FS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_INITIAL;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* Execute FP instruction in VS-mode. */
     run_in_vs_mode(vs_exec_fp_inst, 0);
@@ -304,7 +304,7 @@ bool vsst_06_fp_makes_both_fs_dirty(void)
 
     /* Check vsstatus.FS == Dirty (3). */
     uintptr_t vsstatus_after;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus_after));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_after));
     TEST_ASSERT_EQ("vsstatus.FS == Dirty",
                    vsstatus_after & SSTATUS_FS_MASK, SSTATUS_FS_DIRTY);
 
@@ -336,9 +336,9 @@ bool vsst_07_vs_off_vector_illegal(void)
 
     /* Set vsstatus.VS = Off (VS-level disables Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_OFF;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* VS-mode Vector should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
@@ -371,9 +371,9 @@ bool vsst_08_sstatus_vs_off_vector_illegal(void)
 
     /* Set vsstatus.VS = Initial (VS-level allows Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* VS-mode Vector should trigger illegal-instruction (cause=2). */
     EXPECT_ILLEGAL_INST(run_in_vs_mode(vs_exec_vector_inst, 0));
@@ -406,9 +406,9 @@ bool vsst_09_vector_makes_both_vs_dirty(void)
 
     /* Set vsstatus.VS = Initial. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_INITIAL;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* Execute Vector instruction in VS-mode. */
     run_in_vs_mode(vs_exec_vector_inst, 0);
@@ -421,7 +421,7 @@ bool vsst_09_vector_makes_both_vs_dirty(void)
 
     /* Check vsstatus.VS == Dirty (3). */
     uintptr_t vsstatus_after;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus_after));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus_after));
     TEST_ASSERT_EQ("vsstatus.VS == Dirty",
                    vsstatus_after & SSTATUS_VS_MASK, SSTATUS_VS_DIRTY);
 
@@ -448,22 +448,22 @@ bool vsst_10_sd_reflects_vs_view(void)
 
     /* Set vsstatus.FS = Clean, vsstatus.VS = Off (no dirty state). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                | SSTATUS_FS_CLEAN | SSTATUS_VS_OFF;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* Read back — SD should be 0 (nothing dirty). */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     TEST_ASSERT_EQ("SD=0 when FS=Clean, VS=Off",
                    readback & SSTATUS_SD_BIT, 0UL);
 
     /* Set vsstatus.FS = Dirty → SD should become 1. */
     vsstatus = (readback & ~SSTATUS_FS_MASK) | SSTATUS_FS_DIRTY;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     TEST_ASSERT_EQ("SD=1 when FS=Dirty",
                    readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
 
@@ -471,9 +471,9 @@ bool vsst_10_sd_reflects_vs_view(void)
     if (platform_has_v_ext()) {
         vsstatus = (readback & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                    | SSTATUS_FS_OFF | SSTATUS_VS_DIRTY;
-        asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+        asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
-        asm volatile ("csrr %0, 0x200" : "=r"(readback));
+        asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
         TEST_ASSERT_EQ("SD=1 when VS=Dirty",
                        readback & SSTATUS_SD_BIT, SSTATUS_SD_BIT);
     }
@@ -492,9 +492,9 @@ bool vsst_10_sd_reflects_vs_view(void)
         /* Set vsstatus.FS = Off, vsstatus.VS = Off. */
         vsstatus = (vsstatus & ~(SSTATUS_FS_MASK | SSTATUS_VS_MASK))
                    | SSTATUS_FS_OFF | SSTATUS_VS_OFF;
-        asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+        asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
-        asm volatile ("csrr %0, 0x200" : "=r"(readback));
+        asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
         TEST_ASSERT_EQ("SD=0 despite mstatus.FS=Dirty (HS independent)",
                        readback & SSTATUS_SD_BIT, 0UL);
 
@@ -528,9 +528,9 @@ bool vsst_11_v0_no_effect(void)
 
     /* Clear vsstatus.SIE = 0 — must NOT affect HS-mode. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus &= ~SSTATUS_SIE_BIT;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /* Verify HS-mode sstatus.SIE is still 1. */
     uintptr_t sstatus;
@@ -558,7 +558,7 @@ bool vsst_12_uxl_rw(void)
 
     /* Read current vsstatus.UXL. */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     uintptr_t original_uxl = (vsstatus >> SSTATUS_UXL_SHIFT) & 3UL;
 
     /* UXL should have a valid value (1=32, 2=64, 3=128). */
@@ -568,10 +568,10 @@ bool vsst_12_uxl_rw(void)
     /* Try writing UXL = 2 (XLEN=64, the common RV64 value). */
     uintptr_t new_vsstatus = (vsstatus & ~SSTATUS_UXL_MASK)
                              | (2UL << SSTATUS_UXL_SHIFT);
-    asm volatile ("csrw 0x200, %0" :: "r"(new_vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(new_vsstatus));
 
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     uintptr_t readback_uxl = (readback >> SSTATUS_UXL_SHIFT) & 3UL;
 
     /* WARL: implementation may keep original value or accept new one. */
@@ -583,16 +583,16 @@ bool vsst_12_uxl_rw(void)
      * it or silently constrain it to a legal value. */
     new_vsstatus = (vsstatus & ~SSTATUS_UXL_MASK)
                    | (3UL << SSTATUS_UXL_SHIFT);
-    asm volatile ("csrw 0x200, %0" :: "r"(new_vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(new_vsstatus));
 
-    asm volatile ("csrr %0, 0x200" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(readback));
     readback_uxl = (readback >> SSTATUS_UXL_SHIFT) & 3UL;
 
     TEST_ASSERT("UXL WARL: legal value after writing 3",
                 readback_uxl >= 1 && readback_uxl <= 3);
 
     /* Restore original UXL. */
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     HYP_TEST_END();
 }

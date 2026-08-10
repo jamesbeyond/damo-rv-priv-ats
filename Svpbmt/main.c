@@ -20,9 +20,9 @@ int main(void) {
      * gate Svpbmt behind menvcfg.PBMTE. Without this, any PTE
      * with non-zero PBMT bits will trigger a page fault. */
     uintptr_t menvcfg;
-    asm volatile("csrr %0, 0x30A" : "=r"(menvcfg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
     menvcfg |= MENVCFG_PBMTE;
-    asm volatile("csrw 0x30A, %0" :: "r"(menvcfg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
     test_print_banner("RISC-V Svpbmt Extension Compliance Test");
 
     unsigned int test_count = (unsigned int)(

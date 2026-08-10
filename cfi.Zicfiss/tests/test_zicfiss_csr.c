@@ -123,7 +123,7 @@ bool test_zicfiss_csr_ssp_accessible(void)
      */
     trap_expect_begin();
     uintptr_t ssp_val;
-    asm volatile("csrr %0, 0x011" : "=r"(ssp_val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(ssp_val) :: "memory");
     trap_expect_end();
 
     TEST_ASSERT("CSR_SSP read does not fault",
@@ -132,7 +132,7 @@ bool test_zicfiss_csr_ssp_accessible(void)
     /* Try writing a test value */
     uintptr_t test_val = (uintptr_t)__shadow_stack_start + 0x100;
     trap_expect_begin();
-    asm volatile("csrw 0x011, %0" :: "r"(test_val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(test_val) : "memory");
     trap_expect_end();
 
     TEST_ASSERT("CSR_SSP write does not fault",
@@ -140,12 +140,12 @@ bool test_zicfiss_csr_ssp_accessible(void)
 
     /* Read back and verify */
     uintptr_t readback;
-    asm volatile("csrr %0, 0x011" : "=r"(readback) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(readback) :: "memory");
     TEST_ASSERT("CSR_SSP read-back matches written value",
                 readback == test_val);
 
     /* Restore SSP to 0 and disable SSE */
-    asm volatile("csrw 0x011, zero" ::: "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", zero" ::: "memory");
     menvcfg_clear(MENVCFG_SSE);
 
     TEST_END();

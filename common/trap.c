@@ -22,6 +22,14 @@ extern void _halt_fail(void) __attribute__((noreturn));
  * Privilege mode definitions are in encoding.h.
  * =================================================================== */
 
+#ifdef ENABLE_HYP
+/* Check if a privilege target requires V=1 (virtualized mode).
+ * File-local mirror of the same helper in privilege.c. */
+static inline bool is_virt_target(unsigned target) {
+    return (target & 0x4) != 0;
+}
+#endif
+
 /* ===================================================================
  * Trap record - captures exception information for test assertions
  * =================================================================== */
@@ -221,6 +229,21 @@ unsigned long _diag_arm_last_clear_cause  = 0;
  * =================================================================== */
 /* Ecall argument storage (set by caller before ecall instruction) */
 uintptr_t ecall_args[2];
+
+/* Internal privilege-switch protocol: when a delegated ecall with
+ * ECALL_GOTO_PRIV reaches the S-mode handler and the target is
+ * M-mode, the S-side cannot write mstatus.MPP.  It issues a nested
+ * ecall tagged ECALL_PRIV_RESUME; the M-mode handler then resumes
+ * the original caller at g_priv_resume_addr in M-mode.
+ * Limitation: this nested ecall is cause 9 (ecall-from-S); tests
+ * that delegate cause 9 to S-mode must not rely on this path. */
+#define ECALL_PRIV_RESUME  2
+static uintptr_t g_priv_resume_addr;
+
+/* Count of delegated exceptions actually recorded by the S-mode handler.
+ * Lets tests prove that a delegated trap was delivered to S-mode
+ * (as opposed to being taken by M-mode because delegation was off). */
+volatile uintptr_t g_s_deleg_exc_count;
 
 /* Forward declaration */
 extern void goto_priv(unsigned target);
@@ -426,6 +449,17 @@ unsigned m_trap_handler(void) {
     }
 
     /* ---- Handle ecall for privilege switching ---- */
+    if (is_ecall(cause) && ecall_args[0] == ECALL_PRIV_RESUME) {
+        /* Nested switch issued by the S-mode handler: resume the
+         * original caller in M-mode. */
+        current_priv = PRIV_M;
+        uintptr_t ms = CSRR(mstatus);
+        ms &= ~(3UL << 11);      /* clear MPP */
+        ms |=  (3UL << 11);      /* MPP = M */
+        CSRW(mstatus, ms);
+        CSRW(mepc, g_priv_resume_addr);
+        return PRIV_M;           /* _trap_return uses mret */
+    }
     if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
         unsigned target = (unsigned)ecall_args[1];
         /* Advance past ecall instruction */
@@ -742,9 +776,37 @@ unsigned s_trap_handler(void) {
     /* ---- Handle ecall for privilege switching ---- */
     if (is_ecall(cause) && ecall_args[0] == ECALL_GOTO_PRIV) {
         unsigned target = (unsigned)ecall_args[1];
-        CSRW(sepc, next_instruction(epc));
-        goto_priv(target);
-        return current_priv;
+        uintptr_t resume = next_instruction(epc);
+#ifdef ENABLE_HYP
+        /* Virtualized targets need mret with MPV from M-mode; keep
+         * the existing goto_priv routing for those. */
+        if (is_virt_target(target)) {
+            CSRW(sepc, resume);
+            goto_priv(target);
+            return current_priv;
+        }
+#endif
+        /* Non-virtualized target: switch privilege and resume the
+         * interrupted context right after the ecall.
+         *   target M: S-mode cannot write mstatus.MPP, so issue a
+         *             nested ecall; the M-mode handler resumes the
+         *             caller at 'resume' in M-mode.
+         *   target S/U: return via sret with SPP set accordingly. */
+        current_priv = target;
+        if (target == PRIV_M) {
+            g_priv_resume_addr = resume;
+            ecall_args[0] = ECALL_PRIV_RESUME;
+            asm volatile ("ecall" ::: "memory");
+            /* Unreachable: control resumes in the caller in M-mode */
+            for (;;) { }
+        }
+        uintptr_t ss = CSRR(sstatus);
+        ss &= ~MSTATUS_SPP_BIT;
+        if (target == PRIV_S)
+            ss |= MSTATUS_SPP_BIT;
+        CSRW(sstatus, ss);
+        CSRW(sepc, resume);
+        return PRIV_S;               /* _trap_return uses sret */
     }
 
     /* ---- Handle asynchronous interrupts ---- */
@@ -798,6 +860,8 @@ unsigned s_trap_handler(void) {
         trap_record.epc         = epc;
         trap_record.tval        = tval;
         trap_record.status_snap = CSRR(sstatus);
+        if (!(cause & CAUSE_INTERRUPT_BIT))
+            g_s_deleg_exc_count++;
 #ifdef ENABLE_HYP
         /* Capture the hardware-written values unconditionally: for
          * non-guest-page-fault traps the spec still mandates specific

@@ -259,7 +259,7 @@ bool test_misc09_csrrw_x0_ok(void)
     /* csrrw with x0 writes 0 but is NOT a read-only instruction */
     uintptr_t val = 0;
     M_EXPECT_NO_TRAP({
-        asm volatile("csrrw %0, 0x015, x0" : "=r"(val) :: "memory");
+        asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(val) :: "memory");
     });
     printf("  [INFO] seed via csrrw x0 = 0x%lx\n", (unsigned long)val);
 

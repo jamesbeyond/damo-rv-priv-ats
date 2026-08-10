@@ -16,7 +16,7 @@
 
 static inline uintptr_t _read_hstateen0(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x60C" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(v));
     return v;
 }
 

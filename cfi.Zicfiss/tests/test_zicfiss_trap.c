@@ -76,7 +76,7 @@ static uintptr_t smode_access_ss_page_ok(uintptr_t arg)
 
     /* SSPUSH should also succeed on a shadow stack page with SSE=1 */
     /* Set SSP to point to this page */
-    asm volatile("csrw 0x011, %0" :: "r"(arg + 0x100) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(arg + 0x100) : "memory");
     asm volatile("li ra, 0xCAFEBABE" ::: "ra");
     trap_expect_begin();
     asm volatile(".word 0xCE104073\n" ::: "ra", "memory");  /* SSPUSH x1 */
@@ -143,13 +143,13 @@ bool test_zicfiss_trap_popchk_mismatch(void)
 
     /* Set SSP to point to shadow stack test page */
     uintptr_t ssp_val = ss_vm_test_page + 0x800;
-    asm volatile("csrw 0x011, %0" :: "r"(ssp_val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(ssp_val) : "memory");
 
     /* Run SSPOPCHK mismatch test in S-mode with VM */
     uintptr_t result = vm_run_in_smode(&ctx, smode_sspopchk_mismatch, 0);
 
     /* Clean up */
-    asm volatile("csrw 0x011, zero" ::: "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", zero" ::: "memory");
     menvcfg_clear(MENVCFG_SSE);
     pt_pool_reset();
 
@@ -188,18 +188,18 @@ bool test_zicfiss_trap_delegation(void)
      * code as Landing Pad Fault, so delegation is shared.
      */
     uintptr_t orig_medeleg;
-    asm volatile("csrr %0, 0x302" : "=r"(orig_medeleg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MEDELEG) : "=r"(orig_medeleg));
 
     uintptr_t bit18 = (1UL << 18);
-    asm volatile("csrs 0x302, %0" :: "r"(bit18) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MEDELEG) ", %0" :: "r"(bit18) : "memory");
 
     uintptr_t new_medeleg;
-    asm volatile("csrr %0, 0x302" : "=r"(new_medeleg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MEDELEG) : "=r"(new_medeleg));
 
     bool delegatable = (new_medeleg & bit18) != 0;
 
     /* Restore */
-    asm volatile("csrw 0x302, %0" :: "r"(orig_medeleg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", %0" :: "r"(orig_medeleg) : "memory");
 
     TEST_ASSERT("medeleg[18] writable (software-check delegatable)",
                 delegatable);
@@ -243,7 +243,7 @@ bool test_zicfiss_trap_pte_xwr010_sse1(void)
                                         ss_vm_test_page);
 
     /* Clean up */
-    asm volatile("csrw 0x011, zero" ::: "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", zero" ::: "memory");
     menvcfg_clear(MENVCFG_SSE);
     pt_pool_reset();
 

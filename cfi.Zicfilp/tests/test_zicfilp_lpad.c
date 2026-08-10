@@ -118,9 +118,9 @@ bool test_zicfilp_legal_indirect_jump(void)
     /* Set MLPE, indirect jump to LPAD target, clear MLPE - all inline */
     asm volatile(
         "li    t0, (1 << 10)\n"    /* MSECCFG_MLPE = bit 10 */
-        "csrs  0x747, t0\n"        /* mseccfg |= MLPE */
+        "csrs  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg |= MLPE */
         "jalr  ra, %0, 0\n"        /* indirect jump to LPAD target */
-        "csrc  0x747, t0\n"        /* mseccfg &= ~MLPE */
+        "csrc  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg &= ~MLPE */
         :
         : "r"(code)
         : "ra", "t0", "memory"
@@ -174,10 +174,10 @@ bool test_zicfilp_pelp_trap_save_restore(void)
         "la    t2, _exec_return_addr\n"
         "sd    t1, 0(t2)\n"        /* _exec_return_addr = recovery */
         "li    t0, (1 << 10)\n"    /* MSECCFG_MLPE = bit 10 */
-        "csrs  0x747, t0\n"        /* mseccfg |= MLPE */
+        "csrs  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg |= MLPE */
         "jalr  ra, %0, 0\n"        /* indirect jump -> triggers LP fault */
         "1:\n"
-        "csrc  0x747, t0\n"        /* mseccfg &= ~MLPE */
+        "csrc  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg &= ~MLPE */
         :
         : "r"(code)
         : "ra", "t0", "t1", "t2", "memory"

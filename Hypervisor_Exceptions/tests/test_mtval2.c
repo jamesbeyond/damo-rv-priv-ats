@@ -35,25 +35,25 @@ bool mtval2_basic_rw(void) {
     TEST_BEGIN("MTVAL-01: mtval2 WARL read/write semantics");
 
     /* Zero must be holdable. */
-    asm volatile("csrw 0x34B, zero");
+    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", zero");
     uintptr_t r0;
-    asm volatile("csrr %0, 0x34B" : "=r"(r0));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r0));
     TEST_ASSERT_EQ("mtval2 must hold zero", r0, 0);
 
     uintptr_t pattern = 0xDEADBEEFCAFEBABEUL;
     uintptr_t r1a, r1b;
-    asm volatile("csrw 0x34B, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x34B" : "=r"(r1a));
-    asm volatile("csrw 0x34B, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x34B" : "=r"(r1b));
+    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r1a));
+    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r1b));
     TEST_ASSERT_EQ("mtval2 readback must be stable", r1a, r1b);
 
     uintptr_t r2;
-    asm volatile("csrr %0, 0x34B" : "=r"(r2));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(r2));
     TEST_ASSERT_EQ("mtval2 value must persist", r2, r1a);
 
     /* Leave the register in a known state for later tests. */
-    asm volatile("csrw 0x34B, zero");
+    asm volatile("csrw " CSR_STR(CSR_MTVAL2) ", zero");
 
     HYP_TEST_END();
 }
@@ -112,11 +112,11 @@ bool mtval2_non_gpf_trap(void) {
     trap_expect_end();
 
     uintptr_t mtval2;
-    asm volatile("csrr %0, 0x34B" : "=r"(mtval2));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2) : "=r"(mtval2));
     TEST_ASSERT_EQ("mtval2 must be 0 on non-GPF trap", mtval2, 0);
 
     uintptr_t mtinst;
-    asm volatile("csrr %0, 0x34A" : "=r"(mtinst));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(mtinst));
     TEST_ASSERT_EQ("mtinst must be 0 on ecall (standard inst)", mtinst, 0);
 
     HYP_TEST_END();
@@ -133,24 +133,24 @@ TEST_REGISTER(mtinst_basic_rw);
 bool mtinst_basic_rw(void) {
     TEST_BEGIN("MTVAL-04: mtinst WARL read/write semantics");
 
-    asm volatile("csrw 0x34A, zero");
+    asm volatile("csrw " CSR_STR(CSR_MTINST) ", zero");
     uintptr_t r0;
-    asm volatile("csrr %0, 0x34A" : "=r"(r0));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r0));
     TEST_ASSERT_EQ("mtinst must hold zero", r0, 0);
 
     uintptr_t pattern = 0x123456789ABCDEF0UL;
     uintptr_t r1a, r1b;
-    asm volatile("csrw 0x34A, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x34A" : "=r"(r1a));
-    asm volatile("csrw 0x34A, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x34A" : "=r"(r1b));
+    asm volatile("csrw " CSR_STR(CSR_MTINST) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r1a));
+    asm volatile("csrw " CSR_STR(CSR_MTINST) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r1b));
     TEST_ASSERT_EQ("mtinst readback must be stable", r1a, r1b);
 
     uintptr_t r2;
-    asm volatile("csrr %0, 0x34A" : "=r"(r2));
+    asm volatile("csrr %0, " CSR_STR(CSR_MTINST) : "=r"(r2));
     TEST_ASSERT_EQ("mtinst value must persist", r2, r1a);
 
-    asm volatile("csrw 0x34A, zero");
+    asm volatile("csrw " CSR_STR(CSR_MTINST) ", zero");
 
     HYP_TEST_END();
 }
@@ -247,24 +247,24 @@ TEST_REGISTER(htinst_basic_rw);
 bool htinst_basic_rw(void) {
     TEST_BEGIN("MTVAL-07: htinst WARL read/write semantics");
 
-    asm volatile("csrw 0x64A, zero");
+    asm volatile("csrw " CSR_STR(CSR_HTINST) ", zero");
     uintptr_t r0;
-    asm volatile("csrr %0, 0x64A" : "=r"(r0));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r0));
     TEST_ASSERT_EQ("htinst must hold zero", r0, 0);
 
     uintptr_t pattern = 0x9876543210FEDCBAUL;
     uintptr_t r1a, r1b;
-    asm volatile("csrw 0x64A, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x64A" : "=r"(r1a));
-    asm volatile("csrw 0x64A, %0" :: "r"(pattern));
-    asm volatile("csrr %0, 0x64A" : "=r"(r1b));
+    asm volatile("csrw " CSR_STR(CSR_HTINST) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r1a));
+    asm volatile("csrw " CSR_STR(CSR_HTINST) ", %0" :: "r"(pattern));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r1b));
     TEST_ASSERT_EQ("htinst readback must be stable", r1a, r1b);
 
     uintptr_t r2;
-    asm volatile("csrr %0, 0x64A" : "=r"(r2));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTINST) : "=r"(r2));
     TEST_ASSERT_EQ("htinst value must persist", r2, r1a);
 
-    asm volatile("csrw 0x64A, zero");
+    asm volatile("csrw " CSR_STR(CSR_HTINST) ", zero");
 
     HYP_TEST_END();
 }

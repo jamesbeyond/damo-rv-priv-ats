@@ -22,6 +22,18 @@
 #define CSR_MIE         0x304
 #define CSR_MTVEC       0x305
 #define CSR_MCOUNTEREN  0x306
+
+/* Machine indirect CSR access (Smcsrind) */
+#ifndef CSR_MISELECT
+#define CSR_MISELECT    0x350
+#endif
+#ifndef CSR_MIREG
+#define CSR_MIREG       0x351
+#endif
+#ifndef CSR_MIREG2
+#define CSR_MIREG2      0x352
+#endif
+
 #define CSR_MSCRATCH    0x340
 #define CSR_MEPC        0x341
 #define CSR_MCAUSE      0x342
@@ -29,6 +41,11 @@
 #define CSR_MIP         0x344
 #define CSR_MHARTID     0xF14
 #define CSR_MVENDORID   0xF11
+
+/* RV32-only high-half of medeleg */
+#ifndef CSR_MEDELEGH
+#define CSR_MEDELEGH    0x312
+#endif
 
 /* ----- Machine Environment Configuration ----- */
 #define CSR_MENVCFG     0x30A
@@ -204,6 +221,11 @@
 #define CSR_MSTATEEN1      0x30D
 #define CSR_MSTATEEN2      0x30E
 #define CSR_MSTATEEN3      0x30F
+
+/* RV32-only high-half of mstateen0 */
+#ifndef CSR_MSTATEEN0H
+#define CSR_MSTATEEN0H     0x31C
+#endif
 
 /* mstateen0 functional bit definitions (M-mode specific) */
 #define MSTATEEN0_C         (1ULL << 0)

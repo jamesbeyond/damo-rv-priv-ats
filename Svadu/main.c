@@ -16,7 +16,7 @@ extern uintptr_t g_menvcfg_reset_value;
 
 static inline uintptr_t menvcfg_read_raw(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x30A" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(v));
     return v;
 }
 

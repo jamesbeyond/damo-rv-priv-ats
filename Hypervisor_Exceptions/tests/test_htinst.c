@@ -46,7 +46,7 @@ bool htinst_interrupt_zero(void) {
     CSRW(CSR_HVIP, 0);
 
     uintptr_t saved_hie;
-    asm volatile ("csrr %0, 0x604" : "=r"(saved_hie));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIE) : "=r"(saved_hie));
 
     /* Enable only VSSIE via hie. */
     CSRW(CSR_HIE, VS_SOFT_INT_BIT);

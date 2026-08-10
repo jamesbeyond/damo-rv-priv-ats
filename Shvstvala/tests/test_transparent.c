@@ -22,10 +22,10 @@ bool test_shvstvala_trans_01(void) {
 
     /* Save original vstval */
     uintptr_t saved;
-    asm volatile ("csrr %0, 0x243" : "=r"(saved));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(saved));
 
     /* Clear vstval before test */
-    asm volatile ("csrw 0x243, zero");
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", zero");
 
     /* Two-stage identity map for VS-mode execution */
     two_stage_ctx_t ctx;
@@ -51,14 +51,14 @@ bool test_shvstvala_trans_01(void) {
 
     /* HS-mode: read vstval (CSR 0x243) */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x243" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(readback));
 
     TEST_ASSERT_EQ("vstval == value written by VS via stval",
                    readback, test_val);
 
     two_stage_cleanup(&ctx);
     /* Restore */
-    asm volatile ("csrw 0x243, %0" :: "r"(saved));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(saved));
     HYP_TEST_END();
 }
 
@@ -71,11 +71,11 @@ bool test_shvstvala_trans_02(void) {
 
     /* Save original vstval */
     uintptr_t saved;
-    asm volatile ("csrr %0, 0x243" : "=r"(saved));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(saved));
 
     /* HS-mode: write vstval with known value */
     uintptr_t test_val = 0xCAFE0000UL;
-    asm volatile ("csrw 0x243, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val));
 
     /* Two-stage identity map for VS-mode */
     two_stage_ctx_t ctx;
@@ -103,7 +103,7 @@ bool test_shvstvala_trans_02(void) {
                    vs_read, test_val);
 
     two_stage_cleanup(&ctx);
-    asm volatile ("csrw 0x243, %0" :: "r"(saved));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(saved));
     HYP_TEST_END();
 }
 
@@ -149,7 +149,7 @@ bool test_shvstvala_trans_03(void) {
 
     /* After returning to HS-mode, read vstval directly */
     uintptr_t hs_readback;
-    asm volatile ("csrr %0, 0x243" : "=r"(hs_readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(hs_readback));
     TEST_ASSERT_EQ("HS reads vstval == trap faulting VA (not cleared)",
                    hs_readback, UNMAPPED_VA_1);
 
@@ -167,29 +167,29 @@ bool test_shvstvala_trans_04(void) {
 
     /* Save original vstval */
     uintptr_t saved;
-    asm volatile ("csrr %0, 0x243" : "=r"(saved));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(saved));
 
     /* Write a high-bit address value to vstval from HS-mode */
     uintptr_t test_val = 0x7FFFFFFFFFULL;  /* 39-bit address max */
-    asm volatile ("csrw 0x243, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val));
 
     /* Read back and verify no truncation */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x243" : "=r"(readback));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(readback));
     TEST_ASSERT_EQ("vstval holds 0x7FFFFFFFFF without truncation",
                    readback, test_val);
 
     /* Also test with bit pattern across full XLEN */
     uintptr_t test_val2 = 0xAAAAAAAAAAAAAAAAULL;
-    asm volatile ("csrw 0x243, %0" :: "r"(test_val2));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(test_val2));
     uintptr_t readback2;
-    asm volatile ("csrr %0, 0x243" : "=r"(readback2));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVAL) : "=r"(readback2));
     /* vstval is WARL - it may not hold all bits; at minimum it should
      * hold address-width bits. Just verify read == write. */
     TEST_ASSERT_EQ("vstval WARL: readback matches written value",
                    readback2, test_val2);
 
     /* Restore */
-    asm volatile ("csrw 0x243, %0" :: "r"(saved));
+    asm volatile ("csrw " CSR_STR(CSR_VSTVAL) ", %0" :: "r"(saved));
     HYP_TEST_END();
 }

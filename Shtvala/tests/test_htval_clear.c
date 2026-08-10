@@ -25,11 +25,11 @@
  * =================================================================== */
 
 static inline void htval_seed(uintptr_t v) {
-    asm volatile ("csrw 0x643, %0" :: "r"(v));
+    asm volatile ("csrw " CSR_STR(CSR_HTVAL) ", %0" :: "r"(v));
 }
 static inline uintptr_t htval_peek(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x643" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HTVAL) : "=r"(v));
     return v;
 }
 
@@ -271,7 +271,7 @@ bool test_htval_clr_07_gpf_then_pagefault(void) {
 static uintptr_t vs_csrr_hstatus_clr(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, 0x600" : "=r"(v));   /* hstatus */
+    asm volatile ("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(v));   /* hstatus */
     return v;
 }
 

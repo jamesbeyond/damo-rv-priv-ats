@@ -31,7 +31,7 @@ bool htimedelta_basic_rw(void)
     /* Write 0x1000 to htimedelta. */
     htimedelta_set(0x1000);
     uintptr_t val;
-    asm volatile("csrr %0, 0x605" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTIMEDELTA) : "=r"(val));
 
     /* Verify value is written. */
     TEST_ASSERT_EQ("htimedelta should read back 0x1000", val, 0x1000);
@@ -161,7 +161,7 @@ bool htimedelta_large_value_negative_offset(void)
 
     /* Verify the large value is stored correctly. */
     uintptr_t readback;
-    asm volatile("csrr %0, 0x605" : "=r"(readback));
+    asm volatile("csrr %0, " CSR_STR(CSR_HTIMEDELTA) : "=r"(readback));
     TEST_ASSERT_EQ("htimedelta should hold 0xFFFFFFFFFFFF0000",
                    readback, (uintptr_t)large_delta);
 

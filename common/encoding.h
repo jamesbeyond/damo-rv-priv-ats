@@ -113,6 +113,21 @@ static inline void sfence_vma(void) {
  * Unprivileged CSRs (U-mode read-only)
  * =================================================================== */
 
+/* Floating-point Control and Status Register (F extension) */
+#ifndef CSR_FCSR
+#define CSR_FCSR        0x003
+#endif
+
+/* Entropy Source Register (Zkr) */
+#ifndef CSR_SEED
+#define CSR_SEED        0x015
+#endif
+
+/* Supervisor Context Register (Sdtrig, gated by stateen0.CONTEXT) */
+#ifndef CSR_SCONTEXT
+#define CSR_SCONTEXT    0x5A8
+#endif
+
 /* Shadow Stack Pointer (Zicfiss) */
 #define CSR_SSP         0x011
 

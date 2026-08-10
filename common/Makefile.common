@@ -50,12 +50,15 @@ $(if $(wildcard $(CONFIG_RVTEST_HEADER)),,$(error Missing required config header
 $(if $(wildcard $(CONFIG_MODEL_HEADER)),,$(error Missing required config header: $(CONFIG_MODEL_HEADER)))
 
 # ABI selection
+# MARCH uses ?= so a suite Makefile may pre-declare its own ISA
+# string (e.g. appending an extension like _zcmp before including
+# this file); the ENABLE_HYP block below preserves those suffixes.
 ifeq ($(XLEN),32)
     ABI   = ilp32
-    MARCH = rv32imac_zicsr_zifencei
+    MARCH ?= rv32imac_zicsr_zifencei
 else
     ABI   = lp64
-    MARCH = rv64imac_zicsr_zifencei
+    MARCH ?= rv64imac_zicsr_zifencei
 endif
 
 # Toolchain selection: gcc (default) or clang (LLVM)
@@ -120,11 +123,16 @@ ifdef ENABLE_TWO_STAGE
 HYP_OBJS += $(HYP_DIR)/two_stage_helpers.o
 endif
 COMMON_OBJS += $(HYP_OBJS)
-# Append H extension to ISA string
+# Append H extension to ISA string. Strip the base single-letter ISA
+# segment (with or without h) from the suite-declared MARCH and
+# rebuild it as rvXXimach, preserving any extension suffixes the
+# suite appended (e.g. _zcmp for the Zcmp suite). Evaluated
+# immediately so the result is final.
+_MARCH_EXTS := $(subst $(firstword $(subst _, ,$(MARCH))),,$(MARCH))
 ifeq ($(XLEN),32)
-MARCH := rv32imach_zicsr_zifencei
+MARCH := rv32imach$(strip $(_MARCH_EXTS))
 else
-MARCH := rv64imach_zicsr_zifencei
+MARCH := rv64imach$(strip $(_MARCH_EXTS))
 endif
 endif
 

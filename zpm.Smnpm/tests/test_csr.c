@@ -102,13 +102,13 @@ bool test_zpm_csr_menvcfg_other_fields(void) {
     TEST_BEGIN("ZPM-CSR-10: menvcfg.PMM doesn't affect PBMTE/ADUE");
     if (!zpm_cap_smnpm_supported) TEST_SKIP("Smnpm not detected in CAP");
 
-    uintptr_t before = CSRR(0x30A) & ~MENVCFG_PMM_MASK;
+    uintptr_t before = CSRR(CSR_MENVCFG) & ~MENVCFG_PMM_MASK;
 
     pm_set_smode(PMM_PMLEN7);
-    uintptr_t during = CSRR(0x30A) & ~MENVCFG_PMM_MASK;
+    uintptr_t during = CSRR(CSR_MENVCFG) & ~MENVCFG_PMM_MASK;
 
     pm_set_smode(PMM_DISABLED);
-    uintptr_t after = CSRR(0x30A) & ~MENVCFG_PMM_MASK;
+    uintptr_t after = CSRR(CSR_MENVCFG) & ~MENVCFG_PMM_MASK;
 
     TEST_ASSERT_EQ("other fields unchanged (during)", during, before);
     TEST_ASSERT_EQ("other fields unchanged (after)", after, before);

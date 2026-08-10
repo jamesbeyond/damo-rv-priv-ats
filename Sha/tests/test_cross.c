@@ -129,8 +129,8 @@ bool test_sha_cross_shtvala_htval(void) {
 
     /* Disable M-mode timer interrupt to protect armed flag */
     uintptr_t saved_mie;
-    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
-    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));  /* clear MTIE */
+    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
+    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));  /* clear MTIE */
 
     trap_expect_begin();
     run_in_vs_mode(_vs_do_load, target_gpa);
@@ -139,7 +139,7 @@ bool test_sha_cross_shtvala_htval(void) {
     uintptr_t htval = fired ? trap_get_htval() : 0;
     trap_expect_end();
 
-    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
+    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
 
     gpt_disable();
     hyp_reset_state();
@@ -291,8 +291,8 @@ bool test_sha_cross_htval_vstval_independent(void) {
 
     /* Disable M-mode timer interrupt to protect armed flag */
     uintptr_t saved_mie;
-    asm volatile ("csrr %0, 0x304" : "=r"(saved_mie));
-    asm volatile ("csrc 0x304, %0" :: "r"(1UL << 7));  /* clear MTIE */
+    asm volatile ("csrr %0, " CSR_STR(CSR_MIE) : "=r"(saved_mie));
+    asm volatile ("csrc " CSR_STR(CSR_MIE) ", %0" :: "r"(1UL << 7));  /* clear MTIE */
 
     trap_expect_begin();
     run_in_vs_mode(_vs_do_load, gpf_gpa);
@@ -302,7 +302,7 @@ bool test_sha_cross_htval_vstval_independent(void) {
     uintptr_t vstval_after_gpf = vstval_read();
     trap_expect_end();
 
-    asm volatile ("csrw 0x304, %0" :: "r"(saved_mie));
+    asm volatile ("csrw " CSR_STR(CSR_MIE) ", %0" :: "r"(saved_mie));
 
     gpt_disable();
     hyp_reset_state();

@@ -75,12 +75,12 @@ extern volatile uintptr_t g_shvstvecd_vec_marker;
  * =================================================================== */
 static inline uintptr_t vstvec_read_raw(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x205" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTVEC) : "=r"(v));
     return v;
 }
 
 static inline void vstvec_write_raw(uintptr_t v) {
-    asm volatile ("csrw 0x205, %0" :: "r"(v) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTVEC) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================
@@ -97,7 +97,7 @@ static inline void shvstvecd_reset_trap_record(void) {
     g_shvstvecd_trap_cause = 0;
     /* Arm vsscratch so the asm trap entry can spill t0/t1.
      * Write to CSR 0x240 (vsscratch) from M/HS-mode. */
-    asm volatile ("csrw 0x240, %0"
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0"
                   :: "r"(shvstvecd_trap_scratch) : "memory");
 }
 

@@ -19,11 +19,11 @@
 
 static inline uintptr_t htval_read(void) {
     uintptr_t v;
-    asm volatile ("csrr %0, 0x643" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HTVAL) : "=r"(v));
     return v;
 }
 static inline void htval_write(uintptr_t v) {
-    asm volatile ("csrw 0x643, %0" :: "r"(v));
+    asm volatile ("csrw " CSR_STR(CSR_HTVAL) ", %0" :: "r"(v));
 }
 
 TEST_REGISTER(test_htval_reg_01_reset_zero);
@@ -92,7 +92,7 @@ bool test_htval_reg_03_all_ones_warl(void) {
 static uintptr_t vs_csrr_htval(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, 0x643" : "=r"(v));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HTVAL) : "=r"(v));
     return v;
 }
 

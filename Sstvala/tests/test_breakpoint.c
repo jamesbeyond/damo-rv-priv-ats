@@ -54,7 +54,7 @@ static bool detect_trigger_module(void) {
         return trigger_available;
 
     trap_expect_begin();
-    asm volatile ("csrr zero, 0x7A0" ::: "memory");  /* read tselect */
+    asm volatile ("csrr zero, " CSR_STR(CSR_TSELECT) ::: "memory");  /* read tselect */
 
     trigger_available = !trap_was_triggered();
     trap_expect_end();
@@ -67,9 +67,9 @@ static bool detect_trigger_module(void) {
  * =================================================================== */
 static void trigger_cleanup(void) {
     /* Disable trigger by clearing tdata1 */
-    asm volatile ("csrw 0x7A0, zero" ::: "memory");  /* tselect = 0 */
-    asm volatile ("csrw 0x7A1, zero" ::: "memory");  /* tdata1  = 0 */
-    asm volatile ("csrw 0x7A2, zero" ::: "memory");  /* tdata2  = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_TSELECT) ", zero" ::: "memory");  /* tselect = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_TDATA1) ", zero" ::: "memory");  /* tdata1  = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_TDATA2) ", zero" ::: "memory");  /* tdata2  = 0 */
 }
 
 /* ===================================================================
@@ -92,15 +92,15 @@ bool test_sstvala_bkp_01(void) {
     /* Configure trigger in M-mode: breakpoint on load at trigger_addr.
      * Enable for S-mode (not M-mode) so the breakpoint fires when
      * we switch to S-mode to execute the load. */
-    asm volatile ("csrw 0x7A0, zero" ::: "memory");       /* tselect = 0 */
-    asm volatile ("csrw 0x7A2, %0" :: "r"(trigger_addr) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_TSELECT) ", zero" ::: "memory");       /* tselect = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_TDATA2) ", %0" :: "r"(trigger_addr) : "memory");
     uintptr_t tdata1_val = MCONTROL6_TYPE | MCONTROL6_LOAD |
                            MCONTROL6_S | MCONTROL6_MATCH_EQ;
-    asm volatile ("csrw 0x7A1, %0" :: "r"(tdata1_val) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_TDATA1) ", %0" :: "r"(tdata1_val) : "memory");
 
     /* Verify the trigger was actually configured (WARL check) */
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x7A1" : "=r"(readback) :: "memory");
+    asm volatile ("csrr %0, " CSR_STR(CSR_TDATA1) : "=r"(readback) :: "memory");
     if (readback == 0) {
         trigger_cleanup();
         TEST_SKIP("trigger type=6 (mcontrol6) not supported");
@@ -140,14 +140,14 @@ bool test_sstvala_bkp_02(void) {
 
     /* Configure trigger in M-mode: breakpoint on execute at trigger_pc.
      * Enable for S-mode so it fires when we switch to S-mode. */
-    asm volatile ("csrw 0x7A0, zero" ::: "memory");
-    asm volatile ("csrw 0x7A2, %0" :: "r"(trigger_pc) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_TSELECT) ", zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_TDATA2) ", %0" :: "r"(trigger_pc) : "memory");
     uintptr_t tdata1_val = MCONTROL6_TYPE | MCONTROL6_EXECUTE |
                            MCONTROL6_S | MCONTROL6_MATCH_EQ;
-    asm volatile ("csrw 0x7A1, %0" :: "r"(tdata1_val) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_TDATA1) ", %0" :: "r"(tdata1_val) : "memory");
 
     uintptr_t readback;
-    asm volatile ("csrr %0, 0x7A1" : "=r"(readback) :: "memory");
+    asm volatile ("csrr %0, " CSR_STR(CSR_TDATA1) : "=r"(readback) :: "memory");
     if (readback == 0) {
         trigger_cleanup();
         TEST_SKIP("trigger type=6 (mcontrol6) not supported");

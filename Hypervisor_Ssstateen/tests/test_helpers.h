@@ -70,13 +70,13 @@ static uintptr_t _vs_read_sstateen0(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x10C" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(val));
     return val;
 }
 
 static uintptr_t _vs_write_sstateen0(uintptr_t arg)
 {
-    asm volatile("csrw 0x10C, %0" :: "r"(arg));
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN0) ", %0" :: "r"(arg));
     return 0;
 }
 
@@ -85,10 +85,10 @@ static uintptr_t _vs_read_sstateen(uintptr_t idx)
     uintptr_t val;
     switch ((int)idx)
     {
-    case 0: asm volatile("csrr %0, 0x10C" : "=r"(val)); break;
-    case 1: asm volatile("csrr %0, 0x10D" : "=r"(val)); break;
-    case 2: asm volatile("csrr %0, 0x10E" : "=r"(val)); break;
-    case 3: asm volatile("csrr %0, 0x10F" : "=r"(val)); break;
+    case 0: asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(val)); break;
+    case 1: asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN1) : "=r"(val)); break;
+    case 2: asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN2) : "=r"(val)); break;
+    case 3: asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN3) : "=r"(val)); break;
     default: val = 0; break;
     }
     return val;
@@ -98,13 +98,13 @@ static uintptr_t _vs_read_senvcfg(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x10A" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(val));
     return val;
 }
 
 static uintptr_t _vs_write_senvcfg(uintptr_t arg)
 {
-    asm volatile("csrw 0x10A, %0" :: "r"(arg));
+    asm volatile("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(arg));
     return 0;
 }
 
@@ -113,7 +113,7 @@ static uintptr_t _vs_read_siselect(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x150" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(val));
     return val;
 }
 
@@ -122,7 +122,7 @@ static uintptr_t _vs_read_sireg(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x151" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SIREG) : "=r"(val));
     return val;
 }
 
@@ -131,7 +131,7 @@ static uintptr_t _vs_read_stopei(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x15C" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_STOPEI) : "=r"(val));
     return val;
 }
 
@@ -140,13 +140,13 @@ static uintptr_t _vs_read_scontext(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x5A8" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SCONTEXT) : "=r"(val));
     return val;
 }
 
 static uintptr_t _vs_write_scontext(uintptr_t arg)
 {
-    asm volatile("csrw 0x5A8, %0" :: "r"(arg));
+    asm volatile("csrw " CSR_STR(CSR_SCONTEXT) ", %0" :: "r"(arg));
     return 0;
 }
 
@@ -156,7 +156,7 @@ static uintptr_t _vs_read_sieh(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x154" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SIPH) : "=r"(val));
     return val;
 }
 
@@ -165,7 +165,7 @@ static uintptr_t _vs_read_siph(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x155" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SIREG4) : "=r"(val));
     return val;
 }
 #endif /* __riscv_xlen == 32 */

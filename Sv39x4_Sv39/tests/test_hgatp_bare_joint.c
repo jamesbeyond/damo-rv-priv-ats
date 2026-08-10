@@ -281,7 +281,7 @@ bool test_ts_bare_06_sum_mxr_noop(void) {
 
     /* vsstatus.SUM=1 + vsstatus.MXR=1 (CSR 0x200). */
     uintptr_t bits = MSTATUS_SUM_BIT | MSTATUS_MXR_BIT;
-    asm volatile ("csrs 0x200, %0" :: "r"(bits));
+    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(bits));
 
     uintptr_t target = (uintptr_t)test_data_area;
     trap_expect_begin();
@@ -289,7 +289,7 @@ bool test_ts_bare_06_sum_mxr_noop(void) {
     bool fired = trap_was_triggered();
     trap_expect_end();
 
-    asm volatile ("csrc 0x200, %0" :: "r"(bits));
+    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(bits));
     ts2_finish(&ctx);
     TEST_ASSERT("no trap with SUM/MXR set under dual Bare", !fired);
     TEST_ASSERT_EQ("access behaves identically to SUM/MXR=0", r, 0UL);

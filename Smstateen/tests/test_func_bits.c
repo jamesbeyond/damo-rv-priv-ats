@@ -308,7 +308,7 @@ bool test_mstateen0_csrind_block_siselect(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x150" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -339,7 +339,7 @@ bool test_mstateen0_csrind_block_sireg(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x151" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SIREG) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -368,7 +368,7 @@ bool test_mstateen0_csrind_allow(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x150" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -402,7 +402,7 @@ bool test_mstateen0_imsic_block_stopei(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x15C" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_STOPEI) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -430,7 +430,7 @@ bool test_mstateen0_imsic_allow(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x15C" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_STOPEI) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -465,7 +465,7 @@ bool test_mstateen0_aia_block(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0xDB0" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_STOPI) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -493,7 +493,7 @@ bool test_mstateen0_aia_allow(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0xDB0" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_STOPI) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -527,7 +527,7 @@ bool test_mstateen0_context_block_scontext(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x5A8" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SCONTEXT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -555,7 +555,7 @@ bool test_mstateen0_context_allow(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x5A8" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SCONTEXT) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -593,7 +593,7 @@ bool test_mstateen0_srmcfg_block(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x181" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SRMCFG) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);
@@ -621,7 +621,7 @@ bool test_mstateen0_srmcfg_allow(void) {
     goto_priv(PRIV_S);
     PRIV_DO({
         uintptr_t v;
-        asm volatile("csrr %0, 0x181" : "=r"(v) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_SRMCFG) : "=r"(v) :: "memory");
         (void)v;
     });
     goto_priv(PRIV_M);

@@ -157,4 +157,47 @@
 #define CSR_HSTATEEN2      0x60E
 #define CSR_HSTATEEN3      0x60F
 
+/* RV32-only high-half of hstateen0 */
+#ifndef CSR_HSTATEEN0H
+#define CSR_HSTATEEN0H     0x61C
+#endif
+
+/* Hypervisor Context Register (Sdtrig, gated by stateen0.CONTEXT) */
+#ifndef CSR_HCONTEXT
+#define CSR_HCONTEXT       0x6A8
+#endif
+
+/* RV32-only high-half of hideleg (Ssaia) */
+#ifndef CSR_HIDELEGH
+#define CSR_HIDELEGH       0x613
+#endif
+
+/* VS indirect CSRs (Smcsrind / Sscsrind) */
+#ifndef CSR_VSISELECT
+#define CSR_VSISELECT      0x250
+#endif
+#ifndef CSR_VSIREG
+#define CSR_VSIREG         0x251
+#endif
+#ifndef CSR_VSIREG2
+#define CSR_VSIREG2        0x252
+#endif
+#ifndef CSR_VSIREG3
+#define CSR_VSIREG3        0x253
+#endif
+#ifndef CSR_VSIREG4
+#define CSR_VSIREG4        0x255
+#endif
+#ifndef CSR_VSIREG5
+#define CSR_VSIREG5        0x256
+#endif
+#ifndef CSR_VSIREG6
+#define CSR_VSIREG6        0x257
+#endif
+
+/* VS top external interrupt (Ssaia, IMSIC only) */
+#ifndef CSR_VSTOPEI
+#define CSR_VSTOPEI        0x25C
+#endif
+
 #endif /* SH_DEFS_H */

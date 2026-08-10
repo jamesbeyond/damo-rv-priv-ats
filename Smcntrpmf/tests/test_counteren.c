@@ -33,7 +33,7 @@ bool test_pmf_ctr_01_mcounteren_cy0(void)
     /* S-mode read cycle should trap */
     goto_priv(PRIV_S);
     trap_expect_begin();
-    asm volatile("csrr x0, 0xC00" ::: "memory");  /* cycle */
+    asm volatile("csrr x0, " CSR_STR(CSR_CYCLE) ::: "memory");  /* cycle */
     bool trapped = trap_was_triggered();
     uintptr_t cause = trap_get_cause();
     trap_expect_end();
@@ -120,7 +120,7 @@ bool test_pmf_ctr_03_scounteren_cy0(void)
     /* U-mode read cycle should trap */
     goto_priv(PRIV_U);
     trap_expect_begin();
-    asm volatile("csrr x0, 0xC00" ::: "memory");
+    asm volatile("csrr x0, " CSR_STR(CSR_CYCLE) ::: "memory");
     bool trapped = trap_was_triggered();
     trap_expect_end();
     goto_priv(PRIV_M);
