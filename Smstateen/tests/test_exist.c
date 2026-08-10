@@ -76,10 +76,10 @@ bool test_mstateen0h_exist(void) {
 #if __riscv_xlen == 32
     uintptr_t orig = 0;
     M_EXPECT_NO_TRAP({
-        asm volatile("csrr %0, 0x31C" : "=r"(orig) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0H) : "=r"(orig) :: "memory");
     });
     M_EXPECT_NO_TRAP({
-        asm volatile("csrw 0x31C, %0" :: "r"(orig) : "memory");
+        asm volatile("csrw " CSR_STR(CSR_MSTATEEN0H) ", %0" :: "r"(orig) : "memory");
     });
 #else
     TEST_SKIP("RV32-only test");

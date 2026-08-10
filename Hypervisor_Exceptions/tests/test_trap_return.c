@@ -70,13 +70,13 @@ static uintptr_t tret_vsstatus_read(void)
 {
     uintptr_t v;
 
-    asm volatile ("csrr %0, 0x200" : "=r"(v));  /* vsstatus */
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(v));  /* vsstatus */
     return v;
 }
 
 static void tret_vsstatus_write(uintptr_t v)
 {
-    asm volatile ("csrw 0x200, %0" :: "r"(v));  /* vsstatus */
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(v));  /* vsstatus */
 }
 
 static uintptr_t tret_sepc_read(void)
@@ -96,13 +96,13 @@ static uintptr_t tret_vsepc_read(void)
 {
     uintptr_t v;
 
-    asm volatile ("csrr %0, 0x241" : "=r"(v));  /* vsepc */
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSEPC) : "=r"(v));  /* vsepc */
     return v;
 }
 
 static void tret_vsepc_write(uintptr_t v)
 {
-    asm volatile ("csrw 0x241, %0" :: "r"(v));  /* vsepc */
+    asm volatile ("csrw " CSR_STR(CSR_VSEPC) ", %0" :: "r"(v));  /* vsepc */
 }
 
 /* SRET landing point shared by the HS/VS probes. Runs at the privilege
@@ -230,7 +230,7 @@ static void tret_hs_probe_setup(uintptr_t spv, uintptr_t spp)
 {
     clear_all_deleg();
     asm volatile ("csrw sscratch, %0" :: "r"(TRET_MAGIC_HS));
-    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
     g_tret_landing = 0;
     g_tret_spv = spv;
     g_tret_spp = spp;
@@ -492,7 +492,7 @@ bool tret_11_sret_v1_to_vs(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
     /* Poison HS sepc; the probe writes vsepc (sepc alias in V=1). */
     tret_sepc_write(TRET_POISON_EPC);
@@ -565,7 +565,7 @@ bool tret_13_sret_v1_sie_spie(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
     /* Pattern (a): SPIE=1, SIE=0 -> after SRET: SIE=1, SPIE=1. */
     tret_vsstatus_write(TRET_SSTATUS_SPP | TRET_SSTATUS_SPIE);
@@ -650,7 +650,7 @@ bool tret_16_sret_v1_preserves_v0(void) {
 
     clear_all_deleg();
     hstatus_set_vtsr(0);
-    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
     /* Pre-load V=0 state that a spec-compliant SRET(V=1) must keep. */
     hstatus_set_spv(1);
@@ -688,7 +688,7 @@ bool tret_17_sret_v0_preserves_vs(void) {
     /* Pre-load VS state that a spec-compliant SRET(V=0) must keep. */
     tret_vsstatus_write(TRET_SSTATUS_SPP);
     tret_vsepc_write(TRET_POISON_EPC);
-    asm volatile ("csrw 0x240, %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
+    asm volatile ("csrw " CSR_STR(CSR_VSSCRATCH) ", %0" :: "r"(TRET_MAGIC_VS));  /* vsscratch */
 
     /* SRET(V=0) with SPV=1, SPP=1 returns into VS-mode. */
     tret_hs_probe_setup(1 /* SPV */, 1 /* SPP */);

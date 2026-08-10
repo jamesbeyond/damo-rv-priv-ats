@@ -322,19 +322,19 @@ bool test_hcross_sssta_31(void)
      * VS-mode stopei access raises virtual-instruction exception.
      * This is independent of the stateen gate. */
     uintptr_t saved_hstatus;
-    asm volatile("csrr %0, 0x600" : "=r"(saved_hstatus));
+    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
 
     /* Try setting VGEIN=1 */
     uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
                        (1UL << HSTATUS_VGEIN_SHIFT);
-    asm volatile("csrw 0x600, %0" :: "r"(new_hs));
+    asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
     uintptr_t rb_hs;
-    asm volatile("csrr %0, 0x600" : "=r"(rb_hs));
+    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(rb_hs));
 
     if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) == 0)
     {
         /* GEILEN=0, cannot configure valid VGEIN */
-        asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
+        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
         hstateen_write(0, saved_h);
         mstateen_write(0, saved_m);
         TEST_SKIP("No guest interrupt files (GEILEN=0), "
@@ -346,7 +346,7 @@ bool test_hcross_sssta_31(void)
     printf("  IMSIC=1, VGEIN=1; verifying VS-mode stopei not blocked\n");
     VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_stopei, 0));
 
-    asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
+    asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
     hstateen_write(0, saved_h);
     mstateen_write(0, saved_m);
     HYP_TEST_END();
@@ -518,13 +518,13 @@ bool test_hcross_sssta_35(void)
     {
         /* stopei requires valid VGEIN per AIA spec. */
         uintptr_t saved_hstatus;
-        asm volatile("csrr %0, 0x600" : "=r"(saved_hstatus));
+        asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
 
         uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
                            (1UL << HSTATUS_VGEIN_SHIFT);
-        asm volatile("csrw 0x600, %0" :: "r"(new_hs));
+        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
         uintptr_t rb_hs;
-        asm volatile("csrr %0, 0x600" : "=r"(rb_hs));
+        asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(rb_hs));
 
         if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) != 0)
         {
@@ -535,7 +535,7 @@ bool test_hcross_sssta_35(void)
             printf("  stopei VS-mode access skipped: GEILEN=0\n");
         }
 
-        asm volatile("csrw 0x600, %0" :: "r"(saved_hstatus));
+        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
     }
 
     hstateen_write(0, saved_h);

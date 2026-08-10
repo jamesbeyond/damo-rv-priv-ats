@@ -81,7 +81,7 @@ bool test_ts_vsatp_01_v1_satp_reads_vsatp(void)
     /* Manual cleanup (avoid double-cleanup from ts2_finish which
      * would zero vsatp before we can verify). */
     gpt_disable();
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp = 0 */
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: csrr satp == vsatp", got, expected);
@@ -122,7 +122,7 @@ bool test_ts_vsatp_02_v1_satp_writes_vsatp(void)
 
     /* Manual cleanup. */
     gpt_disable();
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp = 0 */
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: vsatp was written via satp", got, test_val);
@@ -168,7 +168,7 @@ bool test_ts_vsatp_03_v1_unsupported_mode_ignored(void)
 
     /* Manual cleanup. */
     gpt_disable();
-    asm volatile ("csrw 0x280, zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");
     hyp_reset_state();
 
     TEST_ASSERT_EQ("V=1: vsatp unchanged after unsupported MODE write via satp",

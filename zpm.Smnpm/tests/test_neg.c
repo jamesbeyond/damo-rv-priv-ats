@@ -33,9 +33,9 @@ bool test_zpm_neg_csr_write_no_pm(void) {
     uintptr_t tagged = pm_tag_address(base, 0x7F, 7);
 
     /* Write tagged value to sepc CSR */
-    uintptr_t saved_sepc = CSRR(0x141);
+    uintptr_t saved_sepc = CSRR(CSR_SEPC);
     CSRW(0x141, tagged);  /* sepc */
-    uintptr_t readback = CSRR(0x141);
+    uintptr_t readback = CSRR(CSR_SEPC);
 
     /* CSR software read/write is not affected by PM.
      * The tag bits should be preserved in the CSR value.
@@ -58,12 +58,12 @@ bool test_zpm_neg_csr_warl_no_pm(void) {
     if (!zpm_cap_smnpm_supported) TEST_SKIP("Smnpm not detected in CAP");
 
     /* Read a WARL CSR without PM, then with PM, compare behavior */
-    uintptr_t saved_sepc = CSRR(0x141);
+    uintptr_t saved_sepc = CSRR(CSR_SEPC);
 
     /* Write all-ones without PM */
     pm_set_smode(PMM_DISABLED);
     CSRW(0x141, ~(uintptr_t)0);
-    uintptr_t warl_no_pm = CSRR(0x141);
+    uintptr_t warl_no_pm = CSRR(CSR_SEPC);
 
     /* Write all-ones with PM */
     pm_set_smode(PMM_PMLEN7);
@@ -72,7 +72,7 @@ bool test_zpm_neg_csr_warl_no_pm(void) {
         TEST_SKIP("PMLEN=7 not supported");
     }
     CSRW(0x141, ~(uintptr_t)0);
-    uintptr_t warl_with_pm = CSRR(0x141);
+    uintptr_t warl_with_pm = CSRR(CSR_SEPC);
 
     TEST_ASSERT_EQ("WARL width unchanged by PM", warl_with_pm, warl_no_pm);
 

@@ -67,29 +67,29 @@ extern char  __shadow_stack_end[];
  * =================================================================== */
 
 static inline void menvcfg_set(uintptr_t mask) {
-    asm volatile("csrs 0x30A, %0" :: "r"(mask) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 static inline void menvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc 0x30A, %0" :: "r"(mask) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 static inline uintptr_t senvcfg_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x10A" : "=r"(v));
+    asm volatile("csrr %0, " CSR_STR(CSR_SENVCFG) : "=r"(v));
     return v;
 }
 
 static inline void senvcfg_write(uintptr_t val) {
-    asm volatile("csrw 0x10A, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(val) : "memory");
 }
 
 static inline void senvcfg_set(uintptr_t mask) {
-    asm volatile("csrs 0x10A, %0" :: "r"(mask) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 static inline void senvcfg_clear(uintptr_t mask) {
-    asm volatile("csrc 0x10A, %0" :: "r"(mask) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_SENVCFG) ", %0" :: "r"(mask) : "memory");
 }
 
 static inline uintptr_t mstatus_read(void) {
@@ -109,12 +109,12 @@ static inline void vsstatus_write(uintptr_t val) {
  * =================================================================== */
 static inline uintptr_t ssp_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x011" : "=r"(v));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(v));
     return v;
 }
 
 static inline void ssp_write(uintptr_t val) {
-    asm volatile("csrw 0x011, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(val) : "memory");
 }
 
 /* ===================================================================

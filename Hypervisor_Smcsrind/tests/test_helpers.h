@@ -49,85 +49,85 @@
 static inline uintptr_t vsiselect_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x250" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSISELECT_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsiselect_write(uintptr_t v)
 {
-    asm volatile("csrw 0x250, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSISELECT_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x251" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg_write(uintptr_t v)
 {
-    asm volatile("csrw 0x251, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg2_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x252" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG2_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg2_write(uintptr_t v)
 {
-    asm volatile("csrw 0x252, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG2_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg3_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x253" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG3_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg3_write(uintptr_t v)
 {
-    asm volatile("csrw 0x253, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG3_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg4_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x255" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG4_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg4_write(uintptr_t v)
 {
-    asm volatile("csrw 0x255, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG4_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg5_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x256" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG5_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg5_write(uintptr_t v)
 {
-    asm volatile("csrw 0x256, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG5_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t vsireg6_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x257" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIREG6_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsireg6_write(uintptr_t v)
 {
-    asm volatile("csrw 0x257, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSIREG6_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================
@@ -137,25 +137,25 @@ static inline void vsireg6_write(uintptr_t v)
 static inline uintptr_t miselect_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x350" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MISELECT_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void miselect_write(uintptr_t v)
 {
-    asm volatile("csrw 0x350, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MISELECT_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t mireg_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x351" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MIREG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mireg_write(uintptr_t v)
 {
-    asm volatile("csrw 0x351, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MIREG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================
@@ -165,23 +165,23 @@ static inline void mireg_write(uintptr_t v)
 static inline uintptr_t mstateen0_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x30C" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mstateen0_write(uintptr_t v)
 {
-    asm volatile("csrw 0x30C, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void mstateen0_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x30C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void mstateen0_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x30C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 /* mstateen0 CSRIND bit (bit 60) */
@@ -197,23 +197,23 @@ static inline void mstateen0_clear(uintptr_t bits)
 static inline uintptr_t hstateen0_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x60C" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_HSTATEEN0) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void hstateen0_write(uintptr_t v)
 {
-    asm volatile("csrw 0x60C, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void hstateen0_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x60C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void hstateen0_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x60C, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_HSTATEEN0) ", %0" :: "r"(bits) : "memory");
 }
 
 /* Check if a specific bit in hstateen0 is writable */
@@ -269,7 +269,7 @@ static uintptr_t _vs_read_siselect(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x150" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(val));
     return val;
 }
 
@@ -278,14 +278,14 @@ static uintptr_t _vs_read_sireg(uintptr_t arg)
 {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x151" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SIREG) : "=r"(val));
     return val;
 }
 
 /* VS-mode: write siselect (CSR 0x150, really vsiselect) */
 static uintptr_t _vs_write_siselect(uintptr_t val)
 {
-    asm volatile("csrw 0x150, %0" :: "r"(val));
+    asm volatile("csrw " CSR_STR(CSR_SISELECT) ", %0" :: "r"(val));
     return 0;
 }
 

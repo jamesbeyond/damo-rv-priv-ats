@@ -215,7 +215,7 @@ bool test_ts_hlv_05_sum_via_vsstatus(void) {
 
     /* Clear sstatus.SUM, set vsstatus.SUM. */
     asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_SUM));
-    asm volatile ("csrs 0x200, %0" :: "r"((uintptr_t)SSTATUS_SUM));
+    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_SUM));
 
     trap_expect_begin();
     uint64_t v = hlv_d(va);
@@ -223,7 +223,7 @@ bool test_ts_hlv_05_sum_via_vsstatus(void) {
     trap_expect_end();
 
     /* Restore vsstatus.SUM=0. */
-    asm volatile ("csrc 0x200, %0" :: "r"((uintptr_t)SSTATUS_SUM));
+    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_SUM));
     ts2_finish(&ctx);
 
     TEST_ASSERT("HLV.D succeeded with vsstatus.SUM=1", !fired);
@@ -321,7 +321,7 @@ bool test_ts_hlv_08_vsstatus_mxr_no_g(void) {
     hstatus_set_spvp(PRIV_S);
 
     asm volatile ("csrc sstatus, %0" :: "r"((uintptr_t)SSTATUS_MXR));
-    asm volatile ("csrs 0x200, %0" :: "r"((uintptr_t)SSTATUS_MXR));
+    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR));
 
     trap_expect_begin();
     (void)hlv_d(va);
@@ -329,7 +329,7 @@ bool test_ts_hlv_08_vsstatus_mxr_no_g(void) {
     uintptr_t cause = fired ? trap_get_cause() : 0;
     trap_expect_end();
 
-    asm volatile ("csrc 0x200, %0" :: "r"((uintptr_t)SSTATUS_MXR));
+    asm volatile ("csrc " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"((uintptr_t)SSTATUS_MXR));
     ts2_finish(&ctx);
 
     TEST_ASSERT("HLV.D trapped on G X-only when only vsstatus.MXR=1",

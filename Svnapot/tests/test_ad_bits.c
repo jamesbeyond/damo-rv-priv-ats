@@ -25,9 +25,9 @@
  */
 static void disable_svadu(void) {
     uintptr_t menvcfg;
-    asm volatile("csrr %0, 0x30A" : "=r"(menvcfg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
     menvcfg &= ~MENVCFG_ADUE;
-    asm volatile("csrw 0x30A, %0" :: "r"(menvcfg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
 }
 
 /**
@@ -35,9 +35,9 @@ static void disable_svadu(void) {
  */
 static void restore_svadu(void) {
     uintptr_t menvcfg;
-    asm volatile("csrr %0, 0x30A" : "=r"(menvcfg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
     menvcfg |= MENVCFG_ADUE;
-    asm volatile("csrw 0x30A, %0" :: "r"(menvcfg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg) : "memory");
 }
 
 /* ===================================================================

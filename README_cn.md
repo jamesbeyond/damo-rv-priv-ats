@@ -208,7 +208,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | 分类 | 扩展 | 说明 | 已开源 |
 |------|------|------|:------:|
 | **内存保护** | `pmp` | PMP 物理内存保护 | |
-| | `smepmp` | Smepmp（PMP M-mode 增强） | |
+| | `Smepmp` | Smepmp（PMP M-mode 增强） | |
 | | `spmp` | SPMP（S-level 物理内存保护） | |
 | | `iopmp` | IOPMP 外设pmp| |
 | **虚拟内存** | `Sv39` | Sv39（3 级页表） | ✓ |
@@ -275,7 +275,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Sm_Interrupts` | M-Mode 中断处理 | |
 | | `Sm_Exceptions` | M-Mode 异常处理 | |
 | | `Smstateen` | 状态使能 | ✓ |
-| | `smrnmi` | 可恢复 NMI | |
+| | `Smrnmi` | 可恢复 NMI | |
 | | `Smcdeleg` | 计数器委托 | |
 | | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | ✓ |
 | | `Smcsrind` | 间接 CSR 访问 | ✓ |
@@ -315,6 +315,17 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | ✓ |
+| **非特权扩展 (Zi\*)** | `Zicsr` | CSR 指令 | |
+| | `Zifencei` | 指令取指栅栏 | |
+| | `Zicond` | 整数条件操作 | |
+| | `Zicntr` | 基础计数器 | |
+| | `Zihpm` | 硬件性能计数器 | |
+| | `Zihintpause` | PAUSE 提示 | |
+| | `Zihintntl` | 非临时性访问提示 | |
+| | `Zimop` | May-Be-Operations | |
+| **压缩扩展 (Zc\*)** | `Zcmop` | 压缩 May-Be-Operations | |
+| | `Zcmp` | 压缩 push/pop 及寄存器移动 | |
+| | `Zcmt` | 压缩表跳转 | |
 | **其他** | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |

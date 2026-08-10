@@ -25,6 +25,16 @@
 #define CSR_SIP         0x144
 #define CSR_SATP        0x180
 
+/* Supervisor Counter Inhibit (Ssccfg) */
+#ifndef CSR_SCOUNTINHIBIT
+#define CSR_SCOUNTINHIBIT 0x120
+#endif
+
+/* RV32-only high-half of sie */
+#ifndef CSR_SIEH
+#define CSR_SIEH        0x114
+#endif
+
 /* ----- Supervisor Environment Configuration ----- */
 #define CSR_SENVCFG     0x10A
 #define CSR_SENVCFGH    0x11A   /* RV32 only */
@@ -115,6 +125,49 @@
  * Supervisor Count Overflow (Sscofpmf)
  * =================================================================== */
 #define CSR_SCOUNTOVF     0xDA0
+
+/* RV32-only high-half of sip */
+#ifndef CSR_SIPH
+#define CSR_SIPH          0x154
+#endif
+
+/* Supervisor indirect CSRs (Smcsrind / Sscsrind) */
+#ifndef CSR_SISELECT
+#define CSR_SISELECT      0x150
+#endif
+#ifndef CSR_SIREG
+#define CSR_SIREG         0x151
+#endif
+#ifndef CSR_SIREG2
+#define CSR_SIREG2        0x152
+#endif
+#ifndef CSR_SIREG3
+#define CSR_SIREG3        0x153
+#endif
+#ifndef CSR_SIREG4
+#define CSR_SIREG4        0x155
+#endif
+#ifndef CSR_SIREG5
+#define CSR_SIREG5        0x156
+#endif
+#ifndef CSR_SIREG6
+#define CSR_SIREG6        0x157
+#endif
+
+/* Supervisor top external interrupt (Ssaia, IMSIC only) */
+#ifndef CSR_STOPEI
+#define CSR_STOPEI        0x15C
+#endif
+
+/* Supervisor top interrupt (Ssaia, read-only) */
+#ifndef CSR_STOPI
+#define CSR_STOPI         0xDB0
+#endif
+
+/* Supervisor QoS resource configuration (Ssqosid) */
+#ifndef CSR_SRMCFG
+#define CSR_SRMCFG        0x181
+#endif
 
 /* ===================================================================
  * Smstateen S-mode CSRs

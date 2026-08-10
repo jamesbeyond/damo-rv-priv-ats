@@ -14,6 +14,8 @@
  *   - Only t0, t1 are clobbered; restored before sret.
  */
 
+#include "encoding.h"
+
 #if __riscv_xlen == 64
     #define STORE   sd
     #define LOAD    ld
@@ -47,9 +49,9 @@ sstc_trap_entry:
     bgez    t1, .Lsstc_not_int        /* MSB == 0 -> sync exception */
     li      t1, -1
 #if __riscv_xlen == 32
-    csrw    0x15D, t1                  /* stimecmph = MAX */
+    csrw    CSR_STIMECMPH, t1                  /* stimecmph = MAX */
 #endif
-    csrw    0x14D, t1                  /* stimecmp = MAX */
+    csrw    CSR_STIMECMP, t1                  /* stimecmp = MAX */
 .Lsstc_not_int:
 
     /* Advance sepc by 4 to skip the trapping / interrupted instruction. */

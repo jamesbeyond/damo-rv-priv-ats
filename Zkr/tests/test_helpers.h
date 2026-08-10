@@ -56,7 +56,7 @@
 static inline uintptr_t seed_read(void)
 {
     uintptr_t v;
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -64,7 +64,7 @@ static inline uintptr_t seed_read(void)
 static inline uintptr_t seed_write(uintptr_t val)
 {
     uintptr_t old;
-    asm volatile("csrrw %0, 0x015, %1" : "=r"(old) : "r"(val) : "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", %1" : "=r"(old) : "r"(val) : "memory");
     return old;
 }
 
@@ -72,7 +72,7 @@ static inline uintptr_t seed_write(uintptr_t val)
 static inline uintptr_t seed_read_csrrs(uintptr_t dummy)
 {
     uintptr_t v;
-    asm volatile("csrrs %0, 0x015, %1" : "=r"(v) : "r"(dummy) : "memory");
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", %1" : "=r"(v) : "r"(dummy) : "memory");
     return v;
 }
 
@@ -80,7 +80,7 @@ static inline uintptr_t seed_read_csrrs(uintptr_t dummy)
 static inline uintptr_t seed_read_csrrc(uintptr_t dummy)
 {
     uintptr_t v;
-    asm volatile("csrrc %0, 0x015, %1" : "=r"(v) : "r"(dummy) : "memory");
+    asm volatile("csrrc %0, " CSR_STR(CSR_SEED) ", %1" : "=r"(v) : "r"(dummy) : "memory");
     return v;
 }
 
@@ -88,7 +88,7 @@ static inline uintptr_t seed_read_csrrc(uintptr_t dummy)
 static inline uintptr_t seed_read_csrrsi(void)
 {
     uintptr_t v;
-    asm volatile("csrrsi %0, 0x015, 1" : "=r"(v) :: "memory");
+    asm volatile("csrrsi %0, " CSR_STR(CSR_SEED) ", 1" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -101,7 +101,7 @@ static inline uintptr_t seed_read_csrrsi(void)
 static inline uintptr_t seed_read_ro_csrrs(void)
 {
     uintptr_t v;
-    asm volatile("csrrs %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -109,7 +109,7 @@ static inline uintptr_t seed_read_ro_csrrs(void)
 static inline uintptr_t seed_read_ro_csrrc(void)
 {
     uintptr_t v;
-    asm volatile("csrrc %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrc %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -136,23 +136,23 @@ static inline uintptr_t seed_read_ro_csrrci(void)
 static inline uintptr_t mseccfg_read_zkr(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x747" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MSECCFG) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mseccfg_write_zkr(uintptr_t v)
 {
-    asm volatile("csrw 0x747, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void mseccfg_set_bits(uintptr_t bits)
 {
-    asm volatile("csrs 0x747, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void mseccfg_clear_bits(uintptr_t bits)
 {
-    asm volatile("csrc 0x747, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -166,7 +166,7 @@ static inline bool check_zkr(void)
     trap_expect_begin();
     clear_mdt();
     uintptr_t v;
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     bool trapped = trap_was_triggered();
     trap_expect_end();
     return !trapped;
@@ -221,14 +221,14 @@ static inline uintptr_t seed_poll_es16(unsigned int max_attempts)
 /* S/U-mode: execute csrrw to seed (read-write access) */
 #define SEED_ACCESS_CSRRW() ({ \
     uintptr_t _v; \
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(_v) :: "memory"); \
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(_v) :: "memory"); \
     _v; \
 })
 
 /* S/U-mode: execute csrrs rd, seed, x0 (read-only, always traps) */
 #define SEED_ACCESS_CSRRS_RO() ({ \
     uintptr_t _v; \
-    asm volatile("csrrs %0, 0x015, x0" : "=r"(_v) :: "memory"); \
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(_v) :: "memory"); \
     _v; \
 })
 
@@ -249,7 +249,7 @@ static inline uintptr_t seed_poll_es16(unsigned int max_attempts)
 /* S/U-mode: execute csrrs rd, seed, rs1 (rs1!=x0, read-write access) */
 #define SEED_ACCESS_CSRRS_RW() ({ \
     uintptr_t _v, _dummy = 1; \
-    asm volatile("csrrs %0, 0x015, %1" : "=r"(_v) : "r"(_dummy) : "memory"); \
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", %1" : "=r"(_v) : "r"(_dummy) : "memory"); \
     _v; \
 })
 

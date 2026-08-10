@@ -66,50 +66,50 @@
 static inline uintptr_t mcyclecfg_read(void)
 {
     uintptr_t val;
-    asm volatile("csrr %0, 0x321" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCYCLECFG) : "=r"(val) :: "memory");
     return val;
 }
 
 static inline void mcyclecfg_write(uintptr_t val)
 {
-    asm volatile("csrw 0x321, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MCYCLECFG) ", %0" :: "r"(val) : "memory");
 }
 
 static inline uintptr_t minstretcfg_read(void)
 {
     uintptr_t val;
-    asm volatile("csrr %0, 0x322" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MINSTRETCFG) : "=r"(val) :: "memory");
     return val;
 }
 
 static inline void minstretcfg_write(uintptr_t val)
 {
-    asm volatile("csrw 0x322, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MINSTRETCFG) ", %0" :: "r"(val) : "memory");
 }
 
 #if __riscv_xlen == 32
 static inline uintptr_t mcyclecfgh_read(void)
 {
     uintptr_t val;
-    asm volatile("csrr %0, 0x721" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCYCLECFGH) : "=r"(val) :: "memory");
     return val;
 }
 
 static inline void mcyclecfgh_write(uintptr_t val)
 {
-    asm volatile("csrw 0x721, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MCYCLECFGH) ", %0" :: "r"(val) : "memory");
 }
 
 static inline uintptr_t minstretcfgh_read(void)
 {
     uintptr_t val;
-    asm volatile("csrr %0, 0x722" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MINSTRETCFGH) : "=r"(val) :: "memory");
     return val;
 }
 
 static inline void minstretcfgh_write(uintptr_t val)
 {
-    asm volatile("csrw 0x722, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MINSTRETCFGH) ", %0" :: "r"(val) : "memory");
 }
 #endif /* __riscv_xlen == 32 */
 
@@ -119,13 +119,13 @@ static inline void minstretcfgh_write(uintptr_t val)
 static inline uintptr_t mcountinhibit_read(void)
 {
     uintptr_t val;
-    asm volatile("csrr %0, 0x320" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCOUNTINHIBIT) : "=r"(val) :: "memory");
     return val;
 }
 
 static inline void mcountinhibit_write(uintptr_t val)
 {
-    asm volatile("csrw 0x320, %0" :: "r"(val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MCOUNTINHIBIT) ", %0" :: "r"(val) : "memory");
 }
 
 /* ===================================================================
@@ -140,13 +140,13 @@ static inline uint64_t read_cycle(void)
     uint32_t hi, lo, hi2;
     do {
         asm volatile("csrr %0, 0xC80" : "=r"(hi) :: "memory");  /* cycleh */
-        asm volatile("csrr %0, 0xC00" : "=r"(lo) :: "memory");  /* cycle */
+        asm volatile("csrr %0, " CSR_STR(CSR_CYCLE) : "=r"(lo) :: "memory");  /* cycle */
         asm volatile("csrr %0, 0xC80" : "=r"(hi2) :: "memory");
     } while (hi != hi2);
     return ((uint64_t)hi << 32) | lo;
 #else
     uintptr_t val;
-    asm volatile("csrr %0, 0xC00" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_CYCLE) : "=r"(val) :: "memory");
     return (uint64_t)val;
 #endif
 }
@@ -157,13 +157,13 @@ static inline uint64_t read_instret(void)
     uint32_t hi, lo, hi2;
     do {
         asm volatile("csrr %0, 0xC82" : "=r"(hi) :: "memory");  /* instreth */
-        asm volatile("csrr %0, 0xC02" : "=r"(lo) :: "memory");  /* instret */
+        asm volatile("csrr %0, " CSR_STR(CSR_INSTRET) : "=r"(lo) :: "memory");  /* instret */
         asm volatile("csrr %0, 0xC82" : "=r"(hi2) :: "memory");
     } while (hi != hi2);
     return ((uint64_t)hi << 32) | lo;
 #else
     uintptr_t val;
-    asm volatile("csrr %0, 0xC02" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_INSTRET) : "=r"(val) :: "memory");
     return (uint64_t)val;
 #endif
 }
@@ -176,14 +176,14 @@ static inline uint64_t read_mcycle(void)
 #if __riscv_xlen == 32
     uint32_t hi, lo, hi2;
     do {
-        asm volatile("csrr %0, 0xB80" : "=r"(hi) :: "memory");  /* mcycleh */
-        asm volatile("csrr %0, 0xB00" : "=r"(lo) :: "memory");  /* mcycle */
-        asm volatile("csrr %0, 0xB80" : "=r"(hi2) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_MCYCLEH) : "=r"(hi) :: "memory");  /* mcycleh */
+        asm volatile("csrr %0, " CSR_STR(CSR_MCYCLE) : "=r"(lo) :: "memory");  /* mcycle */
+        asm volatile("csrr %0, " CSR_STR(CSR_MCYCLEH) : "=r"(hi2) :: "memory");
     } while (hi != hi2);
     return ((uint64_t)hi << 32) | lo;
 #else
     uintptr_t val;
-    asm volatile("csrr %0, 0xB00" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCYCLE) : "=r"(val) :: "memory");
     return (uint64_t)val;
 #endif
 }
@@ -193,14 +193,14 @@ static inline uint64_t read_minstret(void)
 #if __riscv_xlen == 32
     uint32_t hi, lo, hi2;
     do {
-        asm volatile("csrr %0, 0xB82" : "=r"(hi) :: "memory");  /* minstreth */
-        asm volatile("csrr %0, 0xB02" : "=r"(lo) :: "memory");  /* minstret */
-        asm volatile("csrr %0, 0xB82" : "=r"(hi2) :: "memory");
+        asm volatile("csrr %0, " CSR_STR(CSR_MINSTRETH) : "=r"(hi) :: "memory");  /* minstreth */
+        asm volatile("csrr %0, " CSR_STR(CSR_MINSTRET) : "=r"(lo) :: "memory");  /* minstret */
+        asm volatile("csrr %0, " CSR_STR(CSR_MINSTRETH) : "=r"(hi2) :: "memory");
     } while (hi != hi2);
     return ((uint64_t)hi << 32) | lo;
 #else
     uintptr_t val;
-    asm volatile("csrr %0, 0xB02" : "=r"(val) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MINSTRET) : "=r"(val) :: "memory");
     return (uint64_t)val;
 #endif
 }

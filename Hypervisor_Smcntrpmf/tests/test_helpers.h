@@ -43,25 +43,25 @@
 static inline uintptr_t mcyclecfg_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x321" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCYCLECFG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mcyclecfg_write(uintptr_t v)
 {
-    asm volatile("csrw 0x321, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MCYCLECFG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t minstretcfg_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x322" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MINSTRETCFG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void minstretcfg_write(uintptr_t v)
 {
-    asm volatile("csrw 0x322, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MINSTRETCFG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================
@@ -69,27 +69,27 @@ static inline void minstretcfg_write(uintptr_t v)
  * =================================================================== */
 static inline void mcounteren_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x306, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void mcounteren_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x306, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void hcounteren_write(uintptr_t v)
 {
-    asm volatile("csrw 0x606, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void hcounteren_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x606, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void hcounteren_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x606, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_HCOUNTEREN_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -98,14 +98,14 @@ static inline void hcounteren_clear(uintptr_t bits)
 static inline uint64_t read_mcycle(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0xB00" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MCYCLE) : "=r"(v) :: "memory");
     return (uint64_t)v;
 }
 
 static inline uint64_t read_minstret(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0xB02" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MINSTRET) : "=r"(v) :: "memory");
     return (uint64_t)v;
 }
 
@@ -187,7 +187,7 @@ static uintptr_t _vs_read_cycle(uintptr_t arg)
 {
     (void)arg;
     uintptr_t v;
-    asm volatile("csrr %0, 0xC00" : "=r"(v) :: "memory");  /* cycle */
+    asm volatile("csrr %0, " CSR_STR(CSR_CYCLE) : "=r"(v) :: "memory");  /* cycle */
     return trap_get_cause();
 }
 

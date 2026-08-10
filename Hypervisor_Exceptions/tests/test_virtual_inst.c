@@ -424,9 +424,9 @@ bool vinst_21_fs0_illegal(void)
 
     /* Set vsstatus.FS = Off (VS-level disables FP). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_FS_MASK) | SSTATUS_FS_OFF;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /*
      * VS-mode FP with vsstatus.FS=0 must trigger illegal-instruction
@@ -464,9 +464,9 @@ bool vinst_22_vs0_illegal(void)
 
     /* Set vsstatus.VS = Off (VS-level disables Vector). */
     uintptr_t vsstatus;
-    asm volatile ("csrr %0, 0x200" : "=r"(vsstatus));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSSTATUS) : "=r"(vsstatus));
     vsstatus = (vsstatus & ~SSTATUS_VS_MASK) | SSTATUS_VS_OFF;
-    asm volatile ("csrw 0x200, %0" :: "r"(vsstatus));
+    asm volatile ("csrw " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(vsstatus));
 
     /*
      * VS-mode Vector with vsstatus.VS=0 must trigger illegal-instruction
@@ -665,7 +665,7 @@ bool vinst_31_vs_henvcfg(void)
     bool smstateen_present = false;
 
     trap_expect_begin();
-    asm volatile ("csrr %0, 0x30C" : "=r"(orig_mstateen0) :: "memory");
+    asm volatile ("csrr %0, " CSR_STR(CSR_MSTATEEN0) : "=r"(orig_mstateen0) :: "memory");
     bool mstateen_trapped = trap_was_triggered();
     trap_expect_end();
 
@@ -673,14 +673,14 @@ bool vinst_31_vs_henvcfg(void)
         smstateen_present = true;
         /* Set ENVCFG (bit 62) so henvcfg is accessible in HS-mode,
          * making it HS-qualified for VS-mode virtual-inst testing. */
-        asm volatile ("csrs 0x30C, %0" :: "r"(1ULL << 62) : "memory");
+        asm volatile ("csrs " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(1ULL << 62) : "memory");
     }
 
     EXPECT_VIRTUAL_INST(run_in_vs_mode(vs_read_henvcfg, 0));
 
     /* Restore mstateen0 if modified. */
     if (smstateen_present) {
-        asm volatile ("csrw 0x30C, %0" :: "r"(orig_mstateen0) : "memory");
+        asm volatile ("csrw " CSR_STR(CSR_MSTATEEN0) ", %0" :: "r"(orig_mstateen0) : "memory");
     }
 
     HYP_TEST_END();

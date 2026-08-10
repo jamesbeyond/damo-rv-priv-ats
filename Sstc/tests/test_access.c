@@ -48,7 +48,7 @@ bool test_sstc_acc_stce0_smode_write(void) {
 #if __riscv_xlen == 32
     /* RV32: stimecmp_write does three CSR writes; only test one here */
     PRIV_DO_TRAP({
-        asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+        asm volatile("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     });
 #else
     PRIV_DO_TRAP(stimecmp_write((uintptr_t)-1));
@@ -93,7 +93,7 @@ bool test_sstc_acc_stce1_tm0_smode_write(void) {
     goto_priv(PRIV_S);
 #if __riscv_xlen == 32
     PRIV_DO_TRAP({
-        asm volatile("csrw 0x14D, %0" :: "r"((uintptr_t)-1) : "memory");
+        asm volatile("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     });
 #else
     PRIV_DO_TRAP(stimecmp_write((uintptr_t)-1));

@@ -29,7 +29,7 @@ static uintptr_t smode_sspush_sspopchk_match(uintptr_t arg)
 
     /* Read SSP before operations */
     uintptr_t ssp_before;
-    asm volatile("csrr %0, 0x011" : "=r"(ssp_before));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(ssp_before));
 
     /* Set ra to a known value */
     asm volatile("li ra, 0x12345678ABCDEF00" ::: "memory");
@@ -42,7 +42,7 @@ static uintptr_t smode_sspush_sspopchk_match(uintptr_t arg)
 
     /* Read SSP after push */
     uintptr_t ssp_after_push;
-    asm volatile("csrr %0, 0x011" : "=r"(ssp_after_push));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(ssp_after_push));
 
     /* SSPOPCHK x1: loads from SSP, compares with ra, SSP += 8 */
     asm volatile(
@@ -52,7 +52,7 @@ static uintptr_t smode_sspush_sspopchk_match(uintptr_t arg)
 
     /* Read SSP after pop */
     uintptr_t ssp_after_pop;
-    asm volatile("csrr %0, 0x011" : "=r"(ssp_after_pop));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSP) : "=r"(ssp_after_pop));
 
     printf("    SSP: before=0x%lx after_push=0x%lx after_pop=0x%lx\n",
            (unsigned long)ssp_before,
@@ -121,13 +121,13 @@ bool test_zicfiss_shadow_push_pop_match(void)
 
     /* Set SSP to point to middle of shadow stack test page */
     uintptr_t ssp_val = ss_vm_test_page + 0x800;
-    asm volatile("csrw 0x011, %0" :: "r"(ssp_val) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", %0" :: "r"(ssp_val) : "memory");
 
     /* Run SSPUSH/SSPOPCHK test in S-mode with VM */
     uintptr_t result = vm_run_in_smode(&ctx, smode_sspush_sspopchk_match, 0);
 
     /* Clean up */
-    asm volatile("csrw 0x011, zero" ::: "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSP) ", zero" ::: "memory");
     menvcfg_clear(MENVCFG_SSE);
     pt_pool_reset();
 

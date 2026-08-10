@@ -24,10 +24,10 @@ bool test_hstat_01(void) {
     uintptr_t read_val;
 
     /* Write hstatus via CSR 0x600 */
-    asm volatile ("csrw 0x600, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(test_val));
 
     /* Read hstatus via CSR 0x600 */
-    asm volatile ("csrr %0, 0x600" : "=r"(read_val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(read_val));
 
     /* hstatus contains WARL fields (VSBE, VSXL) and reserved bits
      * that may not retain written values. Compare only reliably
@@ -123,12 +123,12 @@ bool test_hstat_05(void) {
      * logic to generate STIP. QEMU may default STCE=1 at reset, but
      * real hardware typically resets with STCE=0. */
     uintptr_t saved_menvcfg;
-    asm volatile ("csrr %0, 0x30A" : "=r"(saved_menvcfg));
-    asm volatile ("csrs 0x30A, %0" :: "r"(1UL << 63));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(saved_menvcfg));
+    asm volatile ("csrs " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(1UL << 63));
 
     uintptr_t time_now;
     asm volatile ("csrr %0, time" : "=r"(time_now));
-    asm volatile ("csrw 0x14D, %0" :: "r"(time_now + 100000));
+    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"(time_now + 100000));
 
     /* Enable S-mode timer interrupt in mie so it fires in M-mode. */
     uintptr_t saved_mie;
@@ -146,8 +146,8 @@ bool test_hstat_05(void) {
 
     /* Restore mie, menvcfg, and clear stimecmp. */
     asm volatile ("csrw mie, %0" :: "r"(saved_mie));
-    asm volatile ("csrw 0x14D, %0" :: "r"((uintptr_t)-1));
-    asm volatile ("csrw 0x30A, %0" :: "r"(saved_menvcfg));
+    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"((uintptr_t)-1));
+    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(saved_menvcfg));
 
     HYP_TEST_END();
 }

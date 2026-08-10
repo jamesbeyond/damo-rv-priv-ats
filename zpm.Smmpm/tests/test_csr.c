@@ -139,13 +139,13 @@ bool test_zpm_csr_mseccfg_other_fields(void) {
     /* Mask out PMM bits and sticky bits (MML/MMWP) that we don't want to
      * accidentally set.  Only compare non-PMM, non-sticky fields. */
     uintptr_t compare_mask = ~(MSECCFG_PMM_MASK | MSECCFG_MML | MSECCFG_MMWP);
-    uintptr_t before = CSRR(0x747) & compare_mask;
+    uintptr_t before = CSRR(CSR_MSECCFG) & compare_mask;
 
     pm_set_mmode(PMM_PMLEN7);
-    uintptr_t during = CSRR(0x747) & compare_mask;
+    uintptr_t during = CSRR(CSR_MSECCFG) & compare_mask;
 
     pm_set_mmode(PMM_DISABLED);
-    uintptr_t after = CSRR(0x747) & compare_mask;
+    uintptr_t after = CSRR(CSR_MSECCFG) & compare_mask;
 
     TEST_ASSERT_EQ("other fields unchanged (during)", during, before);
     TEST_ASSERT_EQ("other fields unchanged (after)", after, before);

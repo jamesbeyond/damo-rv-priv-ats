@@ -168,21 +168,21 @@ bool test_ts_hg_04_mode_switch(void) {
     (void)ts2_run_check_no_fault(&ctx, test_vs_read_write, va);
 
     /* Switch hgatp.MODE: temporarily go to Bare, fence, then restore. */
-    asm volatile ("csrw 0x680, zero" ::: "memory");  /* hgatp = 0 (Bare) */
+    asm volatile ("csrw " CSR_STR(CSR_HGATP) ", zero" ::: "memory");  /* hgatp = 0 (Bare) */
     hfence_gvma_all();
     /* Restore by re-enabling the same context. */
     {
         uintptr_t root_ppn = ((uintptr_t)ctx.g_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t new_hgatp = ((uintptr_t)G11_GMODE << 60) | root_ppn;
-        asm volatile ("csrw 0x680, %0" :: "r"(new_hgatp) : "memory");
+        asm volatile ("csrw " CSR_STR(CSR_HGATP) ", %0" :: "r"(new_hgatp) : "memory");
         hfence_gvma_all();
     }
     /* Re-enable VS state and verify access still works. */
-    asm volatile ("csrw 0x280, zero" ::: "memory");  /* vsatp=0 */
+    asm volatile ("csrw " CSR_STR(CSR_VSATP) ", zero" ::: "memory");  /* vsatp=0 */
     {
         uintptr_t root_ppn = ((uintptr_t)ctx.vs_ctx.root_pt) >> PAGE_SHIFT;
         uintptr_t vsatp = MAKE_SATP(ctx.vs_ctx.mode, 0, root_ppn);
-        asm volatile ("csrw 0x280, %0" :: "r"(vsatp) : "memory");
+        asm volatile ("csrw " CSR_STR(CSR_VSATP) ", %0" :: "r"(vsatp) : "memory");
         hfence_vvma_all();
     }
     uintptr_t r = ts2_run_check_no_fault(&ctx, test_vs_read_write, va);

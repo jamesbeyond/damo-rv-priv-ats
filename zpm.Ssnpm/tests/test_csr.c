@@ -106,14 +106,14 @@ bool test_zpm_csr_senvcfg_other_fields(void) {
     if (!zpm_cap_ssnpm_supported) TEST_SKIP("Ssnpm not detected in CAP");
 
     /* Read full senvcfg, mask out PMM bits */
-    uintptr_t before = CSRR(0x10A) & ~SENVCFG_PMM_MASK;
+    uintptr_t before = CSRR(CSR_SENVCFG) & ~SENVCFG_PMM_MASK;
 
     /* Toggle PMM */
     pm_set_umode(PMM_PMLEN7);
-    uintptr_t during = CSRR(0x10A) & ~SENVCFG_PMM_MASK;
+    uintptr_t during = CSRR(CSR_SENVCFG) & ~SENVCFG_PMM_MASK;
 
     pm_set_umode(PMM_DISABLED);
-    uintptr_t after = CSRR(0x10A) & ~SENVCFG_PMM_MASK;
+    uintptr_t after = CSRR(CSR_SENVCFG) & ~SENVCFG_PMM_MASK;
 
     TEST_ASSERT_EQ("other fields unchanged (during)", during, before);
     TEST_ASSERT_EQ("other fields unchanged (after)", after, before);

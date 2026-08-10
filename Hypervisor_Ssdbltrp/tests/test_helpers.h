@@ -58,23 +58,23 @@
 static inline uintptr_t vsstatus_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x200" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_VSSTATUS_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void vsstatus_write(uintptr_t v)
 {
-    asm volatile("csrw 0x200, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void vsstatus_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x200, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void vsstatus_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x200, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_VSSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -84,23 +84,23 @@ static inline void vsstatus_clear(uintptr_t bits)
 static inline uintptr_t hstatus_read_csr(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x600" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void hstatus_write_csr(uintptr_t v)
 {
-    asm volatile("csrw 0x600, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void hstatus_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x600, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void hstatus_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x600, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_HSTATUS_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -110,23 +110,23 @@ static inline void hstatus_clear(uintptr_t bits)
 static inline uintptr_t henvcfg_read_csr(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x60A" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_HENVCFG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void henvcfg_write_csr(uintptr_t v)
 {
-    asm volatile("csrw 0x60A, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void henvcfg_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x60A, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void henvcfg_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x60A, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_HENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -136,23 +136,23 @@ static inline void henvcfg_clear(uintptr_t bits)
 static inline uintptr_t menvcfg_read_csr(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x30A" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MENVCFG_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void menvcfg_write_csr(uintptr_t v)
 {
-    asm volatile("csrw 0x30A, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void menvcfg_set(uintptr_t bits)
 {
-    asm volatile("csrs 0x30A, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void menvcfg_clear(uintptr_t bits)
 {
-    asm volatile("csrc 0x30A, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MENVCFG_ADDR) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -162,13 +162,13 @@ static inline void menvcfg_clear(uintptr_t bits)
 static inline uintptr_t mtval2_read(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x34B" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MTVAL2_ADDR) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mtval2_write(uintptr_t v)
 {
-    asm volatile("csrw 0x34B, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MTVAL2_ADDR) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================

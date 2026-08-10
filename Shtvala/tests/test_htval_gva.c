@@ -59,7 +59,7 @@ bool test_htval_gva_02_fetch(void) {
 static uintptr_t vs_csrr_hstatus_gva(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, 0x600" : "=r"(v));   /* hstatus */
+    asm volatile ("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(v));   /* hstatus */
     return v;
 }
 

@@ -55,42 +55,42 @@
 
 static inline uintptr_t sstateen0_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x10C" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void sstateen0_write(uintptr_t v) {
-    asm volatile("csrw 0x10C, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN0) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t sstateen1_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x10D" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN1) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void sstateen1_write(uintptr_t v) {
-    asm volatile("csrw 0x10D, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN1) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t sstateen2_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x10E" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN2) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void sstateen2_write(uintptr_t v) {
-    asm volatile("csrw 0x10E, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN2) ", %0" :: "r"(v) : "memory");
 }
 
 static inline uintptr_t sstateen3_read(void) {
     uintptr_t v;
-    asm volatile("csrr %0, 0x10F" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN3) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void sstateen3_write(uintptr_t v) {
-    asm volatile("csrw 0x10F, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_SSTATEEN3) ", %0" :: "r"(v) : "memory");
 }
 
 /* ===================================================================
@@ -146,7 +146,7 @@ static inline void sstateen3_write(uintptr_t v) {
 static uintptr_t _vs_read_sstateen0(uintptr_t arg) {
     (void)arg;
     uintptr_t val;
-    asm volatile("csrr %0, 0x10C" : "=r"(val));
+    asm volatile("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(val));
     return val;
 }
 

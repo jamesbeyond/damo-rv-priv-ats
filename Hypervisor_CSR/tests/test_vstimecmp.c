@@ -27,11 +27,11 @@ bool vstc_01_basic_rw(void)
     uintptr_t test_val = 0xDEADBEEF;
 
     /* Write vstimecmp */
-    asm volatile ("csrw 0x24D, %0" :: "r"(test_val));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"(test_val));
 
     /* Read back and verify */
     uintptr_t val;
-    asm volatile ("csrr %0, 0x24D" : "=r"(val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTIMECMP) : "=r"(val));
 
     TEST_ASSERT_EQ("vstimecmp readback matches written value", val, test_val);
 
@@ -51,33 +51,33 @@ bool vstc_02_triggers_vstip(void)
 
     /* Enable STCE: menvcfg first (M-level gates HS-level per spec) */
     uintptr_t menvcfg;
-    asm volatile ("csrr %0, 0x30A" : "=r"(menvcfg));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
     menvcfg |= (1UL << 63);  /* STCE bit */
-    asm volatile ("csrw 0x30A, %0" :: "r"(menvcfg));
+    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg));
     henvcfg_set_stce(true);
 
     /* Clear hvip.VSTIP to isolate vstimecmp-driven signal */
     uintptr_t vstip_bit = (1UL << 6);
-    asm volatile ("csrc 0x645, %0" :: "r"(vstip_bit));
+    asm volatile ("csrc " CSR_STR(CSR_HVIP) ", %0" :: "r"(vstip_bit));
 
     /* Ensure clean initial state: vstimecmp = MAX */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
     VSTC_DELAY();
 
     /* Set vstimecmp to 0 to trigger interrupt */
-    asm volatile ("csrw 0x24D, zero");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", zero");
     VSTC_DELAY();
 
     /* Check hip.VSTIP is set (bit 6) */
     uintptr_t hip;
-    asm volatile ("csrr %0, 0x644" : "=r"(hip));  /* hip, not vsip */
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));  /* hip, not vsip */
     TEST_ASSERT("hip.VSTIP is set", hip & (1UL << 6));
 
     /* Cleanup: disarm timer, then disable STCE (HS before M) */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
     henvcfg_set_stce(false);
     menvcfg &= ~(1UL << 63);
-    asm volatile ("csrw 0x30A, %0" :: "r"(menvcfg));
+    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg));
 
     HYP_TEST_END();
 }
@@ -94,40 +94,40 @@ bool vstc_03_clears_vstip(void)
 
     /* Enable STCE: menvcfg first (M-level gates HS-level per spec) */
     uintptr_t menvcfg;
-    asm volatile ("csrr %0, 0x30A" : "=r"(menvcfg));
+    asm volatile ("csrr %0, " CSR_STR(CSR_MENVCFG) : "=r"(menvcfg));
     menvcfg |= (1UL << 63);
-    asm volatile ("csrw 0x30A, %0" :: "r"(menvcfg));
+    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg));
     henvcfg_set_stce(true);
 
     /* Clear hvip.VSTIP to isolate vstimecmp-driven signal */
     uintptr_t vstip_bit = (1UL << 6);
-    asm volatile ("csrc 0x645, %0" :: "r"(vstip_bit));
+    asm volatile ("csrc " CSR_STR(CSR_HVIP) ", %0" :: "r"(vstip_bit));
 
     /* Ensure clean initial state: vstimecmp = MAX (not expired) */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
     VSTC_DELAY();
 
     /* Set vstimecmp to 0 to trigger VSTIP, wait for propagation */
-    asm volatile ("csrw 0x24D, zero");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", zero");
     VSTC_DELAY();
 
     /* Verify VSTIP is set */
     uintptr_t hip;
-    asm volatile ("csrr %0, 0x644" : "=r"(hip));  /* hip, not vsip */
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));  /* hip, not vsip */
     TEST_ASSERT("hip.VSTIP initially set", hip & (1UL << 6));
 
     /* Write large value to clear VSTIP, wait for propagation */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1));
     VSTC_DELAY();
 
     /* Check hip.VSTIP is cleared */
-    asm volatile ("csrr %0, 0x644" : "=r"(hip));  /* hip, not vsip */
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));  /* hip, not vsip */
     TEST_ASSERT("hip.VSTIP cleared", !(hip & (1UL << 6)));
 
     /* Cleanup (HS before M) */
     henvcfg_set_stce(false);
     menvcfg &= ~(1UL << 63);
-    asm volatile ("csrw 0x30A, %0" :: "r"(menvcfg));
+    asm volatile ("csrw " CSR_STR(CSR_MENVCFG) ", %0" :: "r"(menvcfg));
 
     HYP_TEST_END();
 }
@@ -143,7 +143,7 @@ bool vstc_03_clears_vstip(void)
 /* VS-mode trampoline: write stimecmp (which maps to vstimecmp). */
 static uintptr_t vs_write_stimecmp(uintptr_t val)
 {
-    asm volatile ("csrw 0x14D, %0" :: "r"(val) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", %0" :: "r"(val) : "memory");
     return 0;
 }
 
@@ -169,20 +169,20 @@ bool vstc_04_vs_access_via_stimecmp(void)
     uintptr_t test_val = 0x12345678;
 
     /* Disarm timer first */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
 
     /* VS-mode writes stimecmp (should map to vstimecmp) */
     run_in_vs_mode(vs_write_stimecmp, test_val);
 
     /* Read vstimecmp from M-mode (CSR 0x24D) and verify */
     uintptr_t val;
-    asm volatile ("csrr %0, 0x24D" : "=r"(val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_VSTIMECMP) : "=r"(val));
 
     TEST_ASSERT_EQ("vstimecmp == value written by VS stimecmp",
                    val, test_val);
 
     /* Cleanup */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     henvcfg_set_stce(false);
     menvcfg_write(saved_menvcfg);
     mcounteren_write(saved_mctr);
@@ -225,7 +225,7 @@ static void vstc_vs_int_handler(void)
         "1:\n\t"
         /* Clear VSTIP: write vstimecmp (via stimecmp alias) to MAX */
         "li     t0, -1\n\t"
-        "csrw   0x14D, t0\n\t"
+        "csrw " CSR_STR(CSR_STIMECMP) ", t0\n\t"
 
         /* Disable SIE (bit 1) and SPIE (bit 5) to prevent re-entry */
         "li     t0, 0x22\n\t"
@@ -249,7 +249,7 @@ static uintptr_t vs_trigger_vstimecmp(uintptr_t arg)
 {
     (void)arg;
     /* Write stimecmp (=vstimecmp) to 0 to trigger VSTIP */
-    asm volatile ("csrw 0x14D, zero" :: "r"(0UL) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_STIMECMP) ", zero" :: "r"(0UL) : "memory");
     /* Spin to allow interrupt delivery */
     for (volatile int i = 0; i < 1000; i++) {}
     return 0;
@@ -284,9 +284,9 @@ bool vstc_05_interrupt_delegation_to_vs(void)
     g_vstc_vs_int_triggered = false;
 
     /* Clear interrupt sources */
-    asm volatile ("csrw 0x604, zero" ::: "memory");   /* hie = 0 */
-    asm volatile ("csrw 0x645, zero" ::: "memory");   /* hvip = 0 */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero" ::: "memory");   /* hie = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero" ::: "memory");   /* hvip = 0 */
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
 
     /* Delegate M->HS: mideleg[5] (STIP) */
     uintptr_t mideleg;
@@ -299,22 +299,22 @@ bool vstc_05_interrupt_delegation_to_vs(void)
     hideleg_write(saved_hideleg | (1UL << 6));
 
     /* Enable hie.VSTIE (bit 6) */
-    asm volatile ("csrs 0x604, %0" :: "r"(1UL << 6) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_HIE) ", %0" :: "r"(1UL << 6) : "memory");
 
     /* Enable vsie.STIE (bit 5) */
-    asm volatile ("csrw 0x204, %0" :: "r"(1UL << 5) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSIE) ", %0" :: "r"(1UL << 5) : "memory");
 
     /* Install VS-mode trap handler (Direct mode) */
     vs_trap_setup_direct((uintptr_t)vstc_vs_int_handler);
 
     /* Enable vsstatus.SIE (bit 1) */
-    asm volatile ("csrs 0x200, %0" :: "r"(MSTATUS_SIE_BIT) : "memory");
+    asm volatile ("csrs " CSR_STR(CSR_VSSTATUS) ", %0" :: "r"(MSTATUS_SIE_BIT) : "memory");
 
     /* Set mstatus.MPIE=1 so MIE=1 after mret */
     asm volatile ("csrs mstatus, %0" :: "r"(1UL << 7));
 
     /* Disarm timer */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
 
     /* Enter VS-mode: write vstimecmp=0 to trigger timer */
     run_in_vs_mode(vs_trigger_vstimecmp, 0);
@@ -327,9 +327,9 @@ bool vstc_05_interrupt_delegation_to_vs(void)
                    g_vstc_vs_int_cause, expected_cause);
 
     /* Cleanup */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
-    asm volatile ("csrw 0x604, zero" ::: "memory");
-    asm volatile ("csrw 0x204, zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_HIE) ", zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSIE) ", zero" ::: "memory");
     henvcfg_set_stce(false);
     menvcfg_write(saved_menvcfg);
     mcounteren_write(saved_mctr);
@@ -360,8 +360,8 @@ bool vstc_06_interrupt_trap_to_hs(void)
     henvcfg_set_stce(true);
 
     /* Clear hvip and vstimecmp */
-    asm volatile ("csrw 0x645, zero" ::: "memory");
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     VSTC_DELAY();
 
     /* Delegate M->HS: mideleg[5] (STIP) */
@@ -375,12 +375,12 @@ bool vstc_06_interrupt_trap_to_hs(void)
     hideleg_write(saved_hideleg & ~(1UL << 6));
 
     /* Trigger VSTIP: write vstimecmp=0 */
-    asm volatile ("csrw 0x24D, zero");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", zero");
     VSTC_DELAY();
 
     /* Verify hip.VSTIP is set (visible at HS level) */
     uintptr_t hip;
-    asm volatile ("csrr %0, 0x644" : "=r"(hip));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
     TEST_ASSERT("hip.VSTIP set (HS-level pending)",
                 hip & (1UL << 6));
 
@@ -393,7 +393,7 @@ bool vstc_06_interrupt_trap_to_hs(void)
                 !g_vstc_vs_int_triggered);
 
     /* Cleanup */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     VSTC_DELAY();
     henvcfg_set_stce(false);
     menvcfg_write(saved_menvcfg);
@@ -426,36 +426,36 @@ bool vstc_07_htimedelta_affects_comparison(void)
     henvcfg_set_stce(true);
 
     /* Clear hvip and disarm vstimecmp */
-    asm volatile ("csrw 0x645, zero" ::: "memory");
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_HVIP) ", zero" ::: "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     VSTC_DELAY();
 
     /* Save and set htimedelta to a large offset */
     uintptr_t saved_htd;
-    asm volatile ("csrr %0, 0x605" : "=r"(saved_htd));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HTIMEDELTA) : "=r"(saved_htd));
     uintptr_t delta = 0x10000000UL;
     htimedelta_write(delta);
 
     /* Read current time (raw, from M-mode perspective) */
     uintptr_t now;
-    asm volatile ("csrr %0, 0xC01" : "=r"(now));
+    asm volatile ("csrr %0, " CSR_STR(CSR_TIME) : "=r"(now));
 
     /* Set vstimecmp = now + delta/2.
      * Since (time + htimedelta) = time + delta, and
      * vstimecmp = now + delta/2 (where now ~ time),
      * we have (time + delta) > (now + delta/2) for small time drift,
      * so VSTIP should trigger. */
-    asm volatile ("csrw 0x24D, %0" :: "r"(now + (delta >> 1)));
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"(now + (delta >> 1)));
     VSTC_DELAY();
 
     /* Check hip.VSTIP */
     uintptr_t hip;
-    asm volatile ("csrr %0, 0x644" : "=r"(hip));
+    asm volatile ("csrr %0, " CSR_STR(CSR_HIP) : "=r"(hip));
     TEST_ASSERT("VSTIP triggered with htimedelta offset",
                 hip & (1UL << 6));
 
     /* Cleanup */
-    asm volatile ("csrw 0x24D, %0" :: "r"((uintptr_t)-1) : "memory");
+    asm volatile ("csrw " CSR_STR(CSR_VSTIMECMP) ", %0" :: "r"((uintptr_t)-1) : "memory");
     VSTC_DELAY();
     henvcfg_set_stce(false);
     menvcfg_write(saved_menvcfg);

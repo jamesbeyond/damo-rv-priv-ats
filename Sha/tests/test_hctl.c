@@ -18,13 +18,13 @@
 static uintptr_t _vs_read_sstateen0(uintptr_t arg) {
     (void)arg;
     uintptr_t val;
-    asm volatile ("csrr %0, 0x10C" : "=r"(val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_SSTATEEN0) : "=r"(val));
     return val;
 }
 
 /* VS-mode helper: write sstateen0 */
 static uintptr_t _vs_write_sstateen0(uintptr_t arg) {
-    asm volatile ("csrw 0x10C, %0" :: "r"(arg));
+    asm volatile ("csrw " CSR_STR(CSR_SSTATEEN0) ", %0" :: "r"(arg));
     return 0;
 }
 
@@ -147,7 +147,7 @@ bool test_sha_hctl_bit63_zero_sstateen0_roz(void) {
 static uintptr_t _vs_read_siselect(uintptr_t arg) {
     (void)arg;
     uintptr_t val;
-    asm volatile ("csrr %0, 0x150" : "=r"(val));
+    asm volatile ("csrr %0, " CSR_STR(CSR_SISELECT) : "=r"(val));
     return val;
 }
 
@@ -183,7 +183,7 @@ bool test_sha_hctl_csrind_gate(void) {
     asm volatile (
         ".option push\n\t"
         ".option norvc\n\t"
-        "csrr %0, 0x150\n\t"
+        "csrr %0, " CSR_STR(CSR_SISELECT) "\n\t"
         ".option pop\n\t"
         : "=r"(sival) :: "memory"
     );

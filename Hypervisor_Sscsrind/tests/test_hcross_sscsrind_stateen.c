@@ -36,7 +36,7 @@ bool test_hcross_sscsrind_22(void)
      */
     trap_expect_begin();
     goto_priv(PRIV_S);  /* HS-mode: S-mode with V=0 */
-    asm volatile("csrr t0, 0x250" ::: "t0", "memory");  /* vsiselect */
+    asm volatile("csrr t0, " CSR_STR(CSR_VSISELECT) ::: "t0", "memory");  /* vsiselect */
     goto_priv(PRIV_M);
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("HS-mode vsiselect with mstateen0[60]=0",
@@ -69,7 +69,7 @@ bool test_hcross_sscsrind_23(void)
     /* HS-mode access vsireg */
     trap_expect_begin();
     goto_priv(PRIV_S);
-    asm volatile("csrr t0, 0x251" ::: "t0", "memory");  /* vsireg */
+    asm volatile("csrr t0, " CSR_STR(CSR_VSIREG) ::: "t0", "memory");  /* vsireg */
     goto_priv(PRIV_M);
     if (trap_was_triggered()) {
         TEST_ASSERT_EQ("HS-mode vsireg with mstateen0[60]=0",

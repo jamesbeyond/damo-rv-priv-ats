@@ -69,7 +69,7 @@
 static inline uintptr_t seed_read_m(void)
 {
     uintptr_t v;
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -80,23 +80,23 @@ static inline uintptr_t seed_read_m(void)
 static inline uintptr_t mseccfg_read_zkr(void)
 {
     uintptr_t v;
-    asm volatile("csrr %0, 0x747" : "=r"(v) :: "memory");
+    asm volatile("csrr %0, " CSR_STR(CSR_MSECCFG) : "=r"(v) :: "memory");
     return v;
 }
 
 static inline void mseccfg_write_zkr(uintptr_t v)
 {
-    asm volatile("csrw 0x747, %0" :: "r"(v) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(v) : "memory");
 }
 
 static inline void mseccfg_set_bits(uintptr_t bits)
 {
-    asm volatile("csrs 0x747, %0" :: "r"(bits) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
 }
 
 static inline void mseccfg_clear_bits(uintptr_t bits)
 {
-    asm volatile("csrc 0x747, %0" :: "r"(bits) : "memory");
+    asm volatile("csrc " CSR_STR(CSR_MSECCFG) ", %0" :: "r"(bits) : "memory");
 }
 
 /* ===================================================================
@@ -109,7 +109,7 @@ static inline bool check_zkr(void)
     clear_mdt();
     trap_expect_begin();
     uintptr_t v;
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     bool trapped = trap_was_triggered();
     trap_expect_end();
     return !trapped;
@@ -150,7 +150,7 @@ static uintptr_t _vs_seed_csrrw(uintptr_t arg)
 {
     (void)arg;
     uintptr_t v;
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -159,7 +159,7 @@ static uintptr_t _vs_seed_csrrs_ro(uintptr_t arg)
 {
     (void)arg;
     uintptr_t v;
-    asm volatile("csrrs %0, 0x015, x0" : "=r"(v) :: "memory");
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(v) :: "memory");
     return v;
 }
 
@@ -186,7 +186,7 @@ static uintptr_t _vs_seed_csrrs_rw(uintptr_t arg)
 {
     (void)arg;
     uintptr_t v, dummy = 1;
-    asm volatile("csrrs %0, 0x015, %1" : "=r"(v) : "r"(dummy) : "memory");
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", %1" : "=r"(v) : "r"(dummy) : "memory");
     return v;
 }
 
@@ -202,18 +202,18 @@ static uintptr_t g_hs_seed_val;
 
 #define HS_SEED_CSRRW() ({ \
     uintptr_t _v; \
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(_v) :: "memory"); \
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(_v) :: "memory"); \
     _v; \
 })
 
 #define HS_SEED_CSRRW_CAPTURE() ({ \
-    asm volatile("csrrw %0, 0x015, x0" : "=r"(g_hs_seed_val) :: "memory"); \
+    asm volatile("csrrw %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(g_hs_seed_val) :: "memory"); \
     g_hs_seed_val; \
 })
 
 #define HS_SEED_CSRRS_RO() ({ \
     uintptr_t _v; \
-    asm volatile("csrrs %0, 0x015, x0" : "=r"(_v) :: "memory"); \
+    asm volatile("csrrs %0, " CSR_STR(CSR_SEED) ", x0" : "=r"(_v) :: "memory"); \
     _v; \
 })
 

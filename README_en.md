@@ -208,7 +208,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | Category | Extension | Description | Open-sourced |
 |----------|-----------|-------------|:------------:|
 | **Memory Protection** | `pmp` | PMP Physical Memory Protection | |
-| | `smepmp` | Smepmp (PMP M-mode enhancements) | |
+| | `Smepmp` | Smepmp (PMP M-mode enhancements) | |
 | | `spmp` | SPMP (S-level Physical Memory Protection) | |
 | | `iopmp` | IOPMP peripheral PMP | |
 | **Virtual Memory** | `Sv39` | Sv39 (3-level page table) | ✓ |
@@ -275,7 +275,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Sm_Interrupts` | M-Mode interrupt handling | |
 | | `Sm_Exceptions` | M-Mode exception handling | |
 | | `Smstateen` | State enable | ✓ |
-| | `smrnmi` | Resumable NMI | |
+| | `Smrnmi` | Resumable NMI | |
 | | `Smcdeleg` | Counter delegation | |
 | | `Smcntrpmf` | Cycle/Instret privilege mode filtering | ✓ |
 | | `Smcsrind` | Indirect CSR access | ✓ |
@@ -315,6 +315,17 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | ✓ |
+| **Unpriv Extensions (Zi\*)** | `Zicsr` | CSR instructions | |
+| | `Zifencei` | Instruction-fetch fence | |
+| | `Zicond` | Integer conditional operations | |
+| | `Zicntr` | Base counters | |
+| | `Zihpm` | Hardware performance counters | |
+| | `Zihintpause` | PAUSE hint | |
+| | `Zihintntl` | Non-temporal locality hints | |
+| | `Zimop` | May-Be-Operations | |
+| **Compressed (Zc\*)** | `Zcmop` | Compressed May-Be-Operations | |
+| | `Zcmp` | Compressed push/pop and moves | |
+| | `Zcmt` | Compressed table jumps | |
 | **Other** | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |

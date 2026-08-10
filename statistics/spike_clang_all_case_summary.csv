@@ -44,8 +44,8 @@ Hypervisor_Zicboz,15,14,0,1
 Hypervisor_Zicfilp,44,43,0,1
 Hypervisor_Zicfiss,75,74,0,1
 Hypervisor_Zkr,18,18,0,0
-Ss_CSR,75,56,0,19
-Ss_Exceptions,52,42,0,10
+Ss_CSR,75,55,0,20
+Ss_Exceptions,50,41,0,9
 Ss_Interrupts,0,0,0,0
 Ssccfg,19,0,0,19
 Ssccptr,0,0,0,0
@@ -70,8 +70,8 @@ Svinval,37,37,0,0
 Svpbmt,49,46,0,3
 Svvptc,15,13,0,2
 Svrsw60t59b,0,0,0,0
-Sm_CSR,224,171,7,46
-Sm_Exceptions,100,97,0,3
+Sm_CSR,224,172,7,45
+Sm_Exceptions,100,88,1,11
 Sm_Interrupts,0,0,0,0
 Smcdeleg,26,0,0,26
 Smcntrpmf,0,0,0,0
@@ -79,7 +79,7 @@ Smcsrind,31,30,0,1
 Smctr,0,0,0,0
 Smdbltrp,38,12,0,26
 Smstateen,47,33,1,13
-pmp,64,63,1,0
+pmp,74,74,0,0
 pmp_sv39,96,96,0,0
 pmp_sv48,110,110,0,0
 pmp_sv57,124,124,0,0
@@ -92,3 +92,15 @@ cmo.base,17,17,0,0
 cmo.Zicbom,26,26,0,0
 cmo.Zicbop,8,8,0,0
 cmo.Zicboz,12,12,0,0
+Zkr,55,55,0,0
+Zicntr,32,30,0,2
+Zicond,39,38,0,1
+Zicsr,54,52,0,2
+Zifencei,20,19,0,1
+Zihintntl,55,52,0,3
+Zihintpause,17,16,0,1
+Zihpm,34,26,0,8
+Zimop,32,30,0,2
+Zcmop,23,21,0,2
+Zcmp,51,49,1,1
+Zcmt,49,45,1,3

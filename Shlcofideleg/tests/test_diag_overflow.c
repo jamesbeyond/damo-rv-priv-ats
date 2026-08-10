@@ -35,7 +35,7 @@ bool test_diag_alias_chain(void) {
 
     /* Step 3: Read sip via csr_read */
     uintptr_t sip_via_csr = csr_read(CSR_SIP);
-    printf("  sip via csr_read(0x144): 0x%lx (LCOFIP=%d)\n",
+    printf("  sip via csr_read(CSR_SIP): 0x%lx (LCOFIP=%d)\n",
            sip_via_csr, (sip_via_csr & LCOFI_BIT) ? 1 : 0);
 
     /* Step 3b: Read sip via inline asm */
@@ -52,12 +52,12 @@ bool test_diag_alias_chain(void) {
 
     /* Step 5: Read vsip via csr_read */
     uintptr_t vsip_via_csr = csr_read(CSR_VSIP);
-    printf("  vsip via csr_read(0x244): 0x%lx (LCOFIP=%d)\n",
+    printf("  vsip via csr_read(CSR_VSIP): 0x%lx (LCOFIP=%d)\n",
            vsip_via_csr, (vsip_via_csr & LCOFI_BIT) ? 1 : 0);
 
     /* Step 5b: Read vsip via inline asm */
     uintptr_t vsip_via_asm;
-    asm volatile("csrr %0, 0x244" : "=r"(vsip_via_asm));
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIP) : "=r"(vsip_via_asm));
     printf("  vsip via asm(0x244): 0x%lx (LCOFIP=%d)\n",
            vsip_via_asm, (vsip_via_asm & LCOFI_BIT) ? 1 : 0);
 
@@ -81,12 +81,12 @@ bool test_diag_alias_chain(void) {
 
     /* Step 3: Read vsie (hideleg[13] still =1) */
     uintptr_t vsie_via_csr = csr_read(CSR_VSIE);
-    printf("  vsie via csr_read(0x204): 0x%lx (LCOFIE=%d)\n",
+    printf("  vsie via csr_read(CSR_VSIE): 0x%lx (LCOFIE=%d)\n",
            vsie_via_csr, (vsie_via_csr & LCOFI_BIT) ? 1 : 0);
 
     /* Step 3b: Read vsie via inline asm */
     uintptr_t vsie_via_asm;
-    asm volatile("csrr %0, 0x204" : "=r"(vsie_via_asm));
+    asm volatile("csrr %0, " CSR_STR(CSR_VSIE) : "=r"(vsie_via_asm));
     printf("  vsie via asm(0x204): 0x%lx (LCOFIE=%d)\n",
            vsie_via_asm, (vsie_via_asm & LCOFI_BIT) ? 1 : 0);
 

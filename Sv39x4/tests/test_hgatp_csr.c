@@ -208,7 +208,7 @@ bool test_ghcsr_07_vmidlen(void) {
 static uintptr_t _hs_csrr_hgatp(uintptr_t arg) {
     (void)arg;
     uintptr_t v;
-    asm volatile ("csrr %0, 0x680" : "=r"(v) :: "memory");
+    asm volatile ("csrr %0, " CSR_STR(CSR_HGATP) : "=r"(v) :: "memory");
     return v;
 }
 

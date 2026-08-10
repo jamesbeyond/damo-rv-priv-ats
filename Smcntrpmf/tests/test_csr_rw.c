@@ -211,7 +211,7 @@ bool test_pmf_csr_10_smode_access_trap(void)
     /* Switch to S-mode and try to read mcyclecfg */
     goto_priv(PRIV_S);
     trap_expect_begin();
-    asm volatile("csrr x0, 0x321" ::: "memory");
+    asm volatile("csrr x0, " CSR_STR(CSR_MCYCLECFG) ::: "memory");
     bool trapped = trap_was_triggered();
     uintptr_t cause = trap_get_cause();
     trap_expect_end();
@@ -240,7 +240,7 @@ bool test_pmf_csr_11_umode_access_trap(void)
     /* Switch to U-mode and try to read mcyclecfg */
     goto_priv(PRIV_U);
     trap_expect_begin();
-    asm volatile("csrr x0, 0x321" ::: "memory");
+    asm volatile("csrr x0, " CSR_STR(CSR_MCYCLECFG) ::: "memory");
     bool trapped = trap_was_triggered();
     uintptr_t cause = trap_get_cause();
     trap_expect_end();

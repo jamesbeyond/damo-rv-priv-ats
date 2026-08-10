@@ -34,7 +34,7 @@ int main(void)
     /* Clear mcountinhibit so cycle/instret count (trap-protected in case
      * the CSR is not implemented on some platforms). */
     trap_expect_begin();
-    asm volatile("csrw 0x320, zero" ::: "memory");  /* mcountinhibit */
+    asm volatile("csrw " CSR_STR(CSR_MCOUNTINHIBIT) ", zero" ::: "memory");  /* mcountinhibit */
     trap_expect_end();
 
     /* Configure PMP: allow S/U-mode full access to all memory. */

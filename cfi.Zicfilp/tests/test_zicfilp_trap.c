@@ -92,7 +92,7 @@ bool test_zicfilp_trap_smode_lp_fault(void)
     asm volatile("fence.i" ::: "memory");
 
     /* Ensure no delegation: trap goes to M-mode */
-    asm volatile("csrw 0x302, zero" ::: "memory");  /* medeleg = 0 */
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", zero" ::: "memory");  /* medeleg = 0 */
 
     trap_expect_begin();
 
@@ -110,7 +110,7 @@ bool test_zicfilp_trap_smode_lp_fault(void)
 
         /* Enable LPE for S-mode */
         "li    t0, (1 << 2)\n"         /* MENVCFG_LPE = bit 2 */
-        "csrs  0x30A, t0\n"            /* menvcfg |= LPE */
+        "csrs  " CSR_STR(CSR_MENVCFG) ", t0\n"            /* menvcfg |= LPE */
 
         /* Set mepc to S-mode code (the jalr instruction below) */
         "la    t0, 2f\n"
@@ -180,10 +180,10 @@ bool test_zicfilp_trap_mmode_lp_fault(void)
         "la    t2, _exec_return_addr\n"
         "sd    t1, 0(t2)\n"        /* _exec_return_addr = recovery */
         "li    t0, (1 << 10)\n"    /* MSECCFG_MLPE = bit 10 */
-        "csrs  0x747, t0\n"        /* mseccfg |= MLPE */
+        "csrs  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg |= MLPE */
         "jalr  ra, %0, 0\n"        /* indirect jump -> triggers LP fault */
         "1:\n"
-        "csrc  0x747, t0\n"        /* mseccfg &= ~MLPE (after trap return) */
+        "csrc  " CSR_STR(CSR_MSECCFG) ", t0\n"        /* mseccfg &= ~MLPE (after trap return) */
         :
         : "r"(code)
         : "ra", "t0", "t1", "t2", "memory"
@@ -226,7 +226,7 @@ bool test_zicfilp_trap_umode_lp_fault(void)
     asm volatile("fence.i" ::: "memory");
 
     /* Ensure no delegation */
-    asm volatile("csrw 0x302, zero" ::: "memory");  /* medeleg = 0 */
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", zero" ::: "memory");  /* medeleg = 0 */
 
     /* Save and set senvcfg.LPE=1 for U-mode */
     uintptr_t orig_senvcfg = senvcfg_read();
@@ -313,18 +313,18 @@ bool test_zicfilp_trap_delegation(void)
 
     /* Part 1: Verify medeleg[18] is writable */
     uintptr_t orig_medeleg;
-    asm volatile("csrr %0, 0x302" : "=r"(orig_medeleg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MEDELEG) : "=r"(orig_medeleg));
 
     uintptr_t bit18 = (1UL << 18);
-    asm volatile("csrs 0x302, %0" :: "r"(bit18) : "memory");
+    asm volatile("csrs " CSR_STR(CSR_MEDELEG) ", %0" :: "r"(bit18) : "memory");
 
     uintptr_t new_medeleg;
-    asm volatile("csrr %0, 0x302" : "=r"(new_medeleg));
+    asm volatile("csrr %0, " CSR_STR(CSR_MEDELEG) : "=r"(new_medeleg));
 
     bool delegatable = (new_medeleg & bit18) != 0;
 
     /* Restore medeleg */
-    asm volatile("csrw 0x302, %0" :: "r"(orig_medeleg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", %0" :: "r"(orig_medeleg) : "memory");
 
     TEST_ASSERT("medeleg[18] is writable (software-check delegatable)",
                 delegatable);
@@ -338,7 +338,7 @@ bool test_zicfilp_trap_delegation(void)
     asm volatile("fence.i" ::: "memory");
 
     /* Ensure no delegation */
-    asm volatile("csrw 0x302, zero" ::: "memory");
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", zero" ::: "memory");
 
     uintptr_t orig_menvcfg = menvcfg_read();
 
@@ -357,7 +357,7 @@ bool test_zicfilp_trap_delegation(void)
 
         /* Enable LPE for S-mode */
         "li    t0, (1 << 2)\n"
-        "csrs  0x30A, t0\n"
+        "csrs  " CSR_STR(CSR_MENVCFG) ", t0\n"
 
         /* Set mepc to S-mode code */
         "la    t0, 2f\n"
@@ -387,7 +387,7 @@ bool test_zicfilp_trap_delegation(void)
 
     /* Clean up */
     menvcfg_write(orig_menvcfg);
-    asm volatile("csrw 0x302, %0" :: "r"(orig_medeleg) : "memory");
+    asm volatile("csrw " CSR_STR(CSR_MEDELEG) ", %0" :: "r"(orig_medeleg) : "memory");
 
     TEST_ASSERT("LP fault in S-mode captured by M-mode handler",
                 trap_was_triggered());
