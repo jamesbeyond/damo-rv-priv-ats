@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Install Whisper RISC-V ISA Simulator from source.
 # Usage: install-whisper.sh <install-dir>
-# Update WHISPER_TAG to track a newer release; the CI cache key is derived
+# Update WHISPER_COMMIT to track a newer revision; the CI cache key is derived
 # from this script's content hash, so any edit here invalidates the cache.
 
 set -euo pipefail
 
 INSTALL_DIR="${1:?Usage: install-whisper.sh <install-dir>}"
-WHISPER_TAG="1.861"
+# Pinned to the latest main-branch commit (2026-08-11). Tag 1.861 is not used
+# because it contains known bugs fixed afterwards (e.g. menvcfg/henvcfg.DTE
+# wrongly exposed when Ssdbltrp is disabled).
+WHISPER_COMMIT="d5c62d9d71f8ffb8e9a6bf8aa230be0ad170d183"
 
 # ---- Build dependencies ------------------------------------------------------
 # g++ >= 11 (whisper builds with -std=c++20), Boost headers + program_options,
@@ -32,9 +35,9 @@ sudo ln -sfn /usr/include/boost /opt/boost/include/boost
 sudo ln -sfn /usr/lib/x86_64-linux-gnu /opt/boost/lib
 
 # ---- Build and install -------------------------------------------------------
-git clone --depth 1 --branch "$WHISPER_TAG" \
-    https://github.com/tenstorrent/whisper.git /tmp/whisper
+git clone https://github.com/tenstorrent/whisper.git /tmp/whisper
 cd /tmp/whisper
+git checkout "$WHISPER_COMMIT"
 BOOST_ROOT=/opt/boost make -j"$(nproc)"
 mkdir -p "$INSTALL_DIR/bin"
 cp build-Linux/whisper "$INSTALL_DIR/bin/"
