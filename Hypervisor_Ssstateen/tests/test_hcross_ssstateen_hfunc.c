@@ -320,26 +320,26 @@ bool test_hcross_sssta_31(void)
      * guest interrupt file number (non-zero). Per AIA spec: when
      * VGEIN is not an implemented guest external interrupt number,
      * VS-mode stopei access raises virtual-instruction exception.
-     * This is independent of the stateen gate. */
-    uintptr_t saved_hstatus;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
-
-    /* Try setting VGEIN=1 */
-    uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
-                       (1UL << HSTATUS_VGEIN_SHIFT);
-    asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
-    uintptr_t rb_hs;
-    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(rb_hs));
-
-    if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) == 0)
+     * This is independent of the stateen gate.
+     *
+     * Detect guest files via hgeie writability (norm:geilen); the
+     * VGEIN write/readback probe is unreliable because VGEIN is
+     * WLRL and may legally retain a non-zero value when GEILEN=0. */
+    if (!geilen_nonzero())
     {
-        /* GEILEN=0, cannot configure valid VGEIN */
-        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
         hstateen_write(0, saved_h);
         mstateen_write(0, saved_m);
         TEST_SKIP("No guest interrupt files (GEILEN=0), "
-                   "cannot test stopei access");
+                  "cannot test stopei access");
     }
+
+    uintptr_t saved_hstatus;
+    asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
+
+    /* Set VGEIN=1 (guest file 1 is implemented when GEILEN>=1) */
+    uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
+                       (1UL << HSTATUS_VGEIN_SHIFT);
+    asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
 
     /* With IMSIC=1 and valid VGEIN, VS-mode stopei access should
      * not trap due to stateen gating. */
@@ -516,26 +516,26 @@ bool test_hcross_sssta_35(void)
     }
     if (imsic_set)
     {
-        /* stopei requires valid VGEIN per AIA spec. */
-        uintptr_t saved_hstatus;
-        asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
-
-        uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
-                           (1UL << HSTATUS_VGEIN_SHIFT);
-        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
-        uintptr_t rb_hs;
-        asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(rb_hs));
-
-        if (((rb_hs & HSTATUS_VGEIN_MASK) >> HSTATUS_VGEIN_SHIFT) != 0)
+        /* stopei requires valid VGEIN per AIA spec. Detect guest
+         * files via hgeie writability (norm:geilen); VGEIN readback
+         * is unreliable (WLRL, may retain non-zero when GEILEN=0). */
+        if (geilen_nonzero())
         {
+            uintptr_t saved_hstatus;
+            asm volatile("csrr %0, " CSR_STR(CSR_HSTATUS) : "=r"(saved_hstatus));
+
+            uintptr_t new_hs = (saved_hstatus & ~HSTATUS_VGEIN_MASK) |
+                               (1UL << HSTATUS_VGEIN_SHIFT);
+            asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(new_hs));
+
             VS_EXPECT_NO_TRAP(run_in_vs_mode(_vs_read_stopei, 0));
+
+            asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
         }
         else
         {
             printf("  stopei VS-mode access skipped: GEILEN=0\n");
         }
-
-        asm volatile("csrw " CSR_STR(CSR_HSTATUS) ", %0" :: "r"(saved_hstatus));
     }
 
     hstateen_write(0, saved_h);

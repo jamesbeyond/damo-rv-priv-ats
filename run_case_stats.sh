@@ -22,6 +22,8 @@ LOGDIR="${SCRIPT_DIR}/statistics"
 # Supervisor extensions
 EXT_SS="Ss_CSR Ss_Exceptions Ss_Interrupts Ssccfg Ssccptr Sscofpmf Sscounterenw Sscsrind Ssctr Ssdbltrp Ssstateen Sstc Sstvala Sstvecd Ssu64xl"
 EXT_SV="Sv39 Sv48 Sv57 Svbare Svade Svadu Svnapot Svinval Svpbmt Svvptc Svrsw60t59b"
+# Debug extensions
+EXT_SD="Sdext Sdtrig"
 
 # Machine extensions
 EXT_SM="Sm_CSR Sm_Exceptions Sm_Interrupts Smcdeleg Smcntrpmf Smcsrind Smctr Smdbltrp Smstateen"
@@ -33,9 +35,12 @@ EXT_ZPM="zpm.Smmpm zpm.Smnpm zpm.Ssnpm"
 # cmo extensions
 EXT_CMO="cmo.base cmo.Zicbom cmo.Zicbop cmo.Zicboz"
 # Zi extensions
-EXT_ZI="Zkr Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop"
+EXT_ZI="Zicntr Zicond Zicsr Zifencei Zihintntl Zihintpause Zihpm Zimop Ziccamoa Ziccamoc Ziccid Ziccif Zicclsm Ziccrse"
 # Zc extensions
 EXT_ZC="Zcmop Zcmp Zcmt"
+# Zk extensions
+EXT_ZK="Zkr Zkt"
+
 
 # Hypervisor extensions
 EXT_HYP="Hypervisor_CSR Hypervisor_Interrupts Hypervisor_Exceptions Sha Shcounterenw Shgatpa Shlcofideleg Shtvala Shvstvala Shvsatpa"
@@ -49,7 +54,7 @@ EXT_HYP_SS="Hypervisor_Ssccptr  Hypervisor_Sscsrind  Hypervisor_Ssdbltrp  Hyperv
 EXT_HYP_SV="Hypervisor_Svadu  Hypervisor_Svinval  Hypervisor_Svnapot  Hypervisor_Svpbmt"
 EXT_HYP_ZI="Hypervisor_Zicbom  Hypervisor_Zicbop  Hypervisor_Zicboz  Hypervisor_Zicfilp  Hypervisor_Zicfiss  Hypervisor_Zkr"
 
-ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_SS} ${EXT_SV} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZC}"
+ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_SS} ${EXT_SV} ${EXT_SD} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZK} ${EXT_ZC}"
 
 usage()
 {
@@ -72,6 +77,7 @@ resolve_suite()
         hyp)  echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI}" ;;
         ss)   echo "${EXT_SS}" ;;
         sv)   echo "${EXT_SV}" ;;
+        sd)   echo "${EXT_SD}" ;;
         sm)   echo "${EXT_SM}" ;;
         *)
             if [ -d "${SCRIPT_DIR}/${s}" ]; then
@@ -137,7 +143,8 @@ for SIMULATOR in $SIMULATORS; do
         echo "CASE,TOTAL,PASS,FAIL,SKIP" > "$CSV_FILE"
 
         for ext in $EXTENSIONS; do
-            LOGFILE="${LOGDIR}/${SIMULATOR}_${TOOLCHAIN}_${ext}.log"
+            mkdir -p "${LOGDIR}/${SIMULATOR}_${TOOLCHAIN}"
+            LOGFILE="${LOGDIR}/${SIMULATOR}_${TOOLCHAIN}/${ext}.log"
             echo "Testing ${ext} on ${SIMULATOR} with ${TOOLCHAIN}"
 
             # Clean first

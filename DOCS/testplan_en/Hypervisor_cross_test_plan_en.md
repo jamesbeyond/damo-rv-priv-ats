@@ -615,7 +615,9 @@
 
 #### 11.1 VS-level CSR Basic Functionality
 
-**Specification References**: `norm:vsiselect_min_range`, `norm:vsiselect_msb_op`, `norm:vsireg_access_on_legal_vsiselect`, `norm:vsireg_access_behaviour`, `norm:sscsrind_vsmode_csrs_sz`
+**Specification References**: `norm:vsiselect_min_range`, `norm:vsiselect_msb_op`, `norm:vsireg_access_on_legal_vsiselect`, `norm:vsireg_access_behaviour`, `norm:sscsrind_vsmode_csrs_sz`, `norm:sscsrind_csrs_access_control`, `norm:mstateen_zero_initialization`
+
+**Precondition**: If Smstateen is implemented, all writable `mstateen` bits are initialized to zero on reset (`norm:mstateen_zero_initialization`), and with `mstateen0[60]`=0, accesses to `siselect`/`sireg*`/`vsiselect`/`vsireg*` from privilege modes less privileged than M-mode raise illegal-instruction (`norm:sscsrind_csrs_access_control`). Therefore, before executing the tests in this group, M-mode must first set `mstateen0[60]`=1 (`mstateen0.CSRIND`) and then drop to HS-mode for testing; the WARL/range behavior of `vsiselect`/`vsireg*` itself is unrelated to stateen.
 
 | Test ID | Test Name | Test Description | Expected Result | Norm Reference |
 |---------|-----------|------------------|-----------------|----------------|
@@ -676,7 +678,7 @@
 
 > [!NOTE]
 > - This test group validates the Sscsrind extension behavior in Hypervisor scenarios. All tests must detect H extension availability at runtime via `HAS_H_EXT()` and TEST_SKIP if unavailable.
-> - HCROSS-SSCSRIND-01~10 are migrated from `Sscsrind_test_plan.md` Group 2, verifying vsiselect/vsireg* basic functionality. The vsiselect minimum range 0..0xFFF is consistent with siselect, ensuring the hypervisor can emulate indirect register access within a VM.
+> - HCROSS-SSCSRIND-01~10 are migrated from `Sscsrind_test_plan.md` Group 2, verifying vsiselect/vsireg* basic functionality. The vsiselect minimum range 0..0xFFF is consistent with siselect, ensuring the hypervisor can emulate indirect register access within a VM. **Note**: if Smstateen is implemented, the test cases must first set `mstateen0[60]`=1 in M-mode (the reset default 0 blocks HS-mode access to vsiselect/vsireg*).
 > - HCROSS-SSCSRIND-11~21 are migrated from `Sscsrind_test_plan.md` Group 3, verifying virtual-instruction exception behavior. **Key distinction**: VS/VU-mode direct access to vsiselect/vsireg* always triggers virtual-instruction (cause=22), **regardless of** mstateen0[60] or hstateen0[60] values. This is an explicit requirement of `norm:sscsrind_virtual_inst_fault` in the Sscsrind SPEC.
 > - HCROSS-SSCSRIND-22~27 are migrated from `Sscsrind_test_plan.md` Group 4.2/4.3, verifying state-enable access control. Key distinction: when mstateen0[60]=1 but hstateen0[60]=0, VS/VU-mode access to siselect/sireg* triggers **virtual-instruction** (cause=22), not illegal-instruction (cause=2). This is because M-mode has permitted access (mstateen=1), but HS-mode's hypervisor has chosen not to permit it (hstateen=0), so the exception type reflects that the hypervisor needs to trap and handle it.
 > - HCROSS-SSCSRIND-28~33 are migrated from `Sscsrind_test_plan.md` Group 5, verifying Hypervisor cross tests. HCROSS-SSCSRIND-28~29 verify the core hardware transparent remapping behavior: within a VM, when VS-mode accesses siselect/sireg* (addresses 0x150~0x157), the hardware automatically remaps them to vsiselect/vsireg* (addresses 0x250~0x257). This is transparent to the guest OS.

@@ -1,6 +1,6 @@
 CASE,TOTAL,PASS,FAIL,SKIP
 Hypervisor_CSR,129,111,8,10
-Hypervisor_Interrupts,41,38,0,3
+Hypervisor_Interrupts,41,41,0,0
 Hypervisor_Exceptions,129,113,12,4
 Sha,28,28,0,0
 Shcounterenw,22,22,0,0
@@ -27,11 +27,11 @@ Hypervisor_Smmpm,5,0,1,4
 Hypervisor_Smnpm,6,0,0,6
 Hypervisor_Smstateen,14,11,0,3
 Hypervisor_Ssccptr,4,3,0,1
-Hypervisor_Sscsrind,33,18,4,11
+Hypervisor_Sscsrind,33,28,3,2
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,3,0,45
 Hypervisor_Ssqosid,6,2,4,0
-Hypervisor_Ssstateen,50,41,2,7
+Hypervisor_Ssstateen,50,43,0,7
 Hypervisor_Sstc,15,14,1,0
 Hypervisor_Sstvala,8,8,0,0
 Hypervisor_Svadu,7,7,0,0
@@ -70,6 +70,8 @@ Svinval,37,37,0,0
 Svpbmt,49,46,0,3
 Svvptc,15,13,0,2
 Svrsw60t59b,23,21,0,2
+Sdext,104,21,0,83
+Sdtrig,118,40,2,76
 Sm_CSR,224,178,5,41
 Sm_Exceptions,100,79,2,19
 Sm_Interrupts,91,73,0,18
@@ -92,7 +94,6 @@ cmo.base,17,17,0,0
 cmo.Zicbom,26,25,1,0
 cmo.Zicbop,8,8,0,0
 cmo.Zicboz,12,12,0,0
-Zkr,55,54,1,0
 Zicntr,32,27,3,2
 Zicond,39,39,0,0
 Zicsr,54,52,2,0
@@ -101,6 +102,14 @@ Zihintntl,55,52,0,3
 Zihintpause,17,17,0,0
 Zihpm,34,29,0,5
 Zimop,32,32,0,0
+Ziccamoa,32,27,0,5
+Ziccamoc,32,31,0,1
+Ziccid,0,0,0,0
+Ziccif,22,21,0,1
+Zicclsm,35,34,0,1
+Ziccrse,37,25,0,12
+Zkr,55,54,1,0
+Zkt,40,38,0,2
 Zcmop,23,23,0,0
 Zcmp,51,0,0,51
 Zcmt,49,0,0,49

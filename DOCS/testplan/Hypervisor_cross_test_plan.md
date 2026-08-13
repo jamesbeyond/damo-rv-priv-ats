@@ -665,7 +665,9 @@
 
 #### 11.1 VS-level CSR 基本功能
 
-**规范依据**：`norm:vsiselect_min_range`、`norm:vsiselect_msb_op`、`norm:vsireg_access_on_legal_vsiselect`、`norm:vsireg_access_behaviour`、`norm:sscsrind_vsmode_csrs_sz`
+**规范依据**：`norm:vsiselect_min_range`、`norm:vsiselect_msb_op`、`norm:vsireg_access_on_legal_vsiselect`、`norm:vsireg_access_behaviour`、`norm:sscsrind_vsmode_csrs_sz`、`norm:sscsrind_csrs_access_control`、`norm:mstateen_zero_initialization`
+
+**前置条件**：若实现 Smstateen，复位时所有可写 `mstateen` 位初始化为 0（`norm:mstateen_zero_initialization`），且 `mstateen0[60]`=0 时低于 M-mode 的特权级访问 `siselect`/`sireg*`/`vsiselect`/`vsireg*` 触发 illegal-instruction（`norm:sscsrind_csrs_access_control`）。因此本组用例执行前，M-mode 必须先置 `mstateen0[60]`=1（`mstateen0.CSRIND`），再进入 HS-mode 测试；`vsiselect`/`vsireg*` 本身的 WARL/范围行为与 stateen 无关。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 | 规范引用 |
 |---------|----------|----------|----------|----------|
@@ -726,7 +728,7 @@
 
 > [!NOTE]
 > - 本组测试验证 Sscsrind 扩展在 Hypervisor 场景下的行为。所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展的可用性，不可用时 TEST_SKIP。
-> - HCROSS-SSCSRIND-01~10 从 `Sscsrind_test_plan.md` Group 2 迁移而来，验证 vsiselect/vsireg* 的基本功能。vsiselect 的最小范围 0..0xFFF 与 siselect 一致，确保 hypervisor 可以在 VM 内模拟间接访问寄存器。
+> - HCROSS-SSCSRIND-01~10 从 `Sscsrind_test_plan.md` Group 2 迁移而来，验证 vsiselect/vsireg* 的基本功能。vsiselect 的最小范围 0..0xFFF 与 siselect 一致，确保 hypervisor 可以在 VM 内模拟间接访问寄存器。**注意**：若实现 Smstateen，用例须先在 M-mode 置 `mstateen0[60]`=1（复位默认 0 会阻止 HS-mode 访问 vsiselect/vsireg*）。
 > - HCROSS-SSCSRIND-11~21 从 `Sscsrind_test_plan.md` Group 3 迁移而来，验证 Virtual-instruction 异常行为。**核心区别**：VS/VU-mode 直接访问 vsiselect/vsireg* 始终触发 virtual-instruction（cause=22），**不论** mstateen0[60] 或 hstateen0[60] 的值。这是 Sscsrind SPEC 中 `norm:sscsrind_virtual_inst_fault` 的明确要求。
 > - HCROSS-SSCSRIND-22~27 从 `Sscsrind_test_plan.md` Group 4.2/4.3 迁移而来，验证 state-enable 访问控制。关键区别：当 mstateen0[60]=1 但 hstateen0[60]=0 时，VS/VU-mode 访问 siselect/sireg* 触发的是 **virtual-instruction**（cause=22），而非 illegal-instruction（cause=2）。这是因为 M-mode 已放行（mstateen=1），但 HS-mode 的 hypervisor 选择不放行（hstateen=0），因此异常类型反映了 hypervisor 需要 trap 并处理。
 > - HCROSS-SSCSRIND-28~33 从 `Sscsrind_test_plan.md` Group 5 迁移而来，验证 Hypervisor 交叉测试。HCROSS-SSCSRIND-28~29 验证硬件透明重映射的核心行为：在 VM 内，VS-mode 访问 siselect/sireg*（地址 0x150~0x157）时，硬件自动将其重映射为 vsiselect/vsireg*（地址 0x250~0x257）。这对 guest OS 是透明的。

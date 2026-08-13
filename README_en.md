@@ -323,9 +323,17 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Zihintpause` | PAUSE hint | |
 | | `Zihintntl` | Non-temporal locality hints | |
 | | `Zimop` | May-Be-Operations | |
+| | `Ziccamoa` | Main memory arithmetic AMO support (AMOArithmetic PMA) | |
+| | `Ziccamoc` | Main memory compare-and-swap (AMOCASQ PMA) | |
+| | `Ziccid` | Instruction/data coherence and consistency | |
+| | `Ziccif` | Instruction-fetch atomicity | |
+| | `Zicclsm` | Main memory misaligned accesses | |
+| | `Ziccrse` | Main memory reservability (LR/SC eventual success) | |
 | **Compressed (Zc\*)** | `Zcmop` | Compressed May-Be-Operations | |
 | | `Zcmp` | Compressed push/pop and moves | |
 | | `Zcmt` | Compressed table jumps | |
+| **Debug (Sd\*)** | `Sdext` | External debug (Debug Mode and Core Debug CSRs) | |
+| | `Sdtrig` | Trigger module (hardware breakpoints/triggers) | |
 | **Other** | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |

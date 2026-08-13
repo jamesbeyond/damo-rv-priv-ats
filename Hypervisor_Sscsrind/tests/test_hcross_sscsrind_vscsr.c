@@ -22,6 +22,16 @@ bool test_hcross_sscsrind_01(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
 
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
+
     /* Switch to HS-mode (S-mode with V=0) to access HS-mode CSRs */
     goto_priv(PRIV_S);
 
@@ -48,6 +58,16 @@ bool test_hcross_sscsrind_02(void)
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
 
     goto_priv(PRIV_S);
 
@@ -83,6 +103,16 @@ bool test_hcross_sscsrind_03(void)
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
 
     goto_priv(PRIV_S);
 
@@ -124,6 +154,16 @@ bool test_hcross_sscsrind_04(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
 
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
+
     goto_priv(PRIV_S);
 
     if (!vsiselect_accessible())
@@ -161,6 +201,16 @@ bool test_hcross_sscsrind_05(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
 
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
+
     goto_priv(PRIV_S);
 
     if (!vsiselect_accessible())
@@ -197,6 +247,16 @@ bool test_hcross_sscsrind_06(void)
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
 
     goto_priv(PRIV_S);
 
@@ -249,6 +309,16 @@ bool test_hcross_sscsrind_07(void)
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
 
     goto_priv(PRIV_S);
 
@@ -323,6 +393,16 @@ bool test_hcross_sscsrind_08(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
 
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
+
     goto_priv(PRIV_S);
 
     if (!vsiselect_accessible())
@@ -382,6 +462,16 @@ bool test_hcross_sscsrind_09(void)
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
 
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
+
     goto_priv(PRIV_S);
 
     if (!vsiselect_accessible())
@@ -416,6 +506,16 @@ bool test_hcross_sscsrind_10(void)
 
     if (!HAS_H_EXT()) TEST_SKIP("H extension not available");
     if (!platform_has_sscsrind()) TEST_SKIP("Sscsrind not implemented");
+
+    /*
+     * Per norm:sscsrind_csrs_access_control / norm:mstateen_zero_initialization:
+     * mstateen0 bits reset to zero, and mstateen0[60]=0 blocks HS-mode
+     * access to vsiselect/vsireg*. Enable CSRIND before dropping to HS.
+     */
+    if (platform_has_smstateen())
+    {
+        mstateen0_set(MSTATEEN0_CSRIND);
+    }
 
     goto_priv(PRIV_S);
 

@@ -323,9 +323,17 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Zihintpause` | PAUSE 提示 | |
 | | `Zihintntl` | 非临时性访问提示 | |
 | | `Zimop` | May-Be-Operations | |
+| | `Ziccamoa` | 主存算术 AMO 支持（AMOArithmetic PMA） | |
+| | `Ziccamoc` | 主存 Compare-and-Swap（AMOCASQ PMA） | |
+| | `Ziccid` | 指令/数据一致性与连贯性 | |
+| | `Ziccif` | 指令取指原子性 | |
+| | `Zicclsm` | 主存非对齐访问 | |
+| | `Ziccrse` | 主存可预留性（LR/SC 最终成功） | |
 | **压缩扩展 (Zc\*)** | `Zcmop` | 压缩 May-Be-Operations | |
 | | `Zcmp` | 压缩 push/pop 及寄存器移动 | |
 | | `Zcmt` | 压缩表跳转 | |
+| **调试扩展 (Sd\*)** | `Sdext` | 外部调试（Debug Mode 与 Core Debug CSR） | |
+| | `Sdtrig` | 触发器模块（硬件断点/触发） | |
 | **其他** | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
