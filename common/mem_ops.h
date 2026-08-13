@@ -201,4 +201,136 @@ static inline uint32_t mem_sc_w(uintptr_t addr, uint32_t val) {
     return result;
 }
 
+#if __riscv_xlen == 64
+static inline uint64_t mem_lr_d(uintptr_t addr) {
+    uint64_t val;
+    asm volatile(
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "lr.d %0, (%1)\n\t"
+        ".option pop\n\t"
+        : "=r"(val) : "r"(addr) : "memory"
+    );
+    return val;
+}
+
+static inline uint64_t mem_sc_d(uintptr_t addr, uint64_t val) {
+    uint64_t result;
+    asm volatile(
+        ".option push\n\t"
+        ".option norvc\n\t"
+        "sc.d %0, %1, (%2)\n\t"
+        ".option pop\n\t"
+        : "=r"(result) : "r"(val), "r"(addr) : "memory"
+    );
+    return result;
+}
+#endif /* __riscv_xlen == 64 */
+
+/* ===== AMO operations (full A-extension AMO set) =====
+ *
+ * Every helper returns the value loaded from memory *before* the
+ * read-modify-write took place (the AMO rd semantics). All forms
+ * use .option norvc so the trap handler can skip faulting AMOs with
+ * sepc += 4. The doubleword (.d) forms exist only on RV64.
+ */
+
+#define _MEM_AMO_OP_W(op, addr, val) ({ \
+    uint32_t _r; \
+    uint32_t _v = (uint32_t)(val); \
+    asm volatile( \
+        ".option push\n\t" \
+        ".option norvc\n\t" \
+        op " %0, %1, (%2)\n\t" \
+        ".option pop\n\t" \
+        : "=r"(_r) : "r"(_v), "r"(addr) : "memory" \
+    ); \
+    _r; \
+})
+
+#if __riscv_xlen == 64
+#define _MEM_AMO_OP_D(op, addr, val) ({ \
+    uint64_t _r; \
+    uint64_t _v = (uint64_t)(val); \
+    asm volatile( \
+        ".option push\n\t" \
+        ".option norvc\n\t" \
+        op " %0, %1, (%2)\n\t" \
+        ".option pop\n\t" \
+        : "=r"(_r) : "r"(_v), "r"(addr) : "memory" \
+    ); \
+    _r; \
+})
+#endif
+
+static inline uint32_t mem_amo_add_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amoadd.w", addr, val);
+}
+
+static inline uint32_t mem_amo_and_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amoand.w", addr, val);
+}
+
+static inline uint32_t mem_amo_or_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amoor.w", addr, val);
+}
+
+static inline uint32_t mem_amo_xor_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amoxor.w", addr, val);
+}
+
+static inline uint32_t mem_amo_min_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amomin.w", addr, val);
+}
+
+static inline uint32_t mem_amo_max_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amomax.w", addr, val);
+}
+
+static inline uint32_t mem_amo_minu_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amominu.w", addr, val);
+}
+
+static inline uint32_t mem_amo_maxu_w(uintptr_t addr, uint32_t val) {
+    return _MEM_AMO_OP_W("amomaxu.w", addr, val);
+}
+
+#if __riscv_xlen == 64
+static inline uint64_t mem_amo_swap_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amoswap.d", addr, val);
+}
+
+static inline uint64_t mem_amo_add_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amoadd.d", addr, val);
+}
+
+static inline uint64_t mem_amo_and_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amoand.d", addr, val);
+}
+
+static inline uint64_t mem_amo_or_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amoor.d", addr, val);
+}
+
+static inline uint64_t mem_amo_xor_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amoxor.d", addr, val);
+}
+
+static inline uint64_t mem_amo_min_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amomin.d", addr, val);
+}
+
+static inline uint64_t mem_amo_max_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amomax.d", addr, val);
+}
+
+static inline uint64_t mem_amo_minu_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amominu.d", addr, val);
+}
+
+static inline uint64_t mem_amo_maxu_d(uintptr_t addr, uint64_t val) {
+    return _MEM_AMO_OP_D("amomaxu.d", addr, val);
+}
+#endif /* __riscv_xlen == 64 */
+
 #endif /* COMMON_MEM_OPS_H */

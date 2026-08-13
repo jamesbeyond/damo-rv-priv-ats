@@ -31,22 +31,22 @@ Sdext 的大部分功能需要 hart 处于 Debug Mode，而进入 Debug Mode 需
 
 ### 由其他测试计划覆盖
 
-- Trigger Module（Sdtrig）功能测试 → `Sdtrig_test_plan.md`（若存在）
+- Trigger Module（Sdtrig）功能测试（含 Icount Trigger 原生调试器单步） → `Sdtrig_test_plan.md`（若存在）
 - Smctr Debug Mode 录制抑制 → `Smctr_test_plan.md` Group 4
-- Hypervisor × Debug 交叉测试（VS/VU-mode ebreak、`dcsr.ebreakvs`/`ebreakvu`） → `Hypervisor_cross_test_plan.md`
+- Hypervisor × Debug 交叉测试（VS/VU-mode ebreak、`dcsr.ebreakvs`/`ebreakvu`、`dcsr.v` 记录/恢复、Ssdbltrp resume 的 VS/VU 分支 `sstatus.SDT`/`vsstatus.SDT`） → `Hypervisor_cross_test_plan.md`
 - Zicfilp 完整测试 → `cfi_test_plan.md`
 
 ---
 
 ## 覆盖的规范点
 
-本章节列出本文档 Groups 1-7 所有测试组中引用的规范点（norm ID），已去重并按字母顺序排列。
+本章节列出本文档 Groups 1-7 所有测试组中引用的规范点（norm ID），已去重。
 
 | Norm ID | 原文 | 中文说明 |
 |---------|------|----------|
 | `norm:debug_mode_behavior` | All implemented instructions operate just as they do in M-mode, unless an exception is mentioned. All operations are executed with machine mode privilege. | Debug Mode 下所有已实现指令按 M-mode 方式执行，除非规范中另有说明。所有操作以 M-mode 特权级执行。 |
 | `norm:debug_mode_interrupts` | All interrupts (including NMI) are masked. | Debug Mode 下所有中断（包括 NMI）被屏蔽。 |
-| `norm:debug_mode_traps` | Traps don't take place. Instead, they end execution of the program buffer and the hart remains in Debug Mode. They do not update registers such as `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. | Debug Mode 下陷阱不发生。陷阱结束 program buffer 执行，hart 保持在 Debug Mode。不更新 `mepc`/`mcause`/`mtval` 等寄存器。 |
+| `norm:debug_mode_traps` | Traps don't take place. Instead, they end execution of the program buffer and the hart remains in Debug Mode. They do not update registers such as `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. | Debug Mode 下陷阱不发生。陷阱结束 program buffer 执行，hart 保持在 Debug Mode。不更新 `mepc`/`mcause`/`mtval` 等寄存器。异常发生前已作为执行一部分更新的寄存器允许更新，见 `norm:debug_mode_partial_update`。 |
 | `norm:debug_mode_triggers` | Triggers don't match or fire. | Debug Mode 下触发器不匹配也不触发。 |
 | `norm:debug_mode_wfi_wrs` | Instructions that place the hart into a stalled state act as a `nop`. This includes `wfi`, `wrs.sto`, and `wrs.nto`. | 使 hart 进入停滞状态的指令作为 `nop` 执行。包括 `wfi`、`wrs.sto` 和 `wrs.nto`。 |
 | `norm:debug_mode_priv_change` | Almost all instructions that change the privilege mode have UNSPECIFIED behavior. This includes `ecall`, `mret`, `sret`, and `uret`. The only exception is `ebreak`, which ends execution of the Program Buffer when executed. | 几乎所有改变特权级的指令行为为 UNSPECIFIED。包括 `ecall`、`mret`、`sret` 和 `uret`。唯一例外是 `ebreak`，执行时结束 Program Buffer。 |
@@ -70,7 +70,7 @@ Sdext 的大部分功能需要 hart 处于 Debug Mode，而进入 Debug Mode 需
 | `norm:lr_sc_reservation` | The reservation registered by an `lr` instruction on a memory address may be lost when entering Debug Mode or while in Debug Mode. | 进入 Debug Mode 时或 Debug Mode 期间，`lr` 指令注册的内存地址预留可能丢失。 |
 | `norm:wfi_halt_completion` | If halt is requested while `wfi` is executing, then the hart must leave the stalled state, completing this instruction's execution, and then enter Debug Mode. | 若 `wfi` 执行期间收到 halt 请求，hart 必须退出停滞状态、完成该指令执行，然后进入 Debug Mode。 |
 | `norm:wrs_halt_completion` | If halt is requested while `wrs.sto` or `wrs.nto` is executing, then the hart must leave the stalled state, completing this instruction's execution, and then enter Debug Mode. | 若 `wrs.sto` 或 `wrs.nto` 执行期间收到 halt 请求，hart 必须退出停滞状态、完成该指令执行，然后进入 Debug Mode。 |
-| `norm:dcsr_cause_priority` | Priority of reasons for entering Debug Mode (highest to lowest): resethaltreq(5) > halt group(6) > haltreq(3) > trigger(2) > ebreak(1) > step(4). | 进入 Debug Mode 原因的优先级（从高到低）：resethaltreq(5) > halt group(6) > haltreq(3) > trigger(2) > ebreak(1) > step(4)。 |
+| `norm:dcsr_cause_priority` | Priority of reasons for entering Debug Mode (highest to lowest): resethaltreq(5) > halt group(6) > haltreq(3) > trigger(2) > ebreak(1) > step(4). For compatibility with old versions of this spec, resethaltreq and haltreq are allowed to be at different positions than shown as long as: resethaltreq is higher priority than haltreq, and the relative order of the other four causes is maintained. | 进入 Debug Mode 原因的优先级（从高到低）：resethaltreq(5) > halt group(6) > haltreq(3) > trigger(2) > ebreak(1) > step(4)。兼容性条款：resethaltreq/haltreq 的位置允许变动，只要 resethaltreq 高于 haltreq 且其余四个 cause 的相对顺序保持不变。 |
 | `norm:dpc_writability` | The writability of `dpc` follows the same rules as `mepc` from the Privileged Spec. | `dpc` 的可写性遵循特权级规范中 `mepc` 的相同规则。 |
 | `norm:dscratch_optional` | `dscratch0` and `dscratch1` are optional scratch registers. | `dscratch0` 和 `dscratch1` 是可选的暂存寄存器。 |
 | `norm:dcsr_ebreakm` | `dcsr.ebreakm`: 0=ebreak in M-mode behaves per Privileged Spec. 1=ebreak in M-mode enters Debug Mode. | `dcsr.ebreakm`：0=M-mode 下 ebreak 按特权级规范行为。1=M-mode 下 ebreak 进入 Debug Mode。 |
@@ -80,6 +80,16 @@ Sdext 的大部分功能需要 hart 处于 Debug Mode，而进入 Debug Mode 需
 | `norm:dcsr_stoptime` | `dcsr.stoptime`: 0=time reflects mtime. 1=time frozen at Debug Mode entry. May be hardwired to 0 or 1. | `dcsr.stoptime`：0=time 反映 mtime。1=Debug Mode 入口时冻结 time。可硬连线为 0 或 1。 |
 | `norm:dcsr_mprven` | `dcsr.mprven`: 0=mprv in mstatus ignored in Debug Mode. 1=mprv takes effect in Debug Mode. May be tied to either 0 or 1. | `dcsr.mprven`：0=Debug Mode 下忽略 mstatus 中的 mprv。1=mprv 在 Debug Mode 下生效。可连线为 0 或 1。 |
 | `norm:sdtrig_dependency` | If Sdext is implemented and Sdtrig is not implemented, then accessing any of the Sdtrig CSRs must raise an illegal instruction exception. | 若实现 Sdext 但未实现 Sdtrig，则访问任何 Sdtrig CSR 必须触发 illegal instruction 异常。 |
+| `norm:single_step_deferred` | If the instruction that is executed causes the PC to change to an address where an instruction fetch causes an exception, that exception does not occur until the next time the hart is resumed. Similarly, a trigger at the new address does not fire until the hart actually attempts to execute that instruction. | 若单步执行的指令使 PC 变为将产生取指异常的地址，该异常直到 hart 下次 resume 时才发生。同样，新地址上的 trigger 在 hart 实际尝试执行该指令前不会触发。 |
+| `norm:step_any_resume_reason` | If `dcsr.step` is set when a hart resumes then it will single step, regardless of the reason for resuming. | 若 resume 时 `dcsr.step` 已设置，则无论 resume 原因是什么，hart 都执行单步。 |
+| `norm:dcsr_nmip` | `dcsr.nmip`: When set, there is a Non-Maskable-Interrupt (NMI) pending for the hart. Since an NMI can indicate a hardware error condition, reliable debugging may no longer be possible once this bit becomes set. This is implementation-dependent. | `dcsr.nmip`：置位表示该 hart 有 NMI pending。由于 NMI 可能表示硬件错误，此位置位后可靠调试可能不再可行（实现相关）。 |
+| `norm:dpc_trigger_addr` | `dpc` on trigger module halt: the address of the next instruction to be executed at the time that debug mode was entered. If the trigger is `mcontrol` and `timing` is 0 or if the trigger is `mcontrol6` and `hit1` is 0, this corresponds to the address of the instruction which caused the trigger to fire. | trigger halt 时 `dpc` 为进入 Debug Mode 时刻下一条待执行指令的地址。若 trigger 为 `mcontrol` 且 timing=0，或为 `mcontrol6` 且 hit1=0，则即为触发该 trigger 的指令地址。 |
+| `norm:halt_group` | `dcsr.cause`=6 (group): The hart halted because it's part of a halt group. Harts may report 3 for this cause instead. | `dcsr.cause`=6（group）：hart 因属于 halt group 而暂停。hart 允许改为报告 3（haltreq）。 |
+| `norm:cetrig_behavior` | `dcsr.cetrig`=1: A hart in a critical error state enters Debug Mode instead of asserting the critical-error signal to the platform. Upon such entry into Debug Mode, the cause field is set to 7, and the extcause field is set to 0, indicating a critical error triggered the Debug Mode entry. This cause has the highest priority among all reasons for entering Debug Mode. Resuming from Debug Mode following an entry from the critical error state returns the hart to the critical error state. | `dcsr.cetrig`=1：处于 critical error 状态的 hart 进入 Debug Mode 而非向平台发出 critical-error 信号。进入时 cause=7、extcause=0，该 cause 在所有进入 Debug Mode 的原因中优先级最高。从该状态进入 Debug Mode 后 resume，hart 返回 critical error 状态。 |
+| `norm:stopcount_ebreak` | `dcsr.stopcount`=1: Don't increment any hart-local counters while in Debug Mode or on `ebreak` instructions that cause entry into Debug Mode. These counters include the `instret` CSR. | `dcsr.stopcount`=1：Debug Mode 期间以及导致进入 Debug Mode 的 `ebreak` 指令上均不递增任何 hart 本地计数器（含 `instret`）。 |
+| `norm:debug_mode_partial_update` | Registers that may be updated as part of execution before the exception are allowed to be updated. For example, vector load/store instructions which raise exceptions may partially update the destination register and set `vstart` appropriately. | 异常发生前已作为执行一部分而可能更新的寄存器允许被更新。例如引发异常的向量 load/store 指令可部分更新目标寄存器并正确设置 `vstart`。 |
+| `norm:unimpl_debug_reg_illegal` | Attempts to access an unimplemented Core Debug Register raise an illegal instruction exception. | 尝试访问未实现的 Core Debug Register 必须触发 illegal instruction 异常。 |
+| `norm:forward_progress` | Forward progress is guaranteed. | Debug Mode 下执行代码时前向进展有保证（实现保证条款，无法直接测试）。 |
 
 ---
 
@@ -123,7 +133,7 @@ Sdext 的大部分功能需要 hart 处于 Debug Mode，而进入 Debug Mode 需
 > [!NOTE]
 > - 所有测试均可在裸机环境下执行，无需外部调试器。
 > - S-mode 和 U-mode 测试使用 `goto_priv()` 切换特权级，通过 `PRIV_DO` 或 `EXPECT_TRAP` 宏执行 CSR 访问指令。
-> - 即使 Sdext 未实现，访问这些 CSR 地址（0x7b0-0x7b3）也应触发 illegal instruction 异常（因为这些 CSR 地址不存在于标准 M-mode CSR 空间中）。因此此组测试同时验证了 Sdext 实现的存在性和访问限制的正确性。
+> - 即使 Sdext 未实现，访问这些 CSR 地址（0x7b0-0x7b3）同样会触发 illegal instruction 异常（未实现的 CSR 地址不存在于标准 CSR 空间中）。因此本组测试仅验证 Debug CSR 的访问限制，**不能证明 Sdext 已实现**；Sdext 的存在性由平台配置（平台宏、device tree）声明。
 > - 若平台将 debug CSR 地址映射为其他用途（不符合规范），此组测试将 FAIL，应报告实现问题。
 
 ```c
@@ -192,7 +202,7 @@ bool test_sdex_ebrk_01(void)
 **规范依据**：
 - `norm:sdtrig_dependency`：若实现 Sdext 但未实现 Sdtrig，访问 Sdtrig CSR 触发 illegal instruction 异常
 
-**测试职责**：验证 Sdext 实现但 Sdtrig 未实现时，访问 trigger module CSR（`tselect`/`tdata1`/`tdata2`/`tdata3`/`tinfo`）触发 illegal instruction 异常。
+**测试职责**：验证 Sdext 实现但 Sdtrig 未实现时，访问 trigger module CSR（`tselect`/`tdata1`/`tdata2`/`tdata3`/`tinfo`/`tcontrol`/`mcontext`/`scontext`）触发 illegal instruction 异常。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -202,11 +212,14 @@ bool test_sdex_ebrk_01(void)
 | SDEX-SDTRIG-04 | 无 Sdtrig 时 tdata2 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 tdata2(0x7a2) | 触发 illegal instruction 异常（cause=2） |
 | SDEX-SDTRIG-05 | 无 Sdtrig 时 tdata3 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 tdata3(0x7a3) | 触发 illegal instruction 异常（cause=2） |
 | SDEX-SDTRIG-06 | 无 Sdtrig 时 tinfo 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 tinfo(0x7a4) | 触发 illegal instruction 异常（cause=2） |
+| SDEX-SDTRIG-07 | 无 Sdtrig 时 tcontrol 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 tcontrol(0x7a5) | 触发 illegal instruction 异常（cause=2） |
+| SDEX-SDTRIG-08 | 无 Sdtrig 时 mcontext 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 mcontext(0x7a8) | 触发 illegal instruction 异常（cause=2） |
+| SDEX-SDTRIG-09 | 无 Sdtrig 时 scontext 访问 | Sdext 实现但 Sdtrig 未实现时，M-mode 读 scontext(0x7aa) | 触发 illegal instruction 异常（cause=2） |
 
 > [!NOTE]
 > - 本组测试的前提条件：Sdext 已实现。若 Sdext 也未实现，所有测试 TEST_SKIP。
-> - 若 Sdtrig 已实现（SDEX-SDTRIG-01 检测通过），SDEX-SDTRIG-02 至 SDEX-SDTRIG-06 应 TEST_SKIP（规范仅要求 Sdext+Sdtrig 不存在时触发异常）。
-> - 若 Sdtrig 未实现，trigger CSR 地址（0x7a0-0x7a4）的访问必须触发 illegal instruction，这是 Sdext 规范的强制要求。
+> - 若 Sdtrig 已实现（SDEX-SDTRIG-01 检测通过），SDEX-SDTRIG-02 至 SDEX-SDTRIG-09 应 TEST_SKIP（规范仅要求 Sdext+Sdtrig 不存在时触发异常）。
+> - 若 Sdtrig 未实现，所有 Sdtrig CSR 地址（0x7a0-0x7a5、0x7a8、0x7aa）的访问必须触发 illegal instruction，这是 Sdext 规范的强制要求（"accessing any of the Sdtrig CSRs"）。
 > - S-mode 和 U-mode 下的 trigger CSR 访问也应触发 illegal instruction（与 M-mode 一致），但此处仅测试 M-mode 以简化。
 
 ---
@@ -219,6 +232,8 @@ bool test_sdex_ebrk_01(void)
 - `norm:dcsr_cause_priority`：进入 Debug Mode 原因的优先级
 - `norm:dcsr_ebreakm` / `norm:dcsr_ebreaks` / `norm:dcsr_ebreaku`：ebreak 进入 Debug Mode
 - `norm:reset_halt`：复位暂停行为
+- `norm:dpc_trigger_addr`：trigger halt 时的 `dpc` 语义
+- `norm:halt_group`：halt group（cause=6）
 
 **测试职责**：验证通过各种方式进入 Debug Mode 时，`dcsr` 各字段和 `dpc` 被正确记录。
 
@@ -236,16 +251,20 @@ bool test_sdex_ebrk_01(void)
 | SDEX-HALT-10 | dpc 指向下一条指令 | haltreq 暂停后检查 dpc | dpc 指向暂停时应执行的下一条指令的虚拟地址 |
 | SDEX-HALT-11 | dpc ebreak 地址 | ebreak 进入 Debug Mode 后检查 dpc | dpc 指向 ebreak 指令本身的地址 |
 | SDEX-HALT-12 | dpc 单步地址 | dcsr.step=1 单步执行后检查 dpc | dpc 指向单步执行后下一条应执行的指令地址 |
-| SDEX-HALT-13 | dcsr.debugver 值 | Debug Mode 下读 dcsr.debugver[31:28] | debugver == 4（v1.0）或 15（custom）或 0（无调试支持） |
+| SDEX-HALT-13 | dcsr.debugver 值 | Debug Mode 下读 dcsr.debugver[31:28] | debugver == 4（v1.0）。符合本 SPEC 的实现必须报告 4；报告 0（无调试支持）或 15（custom，不符合任何版本规范）均判 FAIL |
 | SDEX-HALT-14 | dcsr.v 无虚拟化 | 无 H 扩展时，读 dcsr.v | dcsr.v == 0（硬连线） |
 | SDEX-HALT-15 | 向量指令部分执行时 dpc/vstart | 向量指令部分执行期间 halt，检查 dpc 和 vstart | dpc 指向部分执行的向量指令地址，vstart 反映已处理元素 |
+| SDEX-HALT-16 | trigger halt 时 dpc 值 | 配置 trigger action=1、mcontrol timing=0（或 mcontrol6 hit1=0），触发进入 Debug Mode 后检查 dpc | dpc == 触发该 trigger 的指令地址（`norm:dpc_trigger_addr`） |
+| SDEX-HALT-17 | dcsr.cause=halt group | DM 配置 halt group 后触发组内一个 hart 暂停，读 dcsr.cause | dcsr.cause == 6（group）；hart 允许改为报告 3（haltreq） |
 
 > [!NOTE]
 > - **所有测试均需外部调试器配合**。在裸机环境下 TEST_SKIP。
 > - SDEX-HALT-05（resethaltreq）需要 DM 在复位前设置 halt-on-reset，复位后 hart 自动进入 Debug Mode。规范要求 cause=5 或 3 均可接受。
-> - SDEX-HALT-06 需要能够同时触发多个 halt 原因的复杂调试环境。
+> - SDEX-HALT-06 需要能够同时触发多个 halt 原因的复杂调试环境。判定时需遵循 `norm:dcsr_cause_priority` 的兼容性条款：resethaltreq/haltreq 位置可变的实现只要保持 resethaltreq 高于 haltreq、其余四个 cause 相对顺序不变，即为合规。
 > - SDEX-HALT-14 的 dcsr.v 仅在实现 H 扩展时可测试非零值。
 > - SDEX-HALT-15 需要向量扩展（V 扩展）支持。
+> - SDEX-HALT-16 需要 Sdtrig 支持（mcontrol/mcontrol6 trigger）。
+> - SDEX-HALT-17 需要 DM 支持 halt group 配置（dmcontrol 相关字段）；若 DM 不支持则 TEST_SKIP。
 
 ---
 
@@ -271,14 +290,16 @@ bool test_sdex_ebrk_01(void)
 | SDEX-RSM-09 | Resume 到 U 清除 SDT（Ssdbltrp） | 实现 Ssdbltrp，dcsr.prv=0，sstatus.SDT=1，resume 后检查 SDT | SDT == 0（被清除） |
 | SDEX-RSM-10 | Zicfilp ELP 暂停保存与恢复 | 实现 Zicfilp，ELP=LP_EXPECTED 时 halt，检查 dcsr.pelp；resume 后检查 ELP | halt 时 dcsr.pelp=1(LP_EXPECTED)，ELP=NO_LP_EXPECTED；resume 后 ELP 恢复为 LP_EXPECTED（若新特权级启用 Zicfilp） |
 | SDEX-RSM-11 | dpc 可写性验证 | Debug Mode 下写 dpc 各种地址值，读回验证 | dpc 读写一致，遵循 mepc 相同的可写性规则（如低位对齐 IALIGN） |
+| SDEX-RSM-12 | Zicfilp 未启用时 resume ELP 清零 | 实现 Zicfilp，ELP=LP_EXPECTED 时 halt，resume 到 Zicfilp 未启用的特权级（如对应 lpenv 未使能的特权级） | resume 后 ELP == NO_LP_EXPECTED，且 dcsr.pelp == 0（norm:halt_resume_zicfilp 的 else 分支） |
 
 > [!NOTE]
 > - **所有测试均需外部调试器配合**。在裸机环境下 TEST_SKIP。
 > - SDEX-RSM-05/06 验证 MPRV 条件清除逻辑：仅当 resume 到比 M-mode 低的特权级时才清除。
 > - SDEX-RSM-07/08 需要 Smdbltrp 扩展支持。若平台未实现 Smdbltrp，TEST_SKIP。
-> - SDEX-RSM-09 需要 Ssdbltrp 扩展支持。若平台未实现 Ssdbltrp，TEST_SKIP。
+> - SDEX-RSM-09 需要 Ssdbltrp 扩展支持。若平台未实现 Ssdbltrp，TEST_SKIP。本用例仅覆盖 U-mode 分支；VS/VU-mode 分支（resume 到 VS 时清 `sstatus.SDT`，resume 到 VU 时同时清 `vsstatus.SDT`）由 Hypervisor 交叉测试计划覆盖。
 > - SDEX-RSM-10 需要 Zicfilp 扩展支持。若平台未实现 Zicfilp，TEST_SKIP。
 > - SDEX-RSM-11 验证 dpc 的可写性规则与 mepc 一致（如 RV64 上低 2 位应为 0 当 IALIGN=32）。
+> - SDEX-RSM-12 需要 Zicfilp 扩展支持及可构造"新特权级未启用 Zicfilp"的场景（如通过 menvcfg/senvcfg 的 LPE 位控制）；若无法构造则 TEST_SKIP。
 
 ---
 
@@ -290,6 +311,8 @@ bool test_sdex_ebrk_01(void)
 - `norm:single_step_trigger`：单步执行时触发 trigger，cause 为 trigger(2) 而非 step(4)
 - `norm:single_step_wfi`：单步执行停滞指令作为 nop 处理
 - `norm:single_step_stepie`：stepie 控制单步执行时的中断屏蔽
+- `norm:single_step_deferred`：单步跳转目标的取指异常/trigger 推迟到下次 resume
+- `norm:step_any_resume_reason`：单步与 resume 原因无关
 
 **测试职责**：验证 `dcsr.step` 单步执行机制及各种边界情况。
 
@@ -305,6 +328,8 @@ bool test_sdex_ebrk_01(void)
 | SDEX-STEP-08 | 单步执行 wrs.nto | dcsr.step=1，执行 wrs.nto | wrs.nto 作为 nop 处理，hart 立即重新进入 Debug Mode |
 | SDEX-STEP-09 | 单步执行后 PC 正确 | dcsr.step=1，执行一条 32-bit 顺序指令，检查 dpc | dpc == 原 PC + 4（下一条指令地址） |
 | SDEX-STEP-10 | 单步执行跳转指令 | dcsr.step=1，执行一条 JAL 指令 | dpc == JAL 的目标地址 |
+| SDEX-STEP-11 | 单步延迟异常 | dcsr.step=1，执行一条跳转指令，其目标地址将产生取指异常（如访问异常/PMP 拒绝的页） | 本次单步正常完成：dcsr.cause=4(step)，dpc 指向目标地址；取指异常不在本次单步发生，直到下次 resume 才触发；目标地址上的 trigger 也不在本次单步触发（`norm:single_step_deferred`） |
+| SDEX-STEP-12 | 单步与 resume 原因无关 | 先以非 step 原因（如 ebreak 或 trigger）使 hart halt，再设 dcsr.step=1 resume | hart 仍只执行一条指令后重新进入 Debug Mode，dcsr.cause=4(step)（`norm:step_any_resume_reason`） |
 
 > [!NOTE]
 > - **所有测试均需外部调试器配合**。在裸机环境下 TEST_SKIP。
@@ -312,6 +337,8 @@ bool test_sdex_ebrk_01(void)
 > - SDEX-STEP-05：根据规范，trigger（cause=2）优先级高于 step（cause=4），因此同时触发时 cause 应为 2。
 > - SDEX-STEP-04：陷阱触发时，hart 在 trap handler 入口处重新进入 Debug Mode，不执行任何 trap handler 代码。
 > - SDEX-STEP-09/10 验证单步执行后 dpc 指向正确的下一条指令。
+> - SDEX-STEP-11：先单步验证 dpc 指向异常目标地址且无异常，再 resume 验证取指异常此时才发生；若配置了目标地址 trigger，需验证其在第一次单步时不触发、第二次 resume 执行时才触发。
+> - SDEX-STEP-12：验证规范要求"regardless of the reason for resuming"——分别以 ebreak、trigger、haltreq 原因 halt 后单步，行为应一致。
 
 ---
 
@@ -327,9 +354,14 @@ bool test_sdex_ebrk_01(void)
 - `norm:debug_mode_interrupts`：中断被屏蔽
 - `norm:debug_mode_triggers`：触发器不匹配/不触发
 - `norm:debug_mode_traps`：陷阱结束 program buffer 执行
+- `norm:debug_mode_partial_update`：异常前已执行部分的寄存器允许更新
 - `norm:dcsr_stopcount`：stopcount 控制计数器冻结
+- `norm:stopcount_ebreak`：stopcount=1 时 ebreak 进入 Debug Mode 的指令上计数器同样冻结
 - `norm:dcsr_stoptime`：stoptime 控制 time 冻结
 - `norm:dcsr_mprven`：mprven 控制 mprv 在 Debug Mode 下是否生效
+- `norm:dcsr_nmip`：nmip 指示 NMI pending
+- `norm:cetrig_behavior`：cetrig 下 critical error 进入 Debug Mode 及 resume 语义
+- `norm:unimpl_debug_reg_illegal`：访问未实现的 Core Debug Register 必须触发 illegal instruction
 - `norm:lr_sc_reservation`：LR/SC 预留可能丢失
 - `norm:wfi_halt_completion` / `norm:wrs_halt_completion`：wfi/wrs 执行期间 halt 完成后再进入 Debug Mode
 
@@ -356,14 +388,14 @@ bool test_sdex_ebrk_01(void)
 | SDEX-DBG-15 | M-mode 权限内存访问 | Debug Mode 下执行 load/store | 以 M-mode 权限访问内存 |
 | SDEX-DBG-16 | 中断屏蔽验证 | Debug Mode 下触发中断（设 mie 和 mip） | 中断不触发陷阱，hart 保持在 Debug Mode |
 | SDEX-DBG-17 | 触发器不匹配 | Debug Mode 下配置 trigger 条件 | 触发器不匹配也不触发 |
-| SDEX-DBG-18 | 陷阱结束 PB 执行 | Debug Mode Program Buffer 中执行导致异常的指令 | Program Buffer 执行结束，hart 保持 Debug Mode，不更新 mepc/mcause/mtval |
+| SDEX-DBG-18 | 陷阱结束 PB 执行 | Debug Mode Program Buffer 中执行导致异常的指令 | Program Buffer 执行结束，hart 保持 Debug Mode，不更新 mepc/mcause/mtval；异常前已作为执行一部分更新的寄存器允许更新（如向量 load/store 可部分更新目标寄存器并设置 vstart）（`norm:debug_mode_partial_update`） |
 
 ### 7.2 计数器/定时器控制
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| SDEX-DBG-19 | stopcount=0 计数器正常递增 | dcsr.stopcount=0，进入 Debug Mode 前后读取 instret | instret 在 Debug Mode 期间继续递增 |
-| SDEX-DBG-20 | stopcount=1 计数器冻结 | dcsr.stopcount=1，进入 Debug Mode 前后读取 instret | instret 在 Debug Mode 期间不递增（被冻结） |
+| SDEX-DBG-19 | stopcount=0 计数器正常递增 | dcsr.stopcount=0，进入 Debug Mode 前后读取 instret | instret 在 Debug Mode 期间继续递增；导致进入 Debug Mode 的 ebreak 指令上计数器也正常递增 |
+| SDEX-DBG-20 | stopcount=1 计数器冻结 | dcsr.stopcount=1，进入 Debug Mode 前后读取 instret | instret 在 Debug Mode 期间不递增（被冻结）；导致进入 Debug Mode 的 ebreak 指令上计数器同样不递增（`norm:stopcount_ebreak`） |
 | SDEX-DBG-21 | stoptime=0 time 正常更新 | dcsr.stoptime=0，进入 Debug Mode 前后读取 time CSR | time 继续反映 mtime |
 | SDEX-DBG-22 | stoptime=1 time 冻结 | dcsr.stoptime=1，进入 Debug Mode 前后读取 time CSR | time 在 Debug Mode 入口时冻结，退出后重新同步 mtime |
 
@@ -383,7 +415,9 @@ bool test_sdex_ebrk_01(void)
 | SDEX-DBG-27 | dscratch0 读写 | Debug Mode 下写 dscratch0 并读回 | 读写一致（若实现） |
 | SDEX-DBG-28 | dscratch1 读写 | Debug Mode 下写 dscratch1 并读回 | 读写一致（若实现） |
 | SDEX-DBG-29 | dcsr.mprven 验证 | Debug Mode 下设 dcsr.mprven=1，mstatus.MPRV=1，执行内存访问 | mprv 生效（内存访问按 MPP 指定的特权级进行） |
-| SDEX-DBG-30 | dcsr.cetrig（Smdbltrp） | 实现 Smdbltrp，设 dcsr.cetrig=1，触发 critical error | hart 进入 Debug Mode，dcsr.cause=7, dcsr.extcause=0 |
+| SDEX-DBG-30 | dcsr.cetrig（Smdbltrp） | 实现 Smdbltrp，设 dcsr.cetrig=1，触发 critical error | hart 进入 Debug Mode，dcsr.cause=7, dcsr.extcause=0；cause=7 在所有 halt 原因中优先级最高；resume 后 hart 返回 critical error 状态（`norm:cetrig_behavior`） |
+| SDEX-DBG-31 | cetrig=1 resume 立即重入 Debug Mode | 基于 SDEX-DBG-30 场景，保持 dcsr.cetrig=1 直接 resume | hart 因 critical error 立即重新进入 Debug Mode，dcsr.cause=7；调试器可改以 cetrig=0 resume 让平台定义动作发生 |
+| SDEX-DBG-32 | dcsr.nmip NMI pending | hart 处于 halt/Debug Mode 期间使其产生 NMI pending，Debug Mode 下读 dcsr.nmip | dcsr.nmip == 1，hart 保持 Debug Mode（中断被屏蔽，NMI 不递送）（`norm:dcsr_nmip`） |
 
 > [!NOTE]
 > - **所有测试均需外部调试器配合**。在裸机环境下 TEST_SKIP。
@@ -392,9 +426,11 @@ bool test_sdex_ebrk_01(void)
 > - SDEX-DBG-19 至 SDEX-DBG-22：`dcsr.stopcount` 和 `dcsr.stoptime` 可能被硬连线为 0 或 1。测试前应先检测字段可写性。
 > - SDEX-DBG-23：LR/SC 预留丢失是"可能"（may），不是"必须"。测试应记录行为而非断言。
 > - SDEX-DBG-24 至 SDEX-DBG-26：需要在 wfi/wrs 执行期间（hart 处于停滞状态）发送 halt 请求，验证指令完成后再进入 Debug Mode。
-> - SDEX-DBG-27/28：dscratch0/dscratch1 是可选寄存器。若未实现，读写可能返回 0 或触发异常。
+> - SDEX-DBG-27/28：dscratch0/dscratch1 是可选寄存器。若未实现，访问必须触发 illegal instruction 异常（`norm:unimpl_debug_reg_illegal`）；若读写成功或返回 0，均违反 SPEC，应判 FAIL。
 > - SDEX-DBG-29：`dcsr.mprven` 可能硬连线为 0 或 1。若硬连线为 0，mprv 在 Debug Mode 下无效。
-> - SDEX-DBG-30：需要 Smdbltrp 扩展支持。
+> - SDEX-DBG-30：需要 Smdbltrp 扩展支持。验证时还需确认 cause=7 的优先级最高（可与其他 halt 原因同时存在时验证），以及 resume 后 hart 返回 critical error 状态。
+> - SDEX-DBG-31：注意规范要求 cetrig=1 时从 critical error 进入的 Debug Mode resume 会立即重入；此行为可验证但测试后需将 cetrig 清零或复位 hart 以恢复。
+> - SDEX-DBG-32：NMI 的产生方式为实现相关（平台特定 NMI 源），若平台无法构造 NMI pending 则 TEST_SKIP；nmip 置位后的调试可靠性为实现相关，测试仅验证位值与 Debug Mode 保持。
 
 ---
 
@@ -404,11 +440,11 @@ bool test_sdex_ebrk_01(void)
 |--------|--------|--------------|------|
 | P0 | Group 1: Debug CSR 访问限制 | SDEX-CSR-01 ~ SDEX-CSR-14 | 核心安全要求：Debug CSR 在非 Debug Mode 下不可访问 |
 | P0 | Group 2: ebreak 默认行为 | SDEX-EBRK-01 ~ SDEX-EBRK-06 | 基础行为验证：ebreak 默认不进入 Debug Mode |
-| P0 | Group 3: Sdtrig 依赖 | SDEX-SDTRIG-01 ~ SDEX-SDTRIG-06 | 规范要求验证：Sdext 无 Sdtrig 时的访问限制 |
-| P1 | Group 4: Halt 进入 | SDEX-HALT-01 ~ SDEX-HALT-15 | 核心调试功能：halt 状态记录正确性 |
-| P1 | Group 5: Resume 行为 | SDEX-RSM-01 ~ SDEX-RSM-11 | 核心调试功能：resume 状态恢复正确性 |
-| P1 | Group 6: 单步执行 | SDEX-STEP-01 ~ SDEX-STEP-10 | 核心调试功能：单步执行正确性 |
-| P2 | Group 7: Debug Mode 指令行为 | SDEX-DBG-01 ~ SDEX-DBG-30 | 全面行为验证：指令、计数器、边界情况 |
+| P0 | Group 3: Sdtrig 依赖 | SDEX-SDTRIG-01 ~ SDEX-SDTRIG-09 | 规范要求验证：Sdext 无 Sdtrig 时的访问限制 |
+| P1 | Group 4: Halt 进入 | SDEX-HALT-01 ~ SDEX-HALT-17 | 核心调试功能：halt 状态记录正确性 |
+| P1 | Group 5: Resume 行为 | SDEX-RSM-01 ~ SDEX-RSM-12 | 核心调试功能：resume 状态恢复正确性 |
+| P1 | Group 6: 单步执行 | SDEX-STEP-01 ~ SDEX-STEP-12 | 核心调试功能：单步执行正确性 |
+| P2 | Group 7: Debug Mode 指令行为 | SDEX-DBG-01 ~ SDEX-DBG-32 | 全面行为验证：指令、计数器、边界情况 |
 
 ---
 
@@ -438,19 +474,27 @@ damo-priv-test/
 ### 运行时检测
 
 ```c
-/* Detect Sdext by checking if debug CSR addresses are recognized */
+/*
+ * Sdext presence cannot be reliably detected from bare-metal by
+ * probing debug CSR addresses: accessing an unimplemented CSR at
+ * 0x7b0-0x7b3 raises illegal instruction whether or not Sdext is
+ * implemented. Sdext presence must be declared by the platform
+ * configuration (platform macro or device tree).
+ */
 static bool check_sdext_extension(void)
 {
+    /* Platform declares Sdext support via configuration macro */
+#ifdef CONFIG_HAS_SDEXT
+    bool declared = true;
+#else
+    bool declared = false;
+#endif
+
     /*
-     * Accessing dcsr (0x7b0) from non-Debug Mode should raise
-     * illegal instruction. If no trap occurs, the address is not
-     * recognized as a debug CSR (or we are already in Debug Mode,
-     * which is impossible from bare-metal).
-     *
-     * Note: This detection is imperfect - both "Sdext implemented"
-     * and "Sdext not implemented" result in illegal instruction
-     * for debug CSR access. Platform-specific detection (mimpid,
-     * device tree) should be used when available.
+     * The trap probe only verifies that the debug CSR addresses
+     * are not mapped to other purposes: any access from non-Debug
+     * Mode must raise illegal instruction. A missing trap here
+     * means a non-conforming platform regardless of Sdext presence.
      */
     trap_expect_begin();
     asm volatile("csrr t0, 0x7b0" ::: "t0");  /* try read dcsr */
@@ -458,12 +502,10 @@ static bool check_sdext_extension(void)
     uintptr_t cause = trap_get_cause();
     trap_expect_end();
 
-    /*
-     * If trapped with illegal instruction, debug CSR address is
-     * recognized as restricted => Sdext likely implemented.
-     * If no trap, address is unused => Sdext not implemented.
-     */
-    return trapped && (cause == CAUSE_ILLEGAL_INSTRUCTION);
+    if (!trapped || (cause != CAUSE_ILLEGAL_INSTRUCTION))
+        return false;  /* address mapped to other use: non-conforming */
+
+    return declared;
 }
 
 /* Detect Sdtrig by checking tselect accessibility */
@@ -479,7 +521,7 @@ static bool check_sdtrig_extension(void)
 
 ### 关键注意事项
 
-1. **Sdext 检测的局限性**：从裸机环境无法可靠区分"Sdext 已实现"和"Sdext 未实现"，因为两种情况下访问 debug CSR 都会触发 illegal instruction。建议结合平台特性（mimpid、device tree、平台头文件宏）进行判断。
+1. **Sdext 存在性判定**：裸机环境无法通过 trap 探测区分"Sdext 已实现"与"Sdext 未实现"（两种情况下访问 debug CSR 均触发 illegal instruction），因此 Sdext 存在性必须由平台配置（平台宏、device tree）声明；trap 探测仅用于确认 debug CSR 地址未被映射为其他用途。
 
 2. **DM 依赖测试的处理**：Group 4-7 的测试在裸机环境下无法执行，应以 `TEST_SKIP("Requires external debugger (DM)")` 处理。测试代码应完整实现验证逻辑，以便在配合 OpenOCD/GDB 时可直接使用。
 
@@ -520,7 +562,7 @@ static bool check_sdtrig_extension(void)
 | `norm:resume_behavior` | SDEX-RSM-01 ~ SDEX-RSM-06, SDEX-RSM-11 |
 | `norm:resume_smdbltrp` | SDEX-RSM-07, SDEX-RSM-08 |
 | `norm:resume_ssdbltrp` | SDEX-RSM-09 |
-| `norm:halt_resume_zicfilp` | SDEX-RSM-10, SDEX-DBG-12, SDEX-DBG-13 |
+| `norm:halt_resume_zicfilp` | SDEX-RSM-10, SDEX-RSM-12, SDEX-DBG-12, SDEX-DBG-13 |
 | `norm:dpc_writability` | SDEX-RSM-11 |
 | `norm:dscratch_optional` | SDEX-DBG-27, SDEX-DBG-28 |
 | `norm:single_step` | SDEX-STEP-01, SDEX-STEP-09, SDEX-STEP-10 |
@@ -544,7 +586,16 @@ static bool check_sdtrig_extension(void)
 | `norm:wfi_halt_completion` | SDEX-DBG-24 |
 | `norm:wrs_halt_completion` | SDEX-DBG-25, SDEX-DBG-26 |
 | `norm:reset_halt` | SDEX-HALT-05 |
-| `norm:debug_mode_zicfilp` | SDEX-DBG-12, SDEX-DBG-13, SDEX-RSM-10 |
+| `norm:single_step_deferred` | SDEX-STEP-11 |
+| `norm:step_any_resume_reason` | SDEX-STEP-12 |
+| `norm:dcsr_nmip` | SDEX-DBG-32 |
+| `norm:dpc_trigger_addr` | SDEX-HALT-16 |
+| `norm:halt_group` | SDEX-HALT-17 |
+| `norm:cetrig_behavior` | SDEX-DBG-30, SDEX-DBG-31 |
+| `norm:stopcount_ebreak` | SDEX-DBG-19, SDEX-DBG-20 |
+| `norm:debug_mode_partial_update` | SDEX-DBG-18 |
+| `norm:unimpl_debug_reg_illegal` | SDEX-DBG-27, SDEX-DBG-28 |
+| `norm:forward_progress` | 不可直接测试（实现保证条款，已在规范点表标注） |
 
 ---
 

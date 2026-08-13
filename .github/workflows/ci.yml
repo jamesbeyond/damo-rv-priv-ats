@@ -1,5 +1,6 @@
 # RISC-V Privilege Test Framework CI
-# Runs hypervisor extension test suite on Spike with GCC and Clang toolchains.
+# Runs hypervisor extension test suite on Spike/Whisper with GCC and Clang
+# toolchains.
 # The job FAILS if any statistics/*.csv file is modified after the test run.
 
 name: Priv Test CI
@@ -24,15 +25,15 @@ env:
 
 jobs:
   # --------------------------------------------------------------------
-  # Build Spike and Sail exactly once. The matrix test jobs below restore
-  # them from cache. Keeping the build in a single job both avoids the
-  # parallel cache-save race ("Cache save failed") and avoids compiling
-  # Spike twice (once per toolchain).
+  # Build Spike/Sail/Whisper exactly once. The matrix test jobs below
+  # restore them from cache. Keeping the build in a single job both
+  # avoids the parallel cache-save race ("Cache save failed") and avoids
+  # compiling each simulator multiple times (once per matrix entry).
   # --------------------------------------------------------------------
   setup-simulators:
-    name: Build simulators (spike + sail)
+    name: Build simulators (spike + sail + whisper)
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout code
@@ -78,19 +79,39 @@ jobs:
           path: ${{ github.workspace }}/.sail
           key: sail-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-sail.sh') }}
 
+      # ---- Whisper (built from source) ----
+      - name: Restore Whisper cache
+        id: cache-whisper
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.whisper
+          key: whisper-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-whisper.sh') }}
+
+      - name: Build and install Whisper
+        if: steps.cache-whisper.outputs.cache-hit != 'true'
+        run: bash .github/scripts/install-whisper.sh "${GITHUB_WORKSPACE}/.whisper"
+
+      - name: Save Whisper cache
+        if: steps.cache-whisper.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ github.workspace }}/.whisper
+          key: whisper-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-whisper.sh') }}
+
   # --------------------------------------------------------------------
-  # Per-toolchain regression. Toolchain cache keys include the toolchain
-  # name, so gcc and clang never collide. Spike/Sail are restored from the
-  # cache populated by setup-simulators above.
+  # Per-(simulator, toolchain) regression. Toolchain cache keys include
+  # the toolchain name, so gcc and clang never collide. Spike/Sail/
+  # Whisper are restored from the cache populated by setup-simulators.
   # --------------------------------------------------------------------
   hyp-test:
-    name: spike + ${{ matrix.toolchain }}
+    name: ${{ matrix.simulator }} + ${{ matrix.toolchain }}
     needs: setup-simulators
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
+        simulator: [spike, whisper]
         toolchain: [gcc, clang]
 
     steps:
@@ -124,6 +145,7 @@ jobs:
 
       # ---- Restore Spike (built by setup-simulators) ----
       - name: Restore Spike cache
+        if: matrix.simulator == 'spike'
         uses: actions/cache/restore@v5
         with:
           path: ${{ github.workspace }}/.spike
@@ -137,15 +159,37 @@ jobs:
       #   - device-tree-compiler (dtc) : spike shells out to it to compile the
       #     generated device tree ("Failed to run dtc: No such file or directory")
       - name: Install Spike runtime dependencies
+        if: matrix.simulator == 'spike'
         run: |
           sudo apt-get update
           sudo apt-get install -y libboost-regex1.74.0 device-tree-compiler
 
       - name: Add Spike to PATH
+        if: matrix.simulator == 'spike'
         run: echo "${GITHUB_WORKSPACE}/.spike/bin" >> "$GITHUB_PATH"
 
       - name: Verify Spike
+        if: matrix.simulator == 'spike'
         run: spike --help
+
+      # ---- Restore Whisper (built by setup-simulators) ----
+      # Whisper is built with STATIC_LINK=1, so the cached binary is
+      # self-contained (no Boost runtime dependency on this runner).
+      - name: Restore Whisper cache
+        if: matrix.simulator == 'whisper'
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/.whisper
+          key: whisper-${{ env.CACHE_VERSION }}-ubuntu-22.04-${{ hashFiles('.github/scripts/install-whisper.sh') }}
+          fail-on-cache-miss: true
+
+      - name: Add Whisper to PATH
+        if: matrix.simulator == 'whisper'
+        run: echo "${GITHUB_WORKSPACE}/.whisper/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Whisper
+        if: matrix.simulator == 'whisper'
+        run: whisper --version
 
       - name: Verify toolchain (${{ matrix.toolchain }})
         run: riscv64-unknown-elf-${{ matrix.toolchain }} --version
@@ -167,13 +211,13 @@ jobs:
       # ----------------------------------------------------------------
       # Run framework test suite.
       # ----------------------------------------------------------------
-      - name: Run framework test suite (spike + ${{ matrix.toolchain }})
-        run: cd framework_test && make clean && make TOOLCHAIN=${{ matrix.toolchain }} spike
+      - name: Run framework test suite (${{ matrix.simulator }} + ${{ matrix.toolchain }})
+        run: cd framework_test && make clean && make TOOLCHAIN=${{ matrix.toolchain }} ${{ matrix.simulator }}
       # ----------------------------------------------------------------
       # Run the hypervisor test suite.
       # ----------------------------------------------------------------
-      - name: Run hyp test suite (spike + ${{ matrix.toolchain }})
-        run: ./run_case_stats.sh -t ${{ matrix.toolchain }} -s spike -l hyp
+      - name: Run hyp test suite (${{ matrix.simulator }} + ${{ matrix.toolchain }})
+        run: ./run_case_stats.sh -t ${{ matrix.toolchain }} -s ${{ matrix.simulator }} -l hyp
 
       # ----------------------------------------------------------------
       # Verdict: FAIL if any statistics CSV was modified or created.
@@ -195,6 +239,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: hyp-spike-${{ matrix.toolchain }}-logs
+          name: hyp-${{ matrix.simulator }}-${{ matrix.toolchain }}-logs
           path: statistics/
           retention-days: 14

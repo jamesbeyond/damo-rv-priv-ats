@@ -31,7 +31,7 @@ Hypervisor_Sscsrind,33,22,0,11
 Hypervisor_Ssdbltrp,24,11,0,13
 Hypervisor_Ssnpm,48,47,0,1
 Hypervisor_Ssqosid,6,6,0,0
-Hypervisor_Ssstateen,50,36,4,10
+Hypervisor_Ssstateen,50,40,0,10
 Hypervisor_Sstc,0,0,0,0
 Hypervisor_Sstvala,8,8,0,0
 Hypervisor_Svadu,7,7,0,0

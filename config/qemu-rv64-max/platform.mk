@@ -8,7 +8,10 @@ QEMU = qemu-system-riscv$(XLEN)
 QEMU_CPU ?= max
 QEMU_MEM ?= 4G
 QEMU_SMP ?= 1
-QEMU_MCH ?= virt,aia=aplic-imsic
+# aia-guests provides per-hart VS-level IMSIC guest interrupt files
+# (GEILEN); QEMU defaults to 0, which leaves guest IMSIC state
+# (stopei/VGEIN paths) untestable. Valid range 0..7.
+QEMU_MCH ?= virt,aia=aplic-imsic,aia-guests=7
 QEMU_OPTS = -machine $(QEMU_MCH) \
             -cpu $(QEMU_CPU) \
             -bios none \

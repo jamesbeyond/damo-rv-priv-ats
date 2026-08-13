@@ -63,6 +63,31 @@ static inline bool mstateen0_bit_writable(uintptr_t bit)
 }
 
 /* ===================================================================
+ * GEILEN detection via hgeie writability.
+ *
+ * Per norm:geilen: "if GEILEN is nonzero, bits GEILEN:1 shall be
+ * writable in hgeie, and all other bit positions shall be read-only
+ * zeros in both hgeip and hgeie". This is the SPEC-reliable way to
+ * detect guest interrupt files.
+ *
+ * Note: hstatus.VGEIN write/readback is NOT a reliable probe. VGEIN
+ * is WLRL; when GEILEN=0 the SPEC only says VGEIN "may be read-only
+ * zero", so an implementation may legally retain a written non-zero
+ * VGEIN while no guest interrupt file exists.
+ * =================================================================== */
+
+static inline bool geilen_nonzero(void)
+{
+    uintptr_t saved;
+    asm volatile("csrr %0, " CSR_STR(CSR_HGEIE) : "=r"(saved));
+    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", %0" :: "r"(~0UL));
+    uintptr_t rb;
+    asm volatile("csrr %0, " CSR_STR(CSR_HGEIE) : "=r"(rb));
+    asm volatile("csrw " CSR_STR(CSR_HGEIE) ", %0" :: "r"(saved));
+    return (rb & ~1UL) != 0;
+}
+
+/* ===================================================================
  * VS-mode callback functions (invoked via run_in_vs_mode)
  * =================================================================== */
 

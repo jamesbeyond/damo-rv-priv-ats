@@ -116,10 +116,18 @@
  * VS_EXPECT_NO_TRAP - Execute stmt in VS-mode context, expect no trap
  *
  * Verifies that an operation completes without triggering any exception.
+ * On failure, reports the unexpected trap cause to aid root-cause
+ * analysis (e.g. distinguishing illegal vs virtual-instruction).
  */
 #define VS_EXPECT_NO_TRAP(stmt) do { \
     trap_expect_begin(); \
     stmt; \
+    if (trap_was_triggered()) { \
+        printf("  UNEXPECTED TRAP: cause=%lu, epc=0x%lx, tval=0x%lx\n", \
+               (unsigned long)trap_get_cause(), \
+               (unsigned long)trap_get_epc(), \
+               (unsigned long)trap_get_tval()); \
+    } \
     TEST_ASSERT("no trap in VS-mode", !trap_was_triggered()); \
     trap_expect_end(); \
 } while (0)
