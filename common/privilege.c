@@ -403,3 +403,26 @@ void platform_clear_maee(void) {
     asm volatile("csrw 0x7C0, %0" :: "r"(mxstatus));
 #endif
 }
+
+/* ===================================================================
+ * platform_release_ras_reset - Release the RAS block from SoC reset
+ *
+ * Called from _platform_hw_init in platform_init.S during early boot.
+ * On E908A the RAS reset control register is in the SoC control space
+ * (E908A_RAS_RESET_ADDR, bit E908A_RAS_RESET_BIT).  The reset value
+ * holds the RAS block in reset, so any RERI MMIO access hangs the CPU
+ * bus.  Setting this bit releases RAS and makes the RERI MMIO region
+ * at RERI_BASE respond normally.
+ *
+ * E908A_RAS_RESET_ADDR and E908A_RAS_RESET_BIT are defined in
+ * platform_config.h.  On platforms without these macros this function
+ * is a no-op.
+ * =================================================================== */
+void platform_release_ras_reset(void) {
+#ifdef E908A_RAS_RESET_ADDR
+    volatile uint32_t *reg = (volatile uint32_t *)E908A_RAS_RESET_ADDR;
+    uint32_t val = *reg;
+
+    *reg = val | (1U << E908A_RAS_RESET_BIT);
+#endif
+}

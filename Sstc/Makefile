@@ -8,12 +8,11 @@
 
 TARGET = sstc_test.elf
 
-# Enable Hypervisor support for Group 6 (VS-mode) tests.
-# Runtime detection via misa.H skips VS tests if H ext unavailable.
+# Hypervisor-dependent tests are in Hypervisor_Sstc/; this suite leaves
+# ENABLE_HYP undefined so it can build on RV32 platforms without H ext.
 ENABLE_VM  = 1
-ENABLE_HYP = 1
 
-# Spike: explicitly request RV64 + H extension support.
+# Spike: explicitly request RV64 + Sstc (+H preserved for compatibility) support.
 SPIKE_ISA = rv64imach_zicsr_zifencei_sstc
 
 # Extension-specific object files

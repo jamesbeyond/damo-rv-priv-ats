@@ -77,6 +77,12 @@ static inline uint64_t mem_load64(uintptr_t addr) {
     );
     return val;
 }
+#else
+static inline uint64_t mem_load64(uintptr_t addr) {
+    uint32_t lo = mem_load32(addr);
+    uint32_t hi = mem_load32(addr + 4);
+    return ((uint64_t)hi << 32) | lo;
+}
 #endif
 
 /* ===== Store operations ===== */
@@ -120,6 +126,11 @@ static inline void mem_store64(uintptr_t addr, uint64_t val) {
         ".option pop\n\t"
         :: "r"(val), "r"(addr) : "memory"
     );
+}
+#else
+static inline void mem_store64(uintptr_t addr, uint64_t val) {
+    mem_store32(addr, (uint32_t)val);
+    mem_store32(addr + 4, (uint32_t)(val >> 32));
 }
 #endif
 

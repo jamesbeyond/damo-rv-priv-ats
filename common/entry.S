@@ -79,9 +79,17 @@ _bss_done:
     /* ---- Halt after main returns ---- */
 _halt:
     bnez    a0, _halt_fail
-    RVMODEL_HALT_PASS
-    j       _halt_loop
+    j       _halt_pass
 .global _halt_fail
+/*
+ * RVMODEL_HALT_PASS is expected to never return (self-loop or
+ * simulator exit). If it unexpectedly falls through, execution
+ * escalates into RVMODEL_HALT_FAIL so the failure is explicit
+ * instead of hanging silently.
+ */
+.global _halt_pass
+_halt_pass:
+    RVMODEL_HALT_PASS
 _halt_fail:
     RVMODEL_HALT_FAIL
 _halt_loop:
