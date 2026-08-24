@@ -9,7 +9,12 @@
 
 This test plan covers the register behavior of Hypervisor CSRs and Virtual Supervisor CSRs in the RISC-V Hypervisor (H) extension, including the CSR substitution mechanism, field WARL/WLRL constraints, environment configuration, and time offset functionality. Interrupt delivery/delegation mechanisms and exception/trap behavior are covered by the sibling subsets respectively.
 
-This test plan is written based on specification points (norm tags) in `SPEC/hypervisor.adoc`.
+This test plan is written based on specification points (norm tags) in the official RISC-V SPEC:
+
+- Local path: `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` (H/VS CSR body, vstimecmp/STCE/VSTIP related)
+- Official repository: https://github.com/riscv/riscv-isa-manual (files at the above paths within the repository)
+- Specification points for the STCE/PBMTE/ADUE/CBZE/CBIE/CBCFE/PMM/LPE/SSE/DTE fields of `henvcfg` are recorded in the normative rule defs of `hypervisor.adoc` (referencing the conditional semantics of extensions such as Sstc/Svpbmt/Svadu/Zicbom/Zicboz/Ssnpm/Zicfilp/Zicfiss/Ssdbltrp)
+- If any platform violates the SPEC, the corresponding test cases remain FAIL and are recorded in the `bugs/` directory
 
 ### SPEC Chapters Covered by This Document
 - Hypervisor and Virtual Supervisor CSRs (hstatus, hedeleg, hideleg, henvcfg, htimedelta CSR behavior)
@@ -392,3 +397,82 @@ This section lists all specification points (norm IDs) referenced in Groups 1-9 
 | DELEG-01 | hedeleg writable bit verification | Write hedeleg bit by bit, read back to verify writable/read-only attributes | bits 1-8,12,13,15,18 writable; bits 9-11,16,19-23 read-only zero |
 | DELEG-02 | hedeleg bit 0 writability depends on IALIGN | Write hedeleg bit 0 and read back | Writable when IALIGN=32, otherwise read-only zero |
 | DELEG-03 | hideleg writable bit verification | Write hideleg bits 0-15, read back to verify | bits 10/6/2 writable, bits 12/9/5/1 read-only zero |
+
+---
+
+## Appendix A: Specification Point Coverage Matrix
+
+The table below indicates which test cases cover each specification point listed in the "Covered Specification Points" section.
+
+| Norm ID | Covered Test IDs |
+|---------|------------------|
+| `norm:H_mtval_nrz` | VCSR-18 |
+| `norm:hedeleg_acc` | DELEG-01, DELEG-02 |
+| `norm:hedeleg_sz_acc` | DELEG-01 |
+| `norm:henvcfg_adue_op` | HENV-06, HENV-07, HENV-29 |
+| `norm:henvcfg_cbcfe` | HENV-12, HENV-13, HENV-26 |
+| `norm:henvcfg_cbie` | HENV-14, HENV-15, HENV-20, HENV-21, HENV-25 |
+| `norm:henvcfg_cbze` | HENV-10, HENV-11, HENV-27 |
+| `norm:henvcfg_dte_op` | HENV-16, HENV-17, HENV-28 |
+| `norm:henvcfg_fiom_op` | HENV-02, HENV-03 |
+| `norm:henvcfg_fiom_order` | HENV-02, HENV-03 |
+| `norm:henvcfg_lpe_op` | HENV-23 |
+| `norm:henvcfg_pbmte_op` | HENV-04, HENV-05, HENV-18 |
+| `norm:henvcfg_pmm_op` | HENV-22, HENV-24 |
+| `norm:henvcfg_sse_op` | HENV-23 |
+| `norm:henvcfg_stce` | HENV-08, HENV-09, HENV-19, VSTC-04 |
+| `norm:henvcfg_sz_acc_op` | HENV-01 |
+| `norm:hideleg_acc` | DELEG-03 |
+| `norm:hideleg_sz_acc` | DELEG-03 |
+| `norm:hip_vstip_clear` | VSTC-03 |
+| `norm:hip_vstip_enable` | VSTC-05, VSTC-06 |
+| `norm:hip_vstip_op` | VSTC-02, VSTC-07 |
+| `norm:H_scsrs_nomatch` | VCSR-16, VCSR-17 |
+| `norm:H_vscsrs_acc_m_hs` | VCSR-06, VCSR-07 |
+| `norm:H_vscsrs_acc_u` | VCSR-05 |
+| `norm:H_vscsrs_acc_vs` | VCSR-04 |
+| `norm:H_vscsrs_sub` | VCSR-01, VCSR-02, VCSR-09~15, VSST-02, VSCR-07 |
+| `norm:H_vscsrs_v0` | VCSR-08, VSST-11, VSCR-06 |
+| `norm:H_vscsrs_v1` | VCSR-03 |
+| `norm:hstatus_gva_op` | HSTAT-20~23 |
+| `norm:hstatus_hu_op` | HSTAT-11, HSTAT-12 |
+| `norm:hstatus_spv_op` | HSTAT-13, HSTAT-14 |
+| `norm:hstatus_spv_sret` | HSTAT-15 |
+| `norm:hstatus_spvp_op` | HSTAT-16~19 |
+| `norm:hstatus_sz_acc_op` | HSTAT-01 |
+| `norm:hstatus_vgein_op` | HSTAT-26 |
+| `norm:hstatus_vsbe_op` | HSTAT-24 |
+| `norm:hstatus_vsxl_32` | HSTAT-25 (conditional: only HSXLEN=32 implementations; not triggered on RV64 platforms) |
+| `norm:hstatus_vsxl_64` | HSTAT-25 |
+| `norm:hstatus_vsxl_op` | HSTAT-25 |
+| `norm:hstatus_vtsr_op` | HSTAT-02, HSTAT-03 |
+| `norm:hstatus_vtvm_op` | HSTAT-07~10 |
+| `norm:hstatus_vtw_op` | HSTAT-04~06 |
+| `norm:htimedelta_sz_acc_op` | HTDLT-01~05 |
+| `norm:time_htimedelta_req` | HTDLT-01 (htimedelta presence implicitly verified by successful access) |
+| `norm:vscause_sz_acc_op` | VSCR-03, VSCR-05, VSCR-07 |
+| `norm:vscause_wlrl` | VSCR-03 |
+| `norm:vsepc_warl` | VSCR-02 |
+| `norm:vsip_vsie_lcofi` | VSIE-21, VSIE-22 |
+| `norm:vsip_vsie_sei` | VSIE-02, VSIE-03, VSIE-08, VSIE-11, VSIE-14, VSIE-20 |
+| `norm:vsip_vsie_ssi` | VSIE-06, VSIE-07, VSIE-10, VSIE-13, VSIE-16, VSIE-18, VSIE-19 |
+| `norm:vsip_vsie_sti` | VSIE-04, VSIE-05, VSIE-09, VSIE-12, VSIE-15 |
+| `norm:vsip_vsie_sz_acc_op` | VSIE-01, VSIE-17 |
+| `norm:vspec_sz_acc_op` | VSCR-02, VSCR-05, VSCR-07 |
+| `norm:vsscratch_sz_acc_op` | VSCR-01, VSCR-07 |
+| `norm:vsstatus_fs_op` | VSST-03~06 |
+| `norm:vsstatus_sd_xs_op` | VSST-10 |
+| `norm:vsstatus_sz_acc_op` | VSST-01, VSST-02 |
+| `norm:vsstatus_ube` | VSST-01 (UBE WARL/read-only replica behavior verified along with basic read/write) |
+| `norm:vsstatus_uxl_change` | VSST-12 (conditional: VSXLEN 32→64 switch scenario; not triggered on RV64 platforms) |
+| `norm:vsstatus_uxl_op` | VSST-12 |
+| `norm:vsstatus_v0` | VSST-11 |
+| `norm:vsstatus_vs_op` | VSST-07~09 |
+| `norm:vstimecmp_acc` | VSTC-01 (conditional: RV32 split-access scenario only; not triggered on RV64 platforms) |
+| `norm:vstimecmp_sz` | VSTC-01 |
+| `norm:vstval_sz_acc_op` | VSCR-04, VSCR-05, VSCR-07 |
+| `norm:vstval_warl` | VSCR-04 |
+| `norm:vsxl_ro` | HSTAT-25 |
+| `norm:vtw_virtinstr` | HSTAT-04 (the implementation-permitted always-trigger virtual-instruction behavior is accepted within HSTAT-04 expectations) |
+
+Notes on uncovered/untestable specification points: every specification point declared in this document has corresponding test cases. Among them, `norm:hstatus_vsxl_32`, `norm:vsstatus_uxl_change`, and `norm:vstimecmp_acc` are conditional specification points (depending on HSXLEN=32, the VSXLEN 32→64 switch, and the RV32 split-access scenario respectively); the corresponding branches are not triggered on RV64 platforms, and only WARL read-back verification is performed within the corresponding basic read/write cases. HENV-18/19 and HENV-24~29 are conditional cases (depending on the read-only-zero semantics when the corresponding extension is not implemented); VSIE-21/22 are conditional cases (depending on the Shlcofideleg probing result).

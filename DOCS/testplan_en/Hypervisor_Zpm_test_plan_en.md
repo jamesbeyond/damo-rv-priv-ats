@@ -9,9 +9,20 @@
 
 ## Overview
 
+### SPEC Sections Covered by This Document
+
+This plan is based on the official RISC-V specification (riscv-isa-manual). Local SPEC paths are as follows:
+
+- `SPEC/riscv-isa-manual/src/priv/zpm.adoc`: Pointer Masking extension family (Ssnpm/Smnpm/Smmpm/Sspm/Supm) definitions, ignore transformation, PMLEN/WARL semantics
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`: henvcfg.PMM, hstatus.HUPMM, MPRV/HLV/HSV behavior, two-stage address translation (pm-two-stage)
+- `SPEC/riscv-isa-manual/src/priv/supervisor.adoc`: senvcfg.PMM
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc`: menvcfg.PMM, mseccfg.PMM
+
+Official repository: https://github.com/riscv/riscv-isa-manual (files at the above paths within the repository)
+
 ### Intersection Analysis of H Extension and Zpm Extension Family
 
-Zpm is a family of extensions (`SPEC/zpm.adoc` sec:pm-exts). The intersection with the H extension is analyzed per sub-extension as follows:
+Zpm is a family of extensions (`zpm.adoc` sec:pm-exts). The intersection with the H extension is analyzed per sub-extension as follows:
 
 #### H × Ssnpm (Core Intersection, Largest Intersection)
 
@@ -72,7 +83,7 @@ Smmpm definition (`norm:smmpm_definition`): `mseccfg.PMM` only controls PM for M
 
 ---
 
-## Spec Reference
+## Covered Specification Points
 
 | Norm ID | Source | English Description |
 |---------|--------|---------------------|
@@ -101,16 +112,21 @@ Smmpm definition (`norm:smmpm_definition`): `mseccfg.PMM` only controls PM for M
 | `norm:H_scsrs_nomatch` | `hypervisor.adoc` | Some standard supervisor CSRs (senvcfg, ...) have no matching VS CSR. These CSRs continue to have their usual function and accessibility even when V=1, with VS/VU-mode substituting for HS/U-mode. |
 | `norm:mstatus_mprv_hlsv` | `hypervisor.adoc` | MPRV does not affect HLV/HLVX/HSV. Their explicit loads/stores always act as though V=1 and the nominal privilege mode were hstatus.SPVP, overriding MPRV. |
 | `norm:mstatus_mprv_hypervisor` | `hypervisor.adoc` | When MPRV=1, explicit memory accesses are translated and protected as though the current virtualization mode were set to MPV and the nominal privilege mode were set to MPP. |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | `hypervisor.adoc` | in VS-mode or VU-mode, attempts to access an implemented non-high-half hypervisor CSR or VS CSR when the same access (read/write) would be allowed in HS-mode, assuming mstatus.TVM=0. |
+| `norm:pm_config_next_higher` | `zpm.adoc` | A privilege mode's pointer masking setting is configured by bits in configuration registers of the next-higher privilege mode. |
 | ([[pm-two-stage]]) | `hypervisor.adoc` | GPAs are 2-bit wider than the corresponding VA translation modes. With vsatp[mode]=Bare in VS/VU mode, those 2 bits may be subject to pointer masking depending on hgatp[mode] and senvcfg/henvcfg[pmm]. If vsatp[mode]!=Bare, this issue does not apply. Hypervisors should execute HFENCE.GVMA(rs1=x0) when henvcfg.PMM changes from/to a value where (XLEN-PMLEN) < GPA width of hgatp.MODE. |
+| `norm:pm_rv64_only` | `zpm.adoc` | Pointer masking is only applicable to RV64. |
+| `norm:pm_debug_trigger` | `zpm.adoc` | Pointer masking applies to address matching of debug triggers as specified. |
+| `norm:pm_cpu_only` | `zpm.adoc` | Pointer masking applies only to CPU accesses. |
 
 ---
 
 ## Test Groups
 
 > [!IMPORTANT]
-> There are 8 test groups in total. VS/VU-mode tests use `run_in_vs_mode()`/`run_in_vu_mode()` from `common/hyp/hyp_priv.h`; two-stage scenarios use `two_stage_run_in_vs()` from `common/hyp/two_stage.c`; HLV/HSV uses `hlv_d()`/`hsv_d()` from `common/hyp/hyp_ldst.h`. PM configuration and tagged address construction reuse `common/pm/pm_cfg.h` and `common/pm/pm_addr.h`.
+> There are 8 test groups in total. VS/VU-mode tests run through the framework's VS/VU-mode execution mechanism; two-stage scenarios run through the framework's two-stage translation execution mechanism; HLV/HSV are executed via the framework-wrapped HLV/HSV instructions. PM configuration and tagged address construction reuse the framework's existing PM helper capabilities.
 >
-> Before executing all test cases, extension implementation must be probed (`detect_ssnpm()`/`detect_smnpm()`/`detect_smmpm()` + H extension availability). If not implemented, TEST_SKIP; do not lower SPEC requirements to pass tests.
+> Before executing all test cases, extension implementation must be probed (Ssnpm/Smnpm/Smmpm + H extension availability). If not implemented, TEST_SKIP; do not lower SPEC requirements to pass tests.
 
 ---
 
@@ -326,18 +342,49 @@ Smmpm definition (`norm:smmpm_definition`): `mseccfg.PMM` only controls PM for M
 
 ---
 
-## Framework Dependencies
+## Appendix A: Specification Point Coverage Matrix
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| PM Control API | `common/pm/pm_cfg.h` + `pm_cfg.c` | `pm_set_umode()`/`detect_ssnpm()` etc. (senvcfg/menvcfg/mseccfg) |
-| Tagged Address Utilities | `common/pm/pm_addr.h` | `pm_tag_address()`/`pm_transform_va()`/`pm_transform_pa()` |
-| VS/VU-mode Execution | `common/hyp/hyp_priv.h` + `hyp_priv.c` | `run_in_vs_mode()`/`run_in_vu_mode()` |
-| Two-stage Translation | `common/hyp/two_stage.c` + `two_stage_helpers.h` | `two_stage_run_in_vs()`, hgatp/vsatp configuration |
-| HLV/HSV Instructions | `common/hyp/hyp_ldst.h` + `hyp_ldst.c` | `hlv_d()`/`hsv_d()` etc. |
-| VS Trap Handling | `common/hyp/hyp_vs_trap.h` | VS-mode trap expectation and capture |
-| Page Table Construction | `common/vm/satp.c` | `pt_init()`/`pt_setup_identity_mapping()` |
-| CSR Definitions | `common/encoding.h` | `HENVCFG_PMM_MASK`/`HSTATUS_HUPMM_MASK`/`PMM_PMLEN7` etc. (HUPMM-related definitions may need to be added) |
+The table below indicates which test cases cover each specification point listed in the "Covered Specification Points" section.
 
-> [!NOTE]
-> During implementation, check whether `common/encoding.h` already defines masks/offset macros for `hstatus.HUPMM` (bits [49:48]) and `henvcfg.PMM` (bits [33:32]); if missing, add them following existing naming conventions. `pm_cfg.h` currently only wraps senvcfg/menvcfg/mseccfg three-level APIs; henvcfg.PMM and hstatus.HUPMM read/write can initially use `read_csr`/`write_csr` directly, or extend `pm_cfg` style with `pm_set_vsmode()`/`pm_set_hupmm()` helper functions.
+| Norm ID | Covered Test IDs |
+|---------|------------------|
+| `norm:ssnpm_definition` | HZPM-CAP-01, HZPM-CAP-02, HZPM-CAP-09 (Ssnpm probing and presence prerequisite) |
+| `norm:smnpm_definition` | HZPM-HS-01~06 (H × Smnpm intersection prerequisite) |
+| `norm:smmpm_definition` | HZPM-MPRV-01~05 (H × Smmpm intersection prerequisite) |
+| `norm:sspm_definition` / `norm:supm_definition` | Not covered: pure profile description extensions, no hardware behavior |
+| `norm:henvcfg_pmm_op` | HZPM-CAP-01, HZPM-CAP-03, HZPM-CAP-05, HZPM-CAP-07, HZPM-CAP-09, HZPM-CAP-10, HZPM-VS-01~10 |
+| sec:hstatus HUPMM section (unofficial) | HZPM-CAP-02, HZPM-CAP-04, HZPM-CAP-06, HZPM-CAP-08, HZPM-HLV-07, HZPM-HLV-08 |
+| `norm:senvcfg_pmm_Ssnpm` | HZPM-VU-01~04, HZPM-VU-06, HZPM-HLV-03~05, HZPM-HLV-08 |
+| `norm:menvcfg_pmm_op` | HZPM-HS-01~06, HZPM-MPRV-04 |
+| `norm:mseccfg_pmm_presence_op` | HZPM-MPRV-01~03, HZPM-MPRV-05 |
+| `norm:pm_ignore_va` | HZPM-VS-01~08, HZPM-VU-01~04, HZPM-VU-06, HZPM-HS-01, HZPM-2STG-02, HZPM-TRAP-01 |
+| `norm:pm_ignore_pa` | HZPM-VS-09, HZPM-VS-10, HZPM-VU-07, HZPM-HS-02, HZPM-2STG-01, HZPM-TRAP-02 |
+| `norm:pm_apply_explicit` | HZPM-VS-01~04, HZPM-VU-01~03, HZPM-HS-01, HZPM-HS-02, HZPM-HS-06 |
+| `norm:pm_not_apply_implicit` | HZPM-2STG-05, HZPM-TRAP-06 |
+| `norm:pm_per_mode_control` | HZPM-VS-08, HZPM-VU-06, HZPM-HS-03~05 |
+| `norm:pm_mode_only_dependency` | HZPM-VS-05, HZPM-VS-08, HZPM-HS-03 |
+| `norm:pm_mprv_spvp` | HZPM-HLV-01~10, HZPM-MPRV-01~05 |
+| `norm:pm_mxr_exception` | HZPM-TRAP-05 |
+| `norm:pm_csr_hw_apply` | HZPM-TRAP-01, HZPM-TRAP-02 |
+| `norm:pm_no_trap_vector_mask` | HZPM-TRAP-03, HZPM-TRAP-04 |
+| `norm:pm_no_csr_sw` | HZPM-TRAP-04 |
+| `norm:pmlen_supported_values` | HZPM-CAP-03, HZPM-CAP-04 |
+| `norm:pmlen_illegal_warl` | HZPM-CAP-05, HZPM-CAP-06 |
+| `norm:H_scsrs_nomatch` | HZPM-VU-05 |
+| `norm:mstatus_mprv_hlsv` | HZPM-HLV-01~10 |
+| `norm:mstatus_mprv_hypervisor` | HZPM-MPRV-01~05 |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | HZPM-CAP-10 |
+| `norm:pm_config_next_higher` | HZPM-CAP-10 |
+| [[pm-two-stage]] (unofficial) | HZPM-2STG-01~04 |
+| `norm:pm_rv64_only` | Not covered: out of scope for this plan (see uncovered notes) |
+| `norm:pm_debug_trigger` | Not covered: out of scope for this plan (see uncovered notes) |
+| `norm:pm_cpu_only` (device side) | Not covered: out of scope for this plan (see uncovered notes) |
+
+Notes on uncovered/untestable specification points:
+
+| Norm ID | Reason for Not Covering |
+|---------|-------------------------|
+| `norm:sspm_definition` / `norm:supm_definition` | Pure profile description extensions, introduce no hardware behavior, no testable intersection |
+| `norm:pm_rv64_only` | RV32 scenarios are out of scope for this document (PM only applies to RV64) |
+| `norm:pm_debug_trigger` | Involves the Debug extension, beyond the scope of this document |
+| `norm:pm_cpu_only` (device side) | No device model in the current framework, untestable |

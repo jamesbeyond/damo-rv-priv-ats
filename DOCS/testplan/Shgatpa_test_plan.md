@@ -8,19 +8,23 @@
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/shgatpa.adoc` — Shgatpa Extension for Translation Mode Support, Version 1.0
-- `SPEC/hypervisor.adoc` 第 986–1089 行（`hgatp` 寄存器定义） — 提供 `hgatp` 字段布局、MODE 编码表、WARL 写入语义
-- `SPEC/supervisor.adoc` 第 997–1065 行（`satp` 寄存器与 MODE 字段编码） — 提供 satp MODE 编码表，是 Shgatpa 映射关系的源头
+本方案依据 RISC-V Privileged Architecture 规范（Shgatpa 扩展章节与 Hypervisor/Supervisor 扩展 hgatp/satp 相关章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/shgatpa.adoc` — Shgatpa Extension for Translation Mode Support, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `hgatp` 寄存器定义（第 986–1089 行）：字段布局、MODE 编码表、WARL 写入语义
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — `satp` 寄存器与 MODE 字段编码（第 997–1065 行）：Shgatpa 映射关系的源头
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/shgatpa.adoc` | Shgatpa 规范全文（共 11 行，2 条 norm） |
-| `SPEC/hypervisor.adoc:986-1089` | `hgatp` 寄存器规范：HSXLEN-bit RW、MODE 编码（Bare/Sv39x4/Sv48x4/Sv57x4）、WARL 行为 |
-| `SPEC/supervisor.adoc:997-1065` | `satp` 寄存器规范：MODE 编码表（Bare=0, Sv39=8, Sv48=9, Sv57=10）、WARL 行为 |
+| `shgatpa.adoc` | Shgatpa 规范全文（共 11 行，2 条 norm） |
+| `hypervisor.adoc:986-1089` | `hgatp` 寄存器规范：HSXLEN-bit RW、MODE 编码（Bare/Sv39x4/Sv48x4/Sv57x4）、WARL 行为 |
+| `supervisor.adoc:997-1065` | `satp` 寄存器规范：MODE 编码表（Bare=0, Sv39=8, Sv48=9, Sv57=10）、WARL 行为 |
 | `common/encoding.h:284` | `CSR_HGATP = 0x680` |
 | `common/encoding.h:145` | `CSR_SATP = 0x180` |
 | `common/encoding.h:332-340` | `HGATP64_MODE_SHIFT=60`、`HGATP_MODE_BARE=0`、`HGATP_MODE_SV39X4=8`、`HGATP_MODE_SV48X4=9`、`HGATP_MODE_SV57X4=10` |
@@ -44,6 +48,9 @@
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. | 对于分页虚拟内存方案，根页表为 16 KiB 且必须对齐到 16 KiB 边界。这些模式下 `hgatp` 中 PPN 的最低两位始终读为零。 |
 | `norm:satp_mode_sxlen64` | When SXLEN=64, three paged virtual-memory schemes are defined: Sv39, Sv48, and Sv57. One additional scheme, Sv64, will be defined in a later version. The remaining MODE settings are reserved for future use. | SXLEN=64 时定义了三种分页方案：Sv39、Sv48、Sv57。Sv64 将在后续版本定义。其余 MODE 设置保留。 |
 | `norm:satp_mode_op_unsupported` | If a write to `satp` specifies a MODE value that is not supported, the entire write has no effect; no fields in `satp` are modified. | 如果写入 `satp` 的 MODE 值不被支持，整个写入无效；`satp` 中没有任何字段被修改。 |
+| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. | VMID 位数未指定且可以为零（实现可支持少于 14 位的 VMID 宽度）。 |
+| `norm:hgatp_vmid_lsbs` | The least-significant bits of VMID are implemented first: that is, if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable. The maximal value of VMIDLEN, termed VMIDMAX, is 7 for Sv32x4 or 14 for Sv39x4, Sv48x4, and Sv57x4. | VMID 从最低位开始实现：VMIDLEN>0 时 VMID[VMIDLEN-1:0] 可写；VMIDMAX 在 Sv32x4 为 7，Sv39x4/Sv48x4/Sv57x4 为 14。 |
+| `norm:hgatp_tvm_illegal` | When `mstatus`.TVM=1, attempts to read or write `hgatp` while executing in HS-mode will raise an illegal-instruction exception. | 当 mstatus.TVM=1 时，HS-mode 读写 `hgatp` 触发非法指令异常。（本方案不覆盖，归 TVM 功能测试） |
 
 > [!IMPORTANT]
 > Shgatpa 的核心约束有两条：(1) satp 支持 SvNN → hgatp 必须支持 SvNNx4；(2) hgatp.MODE=Bare 必须可用。注意 hgatp 与 satp 的 WARL 行为**不同**：satp 写不支持 MODE 整个写被忽略，而 hgatp 写不支持 MODE 时字段按 WARL 正常处理（`norm:hgatp_mode_warl`）。
@@ -128,15 +135,15 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 ## 测试分组
 
 > [!IMPORTANT]
-> 共 6 个测试组、21 个测试用例。Group 1 在 M/HS-mode 探测 satp 支持的模式集；Group 2 验证 hgatp 对应 SvNNx4 模式的支持一致性（核心验证组）；Group 3 验证 hgatp Bare 模式的强制支持；Group 4 验证 hgatp MODE WARL 行为；Group 5 验证 hgatp PPN 字段的低 2 位行为；Group 6 验证 VMID 字段宽度。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）；每组提供 1 个关键 C 代码示例。
+> 共 6 个测试组、21 个测试用例。Group 1 在 M/HS-mode 探测 satp 支持的模式集；Group 2 验证 hgatp 对应 SvNNx4 模式的支持一致性（核心验证组）；Group 3 验证 hgatp Bare 模式的强制支持；Group 4 验证 hgatp MODE WARL 行为；Group 5 验证 hgatp PPN 字段的低 2 位行为；Group 6 验证 VMID 字段宽度。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）。
 
 ---
 
 ### Group 1：`satp` MODE 支持探测（基线建立）
 
 **规范依据**：
-- `norm:satp_mode_sxlen64`（`SPEC/supervisor.adoc:1044-1050`）：SXLEN=64 时定义 Sv39/Sv48/Sv57
-- `norm:satp_mode_op_unsupported`（`SPEC/supervisor.adoc:1052-1055`）：写入不支持的 MODE 整个写无效
+- `norm:satp_mode_sxlen64`（`supervisor.adoc:1044-1050`）：SXLEN=64 时定义 Sv39/Sv48/Sv57
+- `norm:satp_mode_op_unsupported`（`supervisor.adoc:1052-1055`）：写入不支持的 MODE 整个写无效
 
 **测试职责**：在 M/HS-mode 探测 `satp` 支持的翻译模式集合，建立 Group 2 的比较基线。对每个标准 MODE 值（Bare=0, Sv39=8, Sv48=9, Sv57=10）进行写入-回读测试。
 
@@ -150,61 +157,14 @@ Group 1 探测 `satp` 支持的 MODE 集合后，将结果存入全局变量（�
 > [!NOTE]
 > 探测逻辑与 shvsatpa 测试计划中的 Group 1 相同。至少一个非 Bare 模式应被支持（否则 H 扩展几乎无法运行 guest OS）。
 
-#### 关键代码示例：HGATP-PROBE-02（Sv39 探测）
-
-```c
-/* tests/test_probe.c — HGATP-PROBE-02 */
-
-#include "test_framework.h"
-
-#define SATP_MODE_SHIFT  60
-#define SATP_MODE_MASK   (0xFUL << SATP_MODE_SHIFT)
-#define SATP_MODE_BARE   (0UL  << SATP_MODE_SHIFT)
-#define SATP_MODE_SV39   (8UL  << SATP_MODE_SHIFT)
-
-volatile bool g_satp_supports_sv39 = false;
-
-TEST_REGISTER(test_shgatpa_probe_satp_sv39);
-bool test_shgatpa_probe_satp_sv39(void) {
-    TEST_BEGIN("HGATP-PROBE-02: probe satp MODE=Sv39 support");
-
-    uintptr_t saved_satp;
-    asm volatile ("csrr %0, satp" : "=r"(saved_satp));
-
-    /* 先写 Bare 建立基线 */
-    asm volatile ("csrw satp, %0" :: "r"(SATP_MODE_BARE));
-
-    /* 写 Sv39 */
-    asm volatile ("csrw satp, %0" :: "r"(SATP_MODE_SV39));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, satp" : "=r"(readback));
-    uintptr_t mode = (readback & SATP_MODE_MASK) >> SATP_MODE_SHIFT;
-
-    if (mode == 8) {
-        g_satp_supports_sv39 = true;
-        TEST_LOG("satp supports Sv39");
-    } else {
-        g_satp_supports_sv39 = false;
-        TEST_LOG("satp does NOT support Sv39 (MODE read back as %lu)", mode);
-    }
-
-    TEST_ASSERT("satp MODE readback is legal (0 or 8)",
-                mode == 0 || mode == 8);
-
-    asm volatile ("csrw satp, %0" :: "r"(saved_satp));
-    TEST_END();
-}
-```
-
 ---
 
 ### Group 2：`hgatp` SvNNx4 MODE 对 `satp` 支持模式的一致性验证
 
 **规范依据**：
-- `norm:shgatpa_satp_hgatp_mode_support`（`SPEC/shgatpa.adoc:4-7`）：satp 支持 SvNN → hgatp 必须支持 SvNNx4
-- `norm:hgatp_sz_acc_op`（`SPEC/hypervisor.adoc:989-994`）：`hgatp` 是 HSXLEN-bit RW 寄存器
-- `norm:hgatp_mode_sv`（`SPEC/hypervisor.adoc:1020-1027`）：HSXLEN=64 时定义 Sv39x4/Sv48x4/Sv57x4
+- `norm:shgatpa_satp_hgatp_mode_support`（`shgatpa.adoc:4-7`）：satp 支持 SvNN → hgatp 必须支持 SvNNx4
+- `norm:hgatp_sz_acc_op`（`hypervisor.adoc:989-994`）：`hgatp` 是 HSXLEN-bit RW 寄存器
+- `norm:hgatp_mode_sv`（`hypervisor.adoc:1020-1027`）：HSXLEN=64 时定义 Sv39x4/Sv48x4/Sv57x4
 
 **测试职责**：对 Group 1 中探测到的 satp 支持的每个 SvNN MODE，在 M/HS-mode 直接写入 `hgatp`（CSR 0x680）对应的 SvNNx4 值并验证回读 MODE 一致，确认 Shgatpa 映射关系成立。
 
@@ -218,54 +178,13 @@ bool test_shgatpa_probe_satp_sv39(void) {
 > [!IMPORTANT]
 > 这是 Shgatpa 扩展的核心验证组。如果 satp 支持 Sv39 但 hgatp 不支持 Sv39x4，则 Shgatpa 约束被违反。断言条件为：**对于 satp 支持的每个 SvNN，写入 hgatp 对应 SvNNx4 后回读的 MODE 必须等于写入值**。
 
-#### 关键代码示例：HGATP-MODE-01（hgatp Sv39x4 一致性验证）
-
-```c
-/* tests/test_mode.c — HGATP-MODE-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-
-extern volatile bool g_satp_supports_sv39;
-
-TEST_REGISTER(test_shgatpa_hgatp_mode_sv39x4);
-bool test_shgatpa_hgatp_mode_sv39x4(void) {
-    TEST_BEGIN("HGATP-MODE-01: hgatp supports Sv39x4 if satp supports Sv39");
-
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, skipping hgatp Sv39x4 check");
-    }
-
-    uintptr_t saved_hgatp;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved_hgatp));
-
-    /* 先写 Bare 建立基线 */
-    asm volatile ("csrw 0x680, %0" :: "r"(0UL));
-
-    /* 写 Sv39x4 (MODE=8, VMID=0, PPN=0) */
-    uintptr_t write_val = MAKE_HGATP(HGATP_MODE_SV39X4, 0, 0);
-    asm volatile ("csrw 0x680, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x680" : "=r"(readback));
-    uintptr_t mode = HGATP_GET_MODE(readback);
-
-    TEST_ASSERT("hgatp.MODE == Sv39x4 (Shgatpa requirement: satp Sv39 -> hgatp Sv39x4)",
-                mode == HGATP_MODE_SV39X4);
-
-    asm volatile ("csrw 0x680, %0" :: "r"(saved_hgatp));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 3：`hgatp` Bare 模式强制支持验证
 
 **规范依据**：
-- `norm:shgatpa_hgatp_bare_mode`（`SPEC/shgatpa.adoc:9-10`）：`hgatp` 的 Bare 模式必须被支持
-- `norm:hgatp_mode_bare`（`SPEC/hypervisor.adoc:1010-1015`）：MODE=Bare 时无翻译保护；选择 Bare 时其余字段写零
+- `norm:shgatpa_hgatp_bare_mode`（`shgatpa.adoc:9-10`）：`hgatp` 的 Bare 模式必须被支持
+- `norm:hgatp_mode_bare`（`hypervisor.adoc:1010-1015`）：MODE=Bare 时无翻译保护；选择 Bare 时其余字段写零
 
 **测试职责**：验证 `hgatp` 的 Bare 模式（MODE=0）始终可写入且回读正确，且选择 Bare 后其余字段（VMID/PPN）为零。
 
@@ -278,54 +197,12 @@ bool test_shgatpa_hgatp_mode_sv39x4(void) {
 > [!NOTE]
 > `norm:hgatp_mode_bare` 要求选择 Bare 时"software must write zero to the remaining fields"。如果软件写入 Bare 但 PPN/VMID 非零，行为 UNSPECIFIED。因此 HGATP-BARE-01/03 确保合规写入后状态正确。
 
-#### 关键代码示例：HGATP-BARE-02（从 SvNNx4 切回 Bare）
-
-```c
-/* tests/test_bare.c — HGATP-BARE-02 */
-
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-
-extern volatile bool g_satp_supports_sv39;
-
-TEST_REGISTER(test_shgatpa_hgatp_bare_switch);
-bool test_shgatpa_hgatp_bare_switch(void) {
-    TEST_BEGIN("HGATP-BARE-02: hgatp switches from SvNNx4 back to Bare");
-
-    uintptr_t saved_hgatp;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved_hgatp));
-
-    /* 先设置为 SvNNx4 模式（使用已知支持的模式） */
-    if (g_satp_supports_sv39) {
-        uintptr_t sv39x4_val = MAKE_HGATP(HGATP_MODE_SV39X4, 0, 0x1000);
-        asm volatile ("csrw 0x680, %0" :: "r"(sv39x4_val));
-
-        uintptr_t mid_readback;
-        asm volatile ("csrr %0, 0x680" : "=r"(mid_readback));
-        TEST_ASSERT("hgatp in Sv39x4 mode", HGATP_GET_MODE(mid_readback) == HGATP_MODE_SV39X4);
-    }
-
-    /* 切回 Bare（全零） */
-    asm volatile ("csrw 0x680, %0" :: "r"(0UL));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x680" : "=r"(readback));
-
-    TEST_ASSERT("hgatp.MODE == Bare after switch", HGATP_GET_MODE(readback) == HGATP_MODE_BARE);
-    TEST_ASSERT("hgatp == 0 (all fields zero in Bare)", readback == 0);
-
-    asm volatile ("csrw 0x680, %0" :: "r"(saved_hgatp));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：`hgatp` MODE WARL 行为验证
 
 **规范依据**：
-- `norm:hgatp_mode_warl`（`SPEC/hypervisor.adoc:1073-1076`）：写 hgatp 不支持的 MODE 值**不会**被忽略（与 satp 不同），字段按 WARL 正常处理
+- `norm:hgatp_mode_warl`（`hypervisor.adoc:1073-1076`）：写 hgatp 不支持的 MODE 值**不会**被忽略（与 satp 不同），字段按 WARL 正常处理
 
 **测试职责**：验证写入不支持的 MODE 值时，hgatp 的 WARL 行为——MODE 被强制为合法值，但写入不是被完全忽略（其他字段可能被更新）。
 
@@ -340,50 +217,12 @@ bool test_shgatpa_hgatp_bare_switch(void) {
 > [!IMPORTANT]
 > **HGATP-WARL-04 的特殊性**：这条用例验证 hgatp 与 satp 的 WARL 行为差异。`norm:hgatp_mode_warl` 明确说 hgatp 写不支持 MODE 时"不是被忽略"，而是各字段按 WARL 正常处理。这意味着即使 MODE 被强制为合法值，PPN/VMID 字段仍可能被写入。但具体行为是实现定义的（WARL 允许两种选择），因此此用例采用"观察并记录"而非硬断言 PPN 必须被写入。
 
-#### 关键代码示例：HGATP-WARL-01（保留 MODE 被 WARL 强制）
-
-```c
-/* tests/test_warl.c — HGATP-WARL-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-
-TEST_REGISTER(test_shgatpa_hgatp_warl_reserved_mode7);
-bool test_shgatpa_hgatp_warl_reserved_mode7(void) {
-    TEST_BEGIN("HGATP-WARL-01: write reserved MODE=7, WARL forces legal value");
-
-    uintptr_t saved_hgatp;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved_hgatp));
-
-    /* 先设 Bare 基线 */
-    asm volatile ("csrw 0x680, %0" :: "r"(0UL));
-
-    /* 写 MODE=7（保留值）+ PPN=0x2000 */
-    uintptr_t write_val = MAKE_HGATP(7, 0, 0x2000);
-    asm volatile ("csrw 0x680, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x680" : "=r"(readback));
-    uintptr_t mode = HGATP_GET_MODE(readback);
-
-    /* MODE=7 是保留值，WARL 应强制为合法值 */
-    TEST_ASSERT("hgatp.MODE != 7 (reserved value not held)",
-                mode != 7);
-    TEST_ASSERT("hgatp.MODE is a legal value (0, 8, 9, or 10)",
-                mode == 0 || mode == 8 || mode == 9 || mode == 10);
-
-    asm volatile ("csrw 0x680, %0" :: "r"(saved_hgatp));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：`hgatp` PPN 字段低 2 位行为验证
 
 **规范依据**：
-- `norm:hgatp_ppn_op`（`SPEC/hypervisor.adoc:1078-1085`）：Sv*x4 模式下 PPN 的低 2 位始终读零（根页表 16KB 对齐约束）
+- `norm:hgatp_ppn_op`（`hypervisor.adoc:1078-1085`）：Sv*x4 模式下 PPN 的低 2 位始终读零（根页表 16KB 对齐约束）
 
 **测试职责**：验证在 Sv*x4 模式下写入 hgatp.PPN 低 2 位为非零值时，回读这些位始终为零；在 Bare 模式下记录行为（规范不强制约束）。
 
@@ -393,54 +232,12 @@ bool test_shgatpa_hgatp_warl_reserved_mode7(void) {
 | HGATP-PPN-02 | Sv39x4 模式 PPN 高位保留 | 写 `hgatp = MAKE_HGATP(8, 0, 0x12340)`（PPN 低 2 位 = 0），回读 PPN | `PPN == 0x12340`（高位保留，低 2 位为零） |
 | HGATP-PPN-03 | Sv48x4 模式 PPN[1:0] 强制清零 | 仅当支持 Sv48x4；写 PPN=0x5001（低位=01），回读 PPN | `PPN & 0x3 == 0`（低 2 位强制为零） |
 
-#### 关键代码示例：HGATP-PPN-01（PPN 低 2 位强制清零）
-
-```c
-/* tests/test_ppn.c — HGATP-PPN-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-
-extern volatile bool g_satp_supports_sv39;
-
-TEST_REGISTER(test_shgatpa_hgatp_ppn_low2_forced_zero);
-bool test_shgatpa_hgatp_ppn_low2_forced_zero(void) {
-    TEST_BEGIN("HGATP-PPN-01: Sv39x4 mode PPN[1:0] forced to zero");
-
-    if (!g_satp_supports_sv39) {
-        TEST_SKIP("satp does not support Sv39, Sv39x4 unavailable");
-    }
-
-    uintptr_t saved_hgatp;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved_hgatp));
-
-    /* 写 Sv39x4 MODE + PPN 低 2 位为 0b11 */
-    uintptr_t write_val = MAKE_HGATP(HGATP_MODE_SV39X4, 0, 0x2003);
-    asm volatile ("csrw 0x680, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x680" : "=r"(readback));
-    uintptr_t ppn = HGATP_GET_PPN(readback);
-
-    /* PPN[1:0] 在 Sv*x4 模式下必须读零 */
-    TEST_ASSERT("hgatp.PPN[1:0] == 0 in Sv39x4 mode",
-                (ppn & 0x3UL) == 0);
-    /* PPN 高位应保留写入值 */
-    TEST_ASSERT("hgatp.PPN high bits preserved (0x2000)",
-                (ppn & ~0x3UL) == 0x2000UL);
-
-    asm volatile ("csrw 0x680, %0" :: "r"(saved_hgatp));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 6：VMID 字段宽度验证
 
 **规范依据**：
-- `norm:hgatp_vmid_op`（`SPEC/hypervisor.adoc:1000-1010`）：hgatp 的 VMID 字段为 WARL，实现可支持少于 14 位（RV64）的 VMID 宽度
+- `norm:hgatp_vmid`（`hypervisor.adoc:1087`）与 `norm:hgatp_vmid_lsbs`（`hypervisor.adoc:1090-1094`）：hgatp 的 VMID 位数未指定且可为零，实现位为连续低位（RV64 最多 14 位）
 - Shgatpa 隐含了"hgatp 支持的 MODE 也意味着 VMID 字段可用"
 
 **测试职责**：验证 VMID 字段的实际支持宽度（通过写全 1 回读确认）；验证切换 MODE 后 VMID 字段是否保留。
@@ -449,46 +246,6 @@ bool test_shgatpa_hgatp_ppn_low2_forced_zero(void) {
 |---------|----------|----------|----------|
 | HGATP-VMID-01 | VMID 宽度探测 | 写 hgatp 的 VMID 字段为全 1（14 位最大值 0x3FFF），回读确认实际支持的宽度 | 回读 VMID 为连续低位 1（如 0x3FFF 表示 14 位全支持，0x003F 表示仅支持 6 位）；VMIDLEN=0（回读 0）合法（`norm:hgatp_vmid`） |
 | HGATP-VMID-02 | MODE 切换后 VMID 保留 | 写 hgatp MODE=Sv39x4 + VMID=0x1234；切换 MODE 为 Bare 再切回 Sv39x4；回读 VMID | VMID 值可能被清零（WARL 允许），记录行为但不做 pass/fail 判断 |
-
-#### 关键代码示例：HGATP-VMID-01
-
-```c
-/* tests/hyp/test_shgatpa_vmid.c — HGATP-VMID-01 */
-
-#include "hyp/hyp_test.h"
-#include "hyp/hyp_defs.h"
-
-#define HGATP_VMID_SHIFT  44
-#define HGATP_VMID_MASK   (0x3FFFUL << HGATP_VMID_SHIFT)
-
-TEST_REGISTER(test_shgatpa_vmid_width);
-bool test_shgatpa_vmid_width(void) {
-    TEST_BEGIN("HGATP-VMID-01: VMID field width probe");
-
-    uintptr_t saved;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved));
-
-    /* 写 MODE=Sv39x4 + VMID=全1 + PPN=0 */
-    uintptr_t write_val = MAKE_HGATP(HGATP_MODE_SV39X4, 0x3FFF, 0);
-    asm volatile ("csrw 0x680, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x680" : "=r"(readback));
-    uintptr_t vmid_rb = (readback & HGATP_VMID_MASK) >> HGATP_VMID_SHIFT;
-
-    /* norm:hgatp_vmid 允许 VMIDLEN=0，不得要求至少 1 位；
-     * norm:hgatp_vmid_lsbs：实现位必须为连续低位 1 */
-    unsigned int width = 0;
-    for (uintptr_t v = vmid_rb; v & 1; v >>= 1) width++;
-    uintptr_t expect = (width == 0) ? 0UL : ((1UL << width) - 1UL);
-    TEST_ASSERT_EQ("VMID implemented bits are contiguous LSBs",
-                   vmid_rb, expect);
-    TEST_NOTE("VMID supported width: %u bits (readback=0x%lx)", width, vmid_rb);
-
-    asm volatile ("csrw 0x680, %0" :: "r"(saved));
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -566,3 +323,22 @@ bool test_shgatpa_vmid_width(void) {
 | HGATP-WARL-01/02/03 回读 MODE 等于保留值 | hgatp.MODE 的 WARL 实现异常（不应保持非法值） |
 | HGATP-WARL-05 失败 | MODE 回读为 1-7 或 11-15 中的保留值，WARL 未正确工作 |
 | HGATP-PPN-01/03 失败（PPN[1:0] != 0） | hgatp.PPN 低 2 位未正确实现为只读零，违反 `norm:hgatp_ppn_op` |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:shgatpa_satp_hgatp_mode_support` | HGATP-MODE-01 ~ HGATP-MODE-04 | 核心约束：satp 支持 SvNN → hgatp 支持 SvNNx4 |
+| `norm:shgatpa_hgatp_bare_mode` | HGATP-BARE-01 ~ HGATP-BARE-03 | 核心约束：Bare 必须支持 |
+| `norm:hgatp_sz_acc_op` | HGATP-MODE-01 ~ HGATP-MODE-04 | 寄存器可读写为前提，经各写入回读用例隐含验证 |
+| `norm:hgatp_mode_bare` | HGATP-BARE-01 ~ HGATP-BARE-03 | Bare 时其余字段写零要求由 HGATP-BARE-03 验证 |
+| `norm:hgatp_mode_sv` | HGATP-MODE-01 ~ HGATP-MODE-03 | HSXLEN=64 下 SvNNx4 模式编码依据 |
+| `norm:hgatp_mode_warl` | HGATP-WARL-01 ~ HGATP-WARL-05 | hgatp 写不支持 MODE 不被整体忽略（与 satp 差异） |
+| `norm:hgatp_ppn_op` | HGATP-PPN-01 ~ HGATP-PPN-03 | Sv*x4 模式下 PPN[1:0] 读零 |
+| `norm:satp_mode_sxlen64` | HGATP-PROBE-01 ~ HGATP-PROBE-04 | 探测基线：SXLEN=64 定义的 MODE 集合 |
+| `norm:satp_mode_op_unsupported` | HGATP-PROBE-01 ~ HGATP-PROBE-04 | 探测机制依赖：satp 写不支持 MODE 整个写被忽略 |
+| `norm:hgatp_vmid` | HGATP-VMID-01, HGATP-VMID-02 | VMIDLEN 可为零，不得要求至少 1 位 |
+| `norm:hgatp_vmid_lsbs` | HGATP-VMID-01 | 实现位必须为连续低位 1 |
+| `norm:hgatp_tvm_illegal` | — | 不覆盖：mstatus.TVM 行为归 TVM 功能测试，见“不在测试范围内” |

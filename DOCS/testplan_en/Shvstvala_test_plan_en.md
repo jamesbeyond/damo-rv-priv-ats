@@ -14,7 +14,7 @@ The base H extension specification (`norm:vstval_warl`) allows `vstval` to be wr
 
 **Core constraint of the Shvstvala extension**:
 
-> `vstval` must be written in all scenarios described for `stval` by the Sstvala specification (`SPEC/sstvala.adoc`):
+> `vstval` must be written in all scenarios described for `stval` by the Sstvala specification (`sstvala.adoc`):
 > 1. **Address-class exceptions** (page-fault, access-fault, misaligned, breakpoint other than EBREAK) → `vstval` = faulting virtual address
 > 2. **Instruction-class exceptions** (illegal-instruction) → `vstval` = faulting instruction encoding
 
@@ -26,19 +26,22 @@ This constraint ensures that when the guest OS handles traps in VS-mode, it rece
 
 ### Specification Sources
 
-- `SPEC/shvstvala.adoc` — Shvstvala Extension for Trap Value Reporting, Version 1.0
-- `SPEC/sstvala.adoc` — Sstvala Extension for Trap Value Reporting, Version 1.0 (Shvstvala references Sstvala's write scenario definitions)
-- `SPEC/hypervisor.adoc` lines 1364–1380 — `vstval` register definition
-- `SPEC/hypervisor.adoc` lines 2549–2554 — Writing `vstval` when trap enters VS-mode
+This plan is based on the RISC-V Privileged Architecture specification (the Shvstvala/Sstvala extension chapters and the Hypervisor extension chapters related to vstval):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/shvstvala.adoc` — Shvstvala Extension for Trap Value Reporting, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/sstvala.adoc` — Sstvala Extension for Trap Value Reporting, Version 1.0 (Shvstvala references Sstvala's write scenario definitions)
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `vstval` register definition (lines 1364–1380); writing `vstval` when a trap enters VS-mode (lines 2549–2554)
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/shvstvala.adoc` | Full text of the Shvstvala specification (6 lines total) |
-| `SPEC/sstvala.adoc` | Full text of the Sstvala specification, defining scenarios where stval must be written (referenced by Shvstvala) |
-| `SPEC/hypervisor.adoc:1364-1380` | `vstval` register specification: VSXLEN-bit RW WARL, substitutes for `stval` when V=1 |
-| `SPEC/hypervisor.adoc:2549-2554` | `norm:H_trap_vs_csrwrites`: Writes `vsepc`, `vscause`, `vstval` when trap enters VS-mode |
+| `shvstvala.adoc` | Full text of the Shvstvala specification (6 lines total) |
+| `sstvala.adoc` | Full text of the Sstvala specification, defining scenarios where stval must be written (referenced by Shvstvala) |
+| `hypervisor.adoc:1364-1380` | `vstval` register specification: VSXLEN-bit RW WARL, substitutes for `stval` when V=1 |
+| `hypervisor.adoc:2549-2554` | `norm:H_trap_vs_csrwrites`: Writes `vsepc`, `vscause`, `vstval` when trap enters VS-mode |
 | `common/encoding.h:293` | `CSR_VSTVAL = 0x243` |
 | `common/encoding.h:143` | `CSR_STVAL = 0x143` |
 | `common/hyp/hyp_priv.h:21,24` | `run_in_vs_mode(fn, arg)` / `run_in_vu_mode(fn, arg)` |
@@ -109,6 +112,8 @@ Verification approach: Set up a custom trap handler in VS-mode (via `vstvec`/stv
 
 ### 3. VS-mode Trap Entry Design
 
+The trap entry must be 4-byte aligned, with the following processing flow: use `sscratch` (actually operates `vsscratch` when V=1) to save temporary registers; read `stval` (actually reads `vstval` when V=1) and `scause` (actually reads `vscause` when V=1) and save them to global variables `g_shvstvala_vstval` / `g_shvstvala_cause` respectively; advance `sepc` (actually writes `vsepc` when V=1) to skip the faulting instruction (must advance by the actual instruction length, compatible with compressed instructions); finally return via `sret`.
+
 ### 4. VS-stage Page Table Configuration
 
 Page-fault tests within VS-mode require VS-stage page tables (`vsatp`):
@@ -139,15 +144,15 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ## Test Groups
 
 > [!IMPORTANT]
-> A total of 6 test groups with 22 test cases. All tests trigger exceptions within VS-mode (V=1); exceptions are delegated to VS-mode via `hedeleg` and captured by a custom VS-mode trap handler to read `vstval`. Assertions are executed after returning to M/HS-mode.
+> A total of 5 test groups with 20 test cases. All tests trigger exceptions within VS-mode (V=1); exceptions are delegated to VS-mode via `hedeleg` and captured by a custom VS-mode trap handler to read `vstval`. Assertions are executed after returning to M/HS-mode.
 
 ---
 
 ### Group 1: Page-Fault Address-Class Exceptions (vstval = Faulting Virtual Address)
 
 **Specification basis**:
-- `norm:shvstvala_vstval_written` (`SPEC/shvstvala.adoc:4-6`): vstval must be written in all scenarios described for stval by Sstvala
-- `norm:sstvala_stval_faulting_vaddr` (`SPEC/sstvala.adoc:4-9`): Write faulting virtual address on page-fault
+- `norm:shvstvala_vstval_written` (`shvstvala.adoc:4-6`): vstval must be written in all scenarios described for stval by Sstvala
+- `norm:sstvala_stval_faulting_vaddr` (`sstvala.adoc:4-9`): Write faulting virtual address on page-fault
 
 **Test responsibility**: Verify that in VS-mode, when VS-stage translation triggers a page-fault, `vstval` equals the guest virtual address that triggered the exception.
 
@@ -170,8 +175,8 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ### Group 2: Access-Fault Address-Class Exceptions (vstval = Faulting Virtual Address)
 
 **Specification basis**:
-- `norm:shvstvala_vstval_written` (`SPEC/shvstvala.adoc:4-6`)
-- `norm:sstvala_stval_faulting_vaddr` (`SPEC/sstvala.adoc:4-9`): Write faulting virtual address on access-fault
+- `norm:shvstvala_vstval_written` (`shvstvala.adoc:4-6`)
+- `norm:sstvala_stval_faulting_vaddr` (`sstvala.adoc:4-9`): Write faulting virtual address on access-fault
 
 **Test responsibility**: Verify that in VS-mode, when PMP restrictions cause an access-fault, `vstval` equals the guest virtual address whose access was denied.
 
@@ -191,8 +196,8 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ### Group 3: Misaligned Address-Class Exceptions (vstval = Faulting Virtual Address)
 
 **Specification basis**:
-- `norm:shvstvala_vstval_written` (`SPEC/shvstvala.adoc:4-6`)
-- `norm:sstvala_stval_faulting_vaddr` (`SPEC/sstvala.adoc:4-9`): Write faulting virtual address on misaligned exceptions
+- `norm:shvstvala_vstval_written` (`shvstvala.adoc:4-6`)
+- `norm:sstvala_stval_faulting_vaddr` (`sstvala.adoc:4-9`): Write faulting virtual address on misaligned exceptions
 
 **Test responsibility**: Verify that in VS-mode, when load/store/instruction misaligned exceptions are triggered and delegated to VS-mode, `vstval` equals the misaligned access address.
 
@@ -215,8 +220,8 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ### Group 4: Illegal Instruction Instruction-Class Exceptions (vstval = Faulting Instruction Encoding)
 
 **Specification basis**:
-- `norm:shvstvala_vstval_written` (`SPEC/shvstvala.adoc:4-6`)
-- `norm:sstvala_stval_faulting_instruction` (`SPEC/sstvala.adoc:11-13`): Write faulting instruction encoding on illegal-instruction exceptions
+- `norm:shvstvala_vstval_written` (`shvstvala.adoc:4-6`)
+- `norm:sstvala_stval_faulting_instruction` (`sstvala.adoc:11-13`): Write faulting instruction encoding on illegal-instruction exceptions
 
 **Test responsibility**: Verify that when an illegal instruction is executed in VS-mode, triggering an illegal-instruction exception (cause=2) delegated to VS-mode, `vstval` equals the encoding of the faulting instruction.
 
@@ -244,8 +249,8 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ### Group 5: vstval Pass-Through Verification (stval Access Operates on vstval When V=1)
 
 **Specification basis**:
-- `norm:vstval_sz_acc_op` (`SPEC/hypervisor.adoc:1366-1372`): When V=1, `vstval` substitutes for the usual `stval`
-- `norm:vstval_warl` (`SPEC/hypervisor.adoc:1374-1376`): vstval is WARL and must be able to hold the same set of values as stval
+- `norm:vstval_sz_acc_op` (`hypervisor.adoc:1366-1372`): When V=1, `vstval` substitutes for the usual `stval`
+- `norm:vstval_warl` (`hypervisor.adoc:1374-1376`): vstval is WARL and must be able to hold the same set of values as stval
 
 **Test responsibility**: Verify that values written via the `stval` instruction name when V=1 can be read back from M/HS-mode via `vstval` (CSR 0x243); verify that vstval values after a trap are not overwritten by operations outside VS-mode.
 
@@ -261,8 +266,8 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 ### Group 6: Breakpoint Scenarios (Breakpoint Exceptions Other Than EBREAK)
 
 **Specification basis**:
-- `norm:sstvala_stval_faulting_vaddr` (`SPEC/sstvala.adoc:4-9`): stval must be written with the faulting virtual address for ... breakpoint exceptions that are defined to write an address to stval, other than those caused by execution of the `EBREAK` or `C.EBREAK` instructions.
-- `norm:shvstvala_vstval_written` (`SPEC/shvstvala.adoc:4-6`): vstval must be written in all scenarios described for stval by Sstvala
+- `norm:sstvala_stval_faulting_vaddr` (`sstvala.adoc:4-9`): stval must be written with the faulting virtual address for ... breakpoint exceptions that are defined to write an address to stval, other than those caused by execution of the `EBREAK` or `C.EBREAK` instructions.
+- `norm:shvstvala_vstval_written` (`shvstvala.adoc:4-6`): vstval must be written in all scenarios described for stval by Sstvala
 
 **Test responsibility**: Verify that when VS-mode triggers an address-match breakpoint (non-EBREAK), vstval is correctly written with the breakpoint address; verify that breakpoints triggered by EBREAK/C.EBREAK are not subject to Shvstvala's write requirements.
 
@@ -336,7 +341,7 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 - `hyp_undelegate()`: Clear all hypervisor delegations
 - `HYP_TEST_END()`: Test end macro (includes hyp_reset_state)
 
-### Global Variables (Provided by `shvstvala/tests/shvstvala_strap.S`)
+### Global Variables (Provided by VS-mode trap entry)
 
 | Variable | Type | Description |
 |----------|------|-------------|
@@ -385,3 +390,18 @@ The Group structure of this test plan is symmetric with `sstvala_test_plan.md`, 
 | VSTVAL-BRK-01 SKIP | Platform does not implement Sdtrig extension (tinfo probe failed); cannot configure address-match breakpoint |
 | VSTVAL-BRK-01 fails (vstval≠target) | Trigger configuration error (tdata1 type/VS bit set incorrectly) or hedeleg bit 3 not delegated |
 | All cases show cause mismatch | medeleg did not delegate to HS-mode, or hedeleg did not further delegate to VS-mode |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shvstvala_vstval_written` | VSTVAL-LPF-01 ~ VSTVAL-LPF-02, VSTVAL-SPF-01 ~ VSTVAL-SPF-02, VSTVAL-IPF-01, VSTVAL-LAF-01, VSTVAL-SAF-01, VSTVAL-IAF-01, VSTVAL-IMA-01, VSTVAL-LMA-01, VSTVAL-SMA-01, VSTVAL-ILL-01 ~ VSTVAL-ILL-05, VSTVAL-BRK-01 ~ VSTVAL-BRK-02 | Core constraint: vstval is written in all scenarios described by Sstvala |
+| `norm:sstvala_stval_faulting_vaddr` | All cases in Groups 1-3 (page-fault/access-fault/misaligned) and Group 6 (breakpoint) | Address-class exceptions write the faulting virtual address |
+| `norm:sstvala_stval_faulting_instruction` | VSTVAL-ILL-01 ~ VSTVAL-ILL-05 | illegal-instruction writes the faulting instruction encoding |
+| `norm:vstval_sz_acc_op` | VSTVAL-TRANS-01 ~ VSTVAL-TRANS-04 | stval instruction actually accesses vstval when V=1 |
+| `norm:vstval_warl` | VSTVAL-TRANS-01 ~ VSTVAL-TRANS-04 | WARL value set consistent with stval (verified via pass-through write-readback) |
+| `norm:H_trap_vs_csrwrites` | All cases in Groups 1-6 delegated to VS-mode | Hardware writing vsepc/vscause/vstval is the prerequisite behavior for all cases |
+| EBREAK/C.EBREAK breakpoint exclusion | — | Not covered: explicitly excluded by the Sstvala specification, see "Out of Scope" |
+| Guest page-fault (cause 20/21/23) | — | Not covered: not delegated to VS-mode, see "Out of Scope" |

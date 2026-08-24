@@ -4,7 +4,7 @@
 
 本文档定义 RISC-V Hypervisor 扩展中 **G-stage**（第二阶段）地址翻译的测试计划，覆盖 Sv39x4/Sv48x4/Sv57x4 翻译算法、`hgatp` CSR、16KB 根页表、GPA 高位检查、U-bit 始终生效、guest-page-fault 报告等核心规范点。
 
-> **范围说明**：本计划仅覆盖 **G-stage 独立翻译**（即 `vsatp.MODE = Bare`，`hgatp.MODE = Sv39x4 / Sv48x4 / Sv57x4`），目的是在 VS-stage 透传的简化场景下验证 Sv*x4 算法本身。涉及 VS-stage 与 G-stage 联合行为（完整两阶段链路、HFENCE、HLV/HSV、`mstatus.MPRV+MPV` 等）的测试位于配套文档 `docs/two_stage_translation_test_plan.md`。
+> **范围说明**：本计划仅覆盖 **G-stage 独立翻译**（即 `vsatp.MODE = Bare`，`hgatp.MODE = Sv39x4 / Sv48x4 / Sv57x4`），目的是在 VS-stage 透传的简化场景下验证 Sv*x4 算法本身。涉及 VS-stage 与 G-stage 联合行为（完整两阶段链路、HFENCE、HLV/HSV、`mstatus.MPRV+MPV` 等）的测试位于配套文档 `Hypervisor_2_stage_test_plan.md`。
 
 > **注意**：当前仓库为 RV64，**Sv32x4 不在本计划范围内**。
 
@@ -28,16 +28,20 @@
 
 ---
 
-## 规范引用
+## 本文档覆盖的 SPEC 章节
 
-- `SPEC/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0
-  - Hypervisor Guest Address Translation and Protection (`hgatp`) Register
-  - Two-Stage Address Translation
-  - Guest Physical Address Translation
-  - Guest-Page Faults
-  - Hypervisor Trap Value (`htval`) Register
-  - Hypervisor Trap Instruction (`htinst`) Register
-  - Trap Cause Codes
+- 本地路径：`SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`
+- 官方仓库：https://github.com/riscv/riscv-isa-manual
+
+覆盖 `hypervisor.adoc`（"H" Extension for Hypervisor Support, Version 1.0）以下章节：
+
+- Hypervisor Guest Address Translation and Protection (`hgatp`) Register
+- Two-Stage Address Translation
+- Guest Physical Address Translation
+- Guest-Page Faults
+- Hypervisor Trap Value (`htval`) Register
+- Hypervisor Trap Instruction (`htinst`) Register
+- Trap Cause Codes
 
 
 ## 覆盖的规范点
@@ -68,6 +72,8 @@
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. | GVA 字段在进入 HS 模式的陷阱时由实现写入。写入客户虚拟地址到 `stval` 的陷阱设置 GVA=1，其他陷阱设置 GVA=0。 |
 | `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. | 当 `hgatp` 的 MODE 选择 Bare 时，客户物理地址未经修改即等于 supervisor 物理地址，该平凡翻译中不施加任何内存保护。 |
 | `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. | 机器级物理内存保护适用于 supervisor 物理地址，与虚拟化模式无关。 |
+| `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero, but a future standard or extension may redefine `mtval2`'s setting for other traps. | 客户页错误陷阱进入 M 模式时，`mtval2` 写入零或故障的客户物理地址右移 2 位。其他陷阱时 `mtval2` 设为零。 |
+| `norm:H_trap_xtinst_exception_list` | On a synchronous exception, if a nonzero value is written, one of the following shall be true about the value: bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid encoding of a standard instruction (the register value is the transformation of the trapping instruction); or bit 0 is 1, and replacing bit 1 with 1 makes the value into an instruction encoding explicitly designated for a custom instruction (a custom value). | 同步异常时若写入非零值，该值必须满足：bit 0 为 1 且将 bit 1 置 1 后构成标准指令合法编码（即陷入指令的 transformed 形式），或构成显式指定的 custom 指令编码（custom 值）。 |
 
 ---
 
@@ -97,32 +103,6 @@
 | GHCSR-08 | TVM=1 时 HS-mode 访问 hgatp | M-mode 设置 `mstatus.TVM=1`，切换到 HS-mode 后 `csrr` 读 `hgatp` | illegal-instruction exception (`scause`=2)；M-mode 访问不受影响 |
 | GHCSR-09 | MODE=Bare 透传验证 | M-mode 写入 `hgatp` MODE=Bare，VS-mode 访问任意 GPA | GPA = SPA，无翻译无保护，访问成功（同时覆盖 `norm:hgatp_mode_bare_trans` 的直通侧） |
 
-```c
-/* GHCSR-06 示例：PPN[1:0] 强制为零 */
-TEST_REGISTER(test_hgatp_ppn_low2_ro_zero);
-bool test_hgatp_ppn_low2_ro_zero(void) {
-    TEST_BEGIN("GHCSR-06: hgatp PPN[1:0] reads as zero in Sv*x4 modes");
-
-    /* 构造一个 PPN 低 2 位非零的值，借助 MAKE_HGATP 写入。
-     * MAKE_HGATP 由 docs/hypervisor_framework.md 定义（编码 mode/vmid/ppn 字段）。
-     * CSRR/CSRW 由 common/encoding.h 提供（编译期 CSR 名）。 */
-    uintptr_t test_ppn = (PLATFORM_MEM_BASE >> 12) | 0x3;
-    uintptr_t hgatp_val = MAKE_HGATP(HGATP_MODE_SV39X4, /*vmid=*/0, test_ppn);
-    CSRW(hgatp, hgatp_val);
-
-    /* 读回并提取 PPN 字段（HGATP_PPN_MASK 由 hypervisor_framework.md 定义，
-     * 对应 hgatp 寄存器 PPN 字段 bits 43:0 in HSXLEN=64） */
-    uintptr_t read_back = CSRR(hgatp);
-    uintptr_t ppn_field = read_back & HGATP_PPN_MASK;
-    TEST_ASSERT("PPN[1:0] reads zero", (ppn_field & 0x3) == 0);
-
-    /* 恢复 hgatp，避免影响后续测试 */
-    CSRW(hgatp, 0);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 2：根页表 16KB 对齐
@@ -135,42 +115,13 @@ bool test_hgatp_ppn_low2_ro_zero(void) {
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| GROOT-01 | Sv39x4 16KB 对齐根表正常工作 | 在 G-stage 页表池中分配 16KB 对齐根表（验证 `((uintptr_t)root_pt & 0x3FFF) == 0`），启用 Sv39x4 后访问已映射 GPA | 根表对齐符合要求；翻译成功 |
+| GROOT-01 | Sv39x4 16KB 对齐根表正常工作 | 在 G-stage 页表池中分配 16KB 对齐根表并验证根表地址 16KB 对齐，启用 Sv39x4 后访问已映射 GPA | 根表对齐符合要求；翻译成功 |
 | GROOT-02 | Sv48x4 16KB 对齐根表正常工作 | 同 GROOT-01 但模式为 Sv48x4。Sv48x4 与 Sv39x4 共享 16KB 对齐要求（`norm:hgatp_mode_x4`），本用例覆盖该模式下框架确实分配了 16KB 对齐根表 | 翻译成功 |
 | GROOT-03 | Sv57x4 16KB 对齐根表正常工作 | 同 GROOT-01 但模式为 Sv57x4 | 翻译成功 |
 | GROOT-04 | hgatp.PPN[1:0] 永远读回 0 | 通过 `MAKE_HGATP` 写入 PPN bits 1:0 = 0b11 后读回 hgatp，再启用翻译访问已映射 GPA | hgatp.PPN[1:0] 读回 0；翻译使用对齐后的 PPN，访问成功 |
 
 > [!NOTE]
 > 不存在"4KB 对齐根表能否工作"的标准化测试用例 —— `hgatp_ppn_op` 已通过 PPN[1:0] 强制为 0 在硬件层面保证 16KB 对齐，软件无法构造一个真正的"低 2 位非零"的根页表地址写入 hgatp。
-
-```c
-/* GROOT-01 示例：Sv39x4 16KB 对齐根表 */
-TEST_REGISTER(test_sv39x4_root_pt_16kb_aligned);
-bool test_sv39x4_root_pt_16kb_aligned(void) {
-    TEST_BEGIN("GROOT-01: Sv39x4 16KB-aligned root page table works");
-
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* gpt_init 内部分配 16KB 对齐的根表 */
-    TEST_ASSERT("root PT is 16KB aligned",
-                ((uintptr_t)ctx.g_ctx.root_pt & 0x3FFF) == 0);
-
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    uintptr_t flags = PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D;
-    int ret = two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G,
-                                       flags, PT_LEVEL_1G);
-    TEST_ASSERT("identity mapping setup", ret == 0);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           (uintptr_t)test_data_area);
-    TEST_ASSERT("translation through 16KB root works", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -187,34 +138,6 @@ bool test_sv39x4_root_pt_16kb_aligned(void) {
 | G39-MAP-01 | Sv39x4 1GB gigapage 映射 | 建立 1GB GPA→SPA 恒等映射，VS-mode 读写 | 读写成功，数据一致 |
 | G39-MAP-02 | Sv39x4 2MB megapage 映射 | 建立 2MB 恒等映射，VS-mode 读写 | 读写成功 |
 | G39-MAP-03 | Sv39x4 4KB page 映射 | 建立 4KB 恒等映射，VS-mode 读写 | 读写成功 |
-
-```c
-/* G39-MAP-03 示例：Sv39x4 4KB GPA→SPA 恒等映射 */
-TEST_REGISTER(test_sv39x4_4k_identity);
-bool test_sv39x4_4k_identity(void) {
-    TEST_BEGIN("G39-MAP-03: Sv39x4 4KB GPA->SPA identity mapping");
-
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* G-stage 必须 U=1，因为 G-stage 视所有访问为 U-mode */
-    uintptr_t base = PLATFORM_MEM_BASE;
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X
-                    | PTE_U
-                    | PTE_A | PTE_D;
-    int ret = two_stage_setup_identity(&ctx, base, 4 * PAGE_SIZE_2M,
-                                       flags, PT_LEVEL_4K);
-    TEST_ASSERT("G-stage identity setup", ret == 0);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           (uintptr_t)test_data_area);
-    TEST_ASSERT("VS-mode read/write via G-stage 4KB", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -233,7 +156,7 @@ bool test_sv39x4_4k_identity(void) {
 | G48-MAP-04 | Sv48x4 4KB page 映射 | 建立 4KB 恒等映射 | 读写成功 |
 
 > [!WARNING]
-> G48-MAP-01（512GB terapage）在 QEMU virt 平台上可能因物理内存大小限制无法完整覆盖整个 512GB 区间，应仅访问位于实际物理内存范围内的子区间。
+> G48-MAP-01（512GB terapage）可能因平台物理内存大小限制无法完整覆盖整个 512GB 区间，应仅访问位于实际物理内存范围内的子区间。
 
 ---
 
@@ -251,7 +174,7 @@ bool test_sv39x4_4k_identity(void) {
 | G57-MAP-03 | Sv57x4 4KB page 映射 | 建立 4KB 恒等映射 | 读写成功 |
 
 > [!NOTE]
-> 256TB petapage 与 512GB terapage 测试受 QEMU 物理内存限制，建议在专用大内存配置下补充。
+> 256TB petapage 与 512GB terapage 测试受平台物理内存大小限制，仅覆盖实际物理内存范围内的子区间。
 
 ---
 
@@ -272,34 +195,6 @@ bool test_sv39x4_4k_identity(void) {
 | GHIGH-04 | Sv48x4 bit 63 非零 | 访问 GPA = `1UL << 63` | guest-page-fault |
 | GHIGH-05 | Sv57x4 bit 59 非零 | 访问 GPA = `1UL << 59` | guest-page-fault |
 | GHIGH-06 | Sv57x4 bit 63 非零 | 访问 GPA = `1UL << 63` | guest-page-fault |
-
-```c
-/* GHIGH-01 示例：Sv39x4 GPA bits 63:41 必须为零 */
-TEST_REGISTER(test_sv39x4_gpa_high_bits_fault);
-bool test_sv39x4_gpa_high_bits_fault(void) {
-    TEST_BEGIN("GHIGH-01: Sv39x4 GPA bit 41 nonzero -> guest-page-fault");
-
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* 仅映射代码区用于 VS-mode 执行 */
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    gpt_setup_identity_mapping(&ctx.g_ctx, base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 构造非法 GPA：bit 41 为 1（41-bit GPA 范围之外）*/
-    uintptr_t bad_gpa = 1UL << 41;
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_load_expect_fault,
-                                           bad_gpa);
-    TEST_ASSERT("Sv39x4 GPA bit 41 triggers guest-page-fault",
-                result == CAUSE_LOAD_GUEST_PAGE_FAULT);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -354,41 +249,8 @@ bool test_sv39x4_gpa_high_bits_fault(void) {
 | GUBIT-01 | VS-mode 访问 U=0 G-stage 页（load） | G-stage 映射 U=0，VS-mode（nominal S）load | load guest-page-fault |
 | GUBIT-02 | VS-mode 访问 U=0 G-stage 页（store） | 同上 store | store guest-page-fault |
 | GUBIT-03 | VS-mode 访问 U=0 G-stage 页（fetch） | 同上 fetch | inst guest-page-fault |
-| GUBIT-04 | VU-mode 访问 U=1 G-stage 页 | G-stage U=1，通过 framework 的 `run_in_vu_mode` 切到 VU-mode 访问 | 成功 |
-| GUBIT-05 | VS-mode 访问 U=1 G-stage 页 | G-stage U=1，VS-mode（`run_in_vs_mode` / `two_stage_run_in_vs`）访问 | 成功（G-stage 视角恒为 U-mode，U=1 总是允许） |
-
-```c
-/* GUBIT-01 示例：G-stage U=0 触发 guest-page-fault */
-TEST_REGISTER(test_gstage_u0_faults);
-bool test_gstage_u0_faults(void) {
-    TEST_BEGIN("GUBIT-01: G-stage U=0 always faults (treated as U-mode)");
-
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* 代码区映射 U=1 用于执行 */
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 测试页 U=0 —— G-stage 视为 U-mode 访问，必触发 fault */
-    uintptr_t test_gpa = TEST_REGION_BASE;
-    gpt_map_page(&ctx.g_ctx, test_gpa, test_gpa,
-                 PTE_V|PTE_R|PTE_W|PTE_A|PTE_D, /* U=0 */
-                 PT_LEVEL_4K);
-
-    /* 在 VS-mode (nominal S) 访问 U=0 的 G-stage 页 */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_load_expect_fault,
-                                           test_gpa);
-    TEST_ASSERT("U=0 in G-stage triggers guest-page-fault from VS",
-                result == CAUSE_LOAD_GUEST_PAGE_FAULT);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+| GUBIT-04 | VU-mode 访问 U=1 G-stage 页 | G-stage U=1，切到 VU-mode 访问 | 成功 |
+| GUBIT-05 | VS-mode 访问 U=1 G-stage 页 | G-stage U=1，VS-mode 访问 | 成功（G-stage 视角恒为 U-mode，U=1 总是允许） |
 
 ---
 
@@ -467,44 +329,7 @@ bool test_gstage_u0_faults(void) {
 | GFAULT-08 | inst guest-page-fault 时 htinst | instruction guest-page-fault 触发后检查 htinst | 0（依据 tinst-values：inst guest-page-fault 不允许写 transformed standard instruction；本组无 VS-stage 隐式访问，故也不会是 pseudoinstruction，因此实现只能写 0 或 custom，对标准指令场景应为 0） |
 
 > [!NOTE]
-> `norm:H_trap_xtinst_guestpage_rw` 中的 **write pseudoinstruction**（0x00002020 / 0x00003020）场景仅在 VS-stage 隐式访问更新 A/D 位时触发 G-stage fault 才会出现，属于两阶段联合行为，由 `docs/two_stage_translation_test_plan.md` 覆盖。本组（VS-stage Bare）不存在 VS-stage 隐式访问，因此仅验证 read pseudoinstruction / transformed instruction / 0 的情况。
-
-```c
-/* GFAULT-04 示例：mtval2 = 0 或 GPA >> 2 */
-TEST_REGISTER(test_gstage_htval_gpa_shifted);
-bool test_gstage_htval_gpa_shifted(void) {
-    TEST_BEGIN("GFAULT-04: mtval2 reports 0 or faulting GPA shifted right by 2");
-
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 测试 GPA 未映射 */
-    uintptr_t bad_gpa = 0x80000000UL + 0x10000000UL;  /* 未映射区域 */
-
-    trap_expect_begin();
-    two_stage_run_in_vs(&ctx, test_vs_load, bad_gpa);
-    TEST_ASSERT("guest-page-fault triggered", trap_was_triggered());
-    TEST_ASSERT_EQ("cause is load guest-page-fault",
-                   trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
-    /* Traps in this group are taken into M-mode, so the observed
-     * register is mtval2; norm:mtval2_trapval allows zero (a WARL
-     * subset holding only zero is legal), hence the strict assertion
-     * accepts exactly the two spec-legal values. */
-    uintptr_t hv = trap_get_htval();
-    TEST_ASSERT("mtval2 == 0 or GPA >> 2 (strict)",
-                hv == 0 || hv == (bad_gpa >> 2));
-    trap_expect_end();
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+> `norm:H_trap_xtinst_guestpage_rw` 中的 **write pseudoinstruction**（0x00002020 / 0x00003020）场景仅在 VS-stage 隐式访问更新 A/D 位时触发 G-stage fault 才会出现，属于两阶段联合行为，由 `Hypervisor_2_stage_test_plan.md` 覆盖。本组（VS-stage Bare）不存在 VS-stage 隐式访问，因此仅验证 read pseudoinstruction / transformed instruction / 0 的情况。
 
 ---
 
@@ -517,43 +342,15 @@ bool test_gstage_htval_gpa_shifted(void) {
 - `norm:htval_trapval`：非 guest-page-fault 的陷阱 `htval` 置零
 - `norm:hstatus_gva_op`：写客户虚拟地址到 `stval` 的陷阱 `hstatus.GVA` 置 1；其 NOTE 明确内存访问陷阱的 GVA 与 SPV 同值（HLV/HLVX/HSV 除外）
 
-**测试职责**：在 `vsatp=Bare` + `hgatp=Bare`（两级均平凡翻译）场景下，验证 GPA==SPA 直通（含取指与 VU-mode）、绝无 guest-page-fault、PMP 是唯一保护机制、Bare 下 trap 报告的 htval/GVA 行为。实现文件：`Sv39x4/tests/test_gstage_bare.c`（GBARE-01~05）。
+**测试职责**：在 `vsatp=Bare` + `hgatp=Bare`（两级均平凡翻译）场景下，验证 GPA==SPA 直通（含取指与 VU-mode）、绝无 guest-page-fault、PMP 是唯一保护机制、Bare 下 trap 报告的 htval/GVA 行为。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| GBARE-01 | VS-mode fetch 直通 | 双 Bare（`two_stage_init(ctx, BARE, BARE)`），VS-mode 跳转 `test_exec_page` 取指执行 | 执行成功返回，无 trap（平凡翻译不施加保护） |
-| GBARE-02 | VU-mode load/store 直通 | 双 Bare，`two_stage_run_in_vu` 对 `test_data_area` 读写 | 读写成功，值一致 |
+| GBARE-01 | VS-mode fetch 直通 | 双 Bare（vsatp=Bare、hgatp=Bare），VS-mode 跳转执行测试页取指 | 执行成功返回，无 trap（平凡翻译不施加保护） |
+| GBARE-02 | VU-mode load/store 直通 | 双 Bare，VU-mode 对测试数据区读写 | 读写成功，值一致 |
 | GBARE-03 | 多地址 GPA==SPA 严格等价 | 双 Bare，VS-mode 依次访问代码区/数据区/测试区 3 个不同物理区段 | 全部直通成功，证明 GPA 未经任何修改等于 SPA |
-| GBARE-04 | PMP 兜底 → access fault | 双 Bare，仿 Group 19 手法用 `pmp_set_entry` 将 entry0 改为拒绝目标 4K 页（entry1 全空间 RWX 兜底），VS-mode 分别 load / store / fetch | cause=5 / 7 / 1（access fault），且断言 cause 不属于 {20,21,23}（Bare 下绝无 guest-page-fault） |
-| GBARE-05 | Bare 下 trap 报告 | 续 GBARE-04 的 PMP load fault，检查 trap 现场 | `trap_get_htval()==0`（`norm:htval_trapval`：非 guest-page-fault）；`hstatus.GVA==SPV==1`（`norm:hstatus_gva_op` NOTE：写非零 stval 的内存访问陷阱 GVA 与 SPV 同值，V=1 时故障地址即客户虚拟地址） |
-
-```c
-/* GBARE-04 示例：PMP 兜底，Bare 下产生 access fault 而非 guest fault */
-TEST_REGISTER(test_gbare_04_pmp_access_fault);
-bool test_gbare_04_pmp_access_fault(void) {
-    TEST_BEGIN("GBARE-04: PMP deny under Bare -> access fault, never guest fault");
-
-    two_stage_ctx_t ctx;
-    two_stage_init(&ctx, SATP_MODE_BARE, HGATP_MODE_BARE);
-
-    uintptr_t target = (uintptr_t)test_data_area;
-
-    /* entry0: deny target 4KB; entry1: allow-all RWX fall-through */
-    g14_pmp_save_t save;
-    g14_pmp_deny_page(target, &save);
-
-    trap_expect_begin();
-    two_stage_run_in_vs(&ctx, test_vs_load_expect_fault, target);
-    TEST_ASSERT("trap triggered", trap_was_triggered());
-    TEST_ASSERT_EQ("cause = load access fault (5)",
-                   trap_get_cause(), CAUSE_LOAD_ACCESS_FAULT);
-    trap_expect_end();
-
-    g14_pmp_restore(&save);
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+| GBARE-04 | PMP 兜底 → access fault | 双 Bare，将 PMP entry0 配置为拒绝目标 4K 页（其余 entry 全空间 RWX 兜底），VS-mode 分别 load / store / fetch | cause=5 / 7 / 1（access fault），且断言 cause 不属于 {20,21,23}（Bare 下绝无 guest-page-fault） |
+| GBARE-05 | Bare 下 trap 报告 | 续 GBARE-04 的 PMP load fault，检查 trap 现场 | htval/mtval2 观测值为 0（`norm:htval_trapval`：非 guest-page-fault）；`hstatus.GVA==SPV==1`（`norm:hstatus_gva_op` NOTE：写非零 stval 的内存访问陷阱 GVA 与 SPV 同值，V=1 时故障地址即客户虚拟地址） |
 
 ---
 
@@ -568,130 +365,46 @@ bool test_gbare_04_pmp_access_fault(void) {
 
 ---
 
-## 测试实现说明
+## 参考
 
-### 文件组织
-
-每个 G-stage 模式（Sv39x4 / Sv48x4 / Sv57x4）拥有独立的测试目录，与现有 `sv39/sv48/sv57` 命名风格一致。本计划与 `two_stage_translation_test_plan.md` 共享同一套目录与框架代码：
-
-```
-sv39x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # G-stage 独立 + 同位宽两阶段用例
-
-sv48x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # 同上
-
-sv57x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # 同上
-
-common/hyp/             # Hypervisor 测试框架（依据 docs/hypervisor_framework.md）
-├── hyp_defs.h
-├── hyp_csr.c
-├── hyp_priv.c
-├── hyp_trap.c
-├── hyp_trap_asm.S
-├── hyp_fence.c
-├── hyp_ldst.c
-├── gstage_pt.c         # G-stage 页表管理 (gpt_*)
-├── two_stage.c         # 两阶段管理 (two_stage_*)
-├── hyp_reset.c
-└── hyp_test.h
-```
-
-### 通用测试模式
-
-每个 G-stage 测试用例遵循以下模式：
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-#include "vm/vm.h"
-
-/* VS-mode 下执行的测试函数 */
-static uintptr_t test_vs_xxx(uintptr_t arg) {
-    /* 在 VS-mode + G-stage 启用状态下执行 */
-    return 0;
-}
-
-TEST_REGISTER(test_xxx);
-bool test_xxx(void) {
-    TEST_BEGIN("ID: description");
-
-    /* 1. 初始化 G-stage 池与上下文 */
-    two_stage_ctx_t ctx;
-    gpt_pool_reset();
-    two_stage_init(&ctx, /*vs=Bare*/0, HGATP_MODE_SV39X4);
-
-    /* 2. 设置代码 + 数据区的 G-stage 恒等映射（U=1 必须） */
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    uintptr_t flags = PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D;
-    two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G, flags, PT_LEVEL_1G);
-
-    /* 3. 可选：映射特殊权限的测试页 */
-    uintptr_t test_gpa = TEST_REGION_BASE;
-    gpt_map_page(&ctx.g_ctx, test_gpa, test_gpa,
-                 PTE_V|PTE_R|PTE_A|PTE_D|PTE_U,  /* 特定权限 */
-                 PT_LEVEL_4K);
-
-    /* 4. 在 VS-mode + G-stage 下执行 */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_xxx, arg);
-    TEST_ASSERT("description", result == expected);
-
-    /* 5. 清理 */
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
-
-### VS-mode 测试辅助函数
-
-测试计划中引用的 VS-mode 辅助函数：
-
-| 函数名 | 功能 | 返回值 |
-|--------|------|--------|
-| `test_vs_read_write` | VS-mode 写入 magic value 并读回验证 | 0=成功 |
-| `test_vs_load` | VS-mode 执行 load | 0=成功 |
-| `test_vs_store` | VS-mode 执行 store | 0=成功 |
-| `test_vs_load_expect_fault` | VS-mode load，预期 fault | fault cause |
-| `test_vs_store_expect_fault` | VS-mode store，预期 fault | fault cause |
-| `test_vs_exec_expect_fault` | VS-mode 跳转执行，预期 fault | fault cause |
-
-### 关键注意事项
-
-1. **G-stage PTE 必须设置 U=1**：与 VS-stage 不同，G-stage 视所有访问为 U-mode（`norm:H_vm_gpapriv`）。即使从 VS-mode 触发的访问，若 G-stage PTE 的 U=0 也会触发 guest-page-fault。
-
-2. **fault cause 区分**：G-stage fault 使用 cause 20/21/23（Instruction/Load/Store guest-page fault），与普通 page-fault 的 12/13/15 严格区分。测试断言必须使用正确的 cause 常量。
-
-3. **htval 编码**：`htval` 始终写入 GPA 右移 2 bit 后的值（与 PMP / PTE PPN 编码一致）。低 2 bit 信息可从 `stval` 的低 2 bit 还原（非隐式访问场景）。
-
-4. **hgatp 不支持 MODE 不被忽略**：与 `satp` 的 WARL 行为不同，写入 `hgatp` 的不支持 MODE 不会被静默丢弃，软件需要读回校验（`norm:hgatp_mode_warl`）。
-
-5. **TVM 控制**：`mstatus.TVM=1` 时，HS-mode 访问 `hgatp` 或执行 HFENCE.GVMA 触发 illegal-instruction exception；M-mode 不受 TVM 影响。
-
-6. **VMID 探测**：实现的 VMIDLEN 不固定，测试 VMID 字段时应先用全 1 写入读回探测 VMIDLEN，再使用合法 VMID 值。
-
-7. **代码区 + 数据区映射要求**：恒等映射必须覆盖代码段、数据段、栈、页表池与 UART。对于 G-stage，所有这些段在 GPA 空间也必须映射且 U=1。
-
-8. **QEMU 平台限制**：
-   - QEMU virt 平台需要 `-cpu rv64,h=true`（或更新版本默认开启 H 扩展）
-   - 512GB / 256TB 大 superpage 测试受物理内存限制
-   - QEMU 默认实现 Svade（A=0 / D=0 触发 fault）
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `Hypervisor_2_stage_test_plan.md` — 两阶段联合行为测试计划（配套）
+- `vm_test_plan.md` — VS-stage / 普通 VM 测试计划（行为基线）
 
 ---
 
-## 参考
+## 附录 A：规范点覆盖矩阵
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `docs/two_stage_translation_test_plan.md` — 两阶段联合行为测试计划（配套）
-- `docs/vm_test_plan.md` — VS-stage / 普通 VM 测试计划（行为基线）
-- `docs/hypervisor_framework.md` — Hypervisor 测试框架设计
-- `common/hyp/gstage_pt.c` — G-stage 页表管理 API
-- `common/hyp/two_stage.c` — 两阶段管理 API
-- `common/hyp/hyp_defs.h` — Hypervisor CSR 与 cause code 定义
+| Norm ID | 覆盖的测试用例 | 说明 |
+|---------|--------------|------|
+| `norm:hgatp_sz_acc_op` | GHCSR-01~04 | hgatp 读写与各 MODE 字段写读 |
+| `norm:hgatp_mode_bare` | GHCSR-01、GBARE-01~03 | MODE=Bare 写读与直通验证 |
+| `norm:hgatp_mode_sv` | GHCSR-02~04 | Sv39x4/Sv48x4/Sv57x4 三种模式写读 |
+| `norm:hgatp_mode_warl` | GHCSR-05 | 不支持 MODE 按 WARL 处理，不被忽略 |
+| `norm:hgatp_ppn_op` | GHCSR-06、GROOT-04 | PPN[1:0] 强制读零与 16KB 对齐 |
+| `norm:hgatp_vmid` | GHCSR-07 | VMIDLEN 探测与合法范围写读（容忍 VMIDLEN=0） |
+| `norm:hgatp_vmid_lsbs` | GHCSR-07 | VMID 低位先实现，VMIDMAX=14 验证 |
+| `norm:hgatp_mode_sv39x4` | G39-MAP-01~03、GHIGH-01~02、GALIGN-01~02 | Sv39x4 翻译与 bits 63:41 为零检查 |
+| `norm:hgatp_mode_sv48x4` | G48-MAP-01~04、GHIGH-03~04、GALIGN-03 | Sv48x4 翻译与 bits 63:50 为零检查 |
+| `norm:hgatp_mode_sv57x4` | G57-MAP-01~03、GHIGH-05~06、GALIGN-04~05 | Sv57x4 翻译与 bits 63:59 为零检查 |
+| `norm:hgatp_mode_x4` | GROOT-01~04 | 16KB 根页表大小与对齐要求 |
+| `norm:H_vm_gpatrans` | G39/G48/G57-MAP 全部、GVALID-01~05、GRWX-01~07、GAD-01~04、GALIGN-01~05 | G-stage 沿用 Sv 算法且 fault 类型为 guest-page-fault |
+| `norm:H_vm_gpapriv` | GRWX-01~07、GUBIT-01~05、GAD-01~04 | 所有访问视为 U 级，权限与 A/D 需求检查 |
+| `norm:H_vm_gpa_g` | GGBIT-01~02 | G-bit 被硬件忽略 |
+| `norm:H_cause` | GVALID-01~05、GRWX-01~07、GFAULT-01~03 | guest-page-fault cause 20/21/23 |
+| `norm:H_guest_page_fault` | GFAULT-01~06、GBARE-04 | 委托、stval/htval 写入与 Bare 下无 guest fault 断言 |
+| `norm:htval_trapval` | GFAULT-04~05、GBARE-05 | 客户页错误 htval 写 GPA>>2 或 0；其他陷阱置零 |
+| `norm:mtval2_trapval` | GFAULT-04 | trap 递送到 M-mode 时 mtval2 写零或 GPA>>2 |
+| `norm:mtval2_htval_virtaddr` | GFAULT-04~05 | 非隐式访问时 htval/mtval2 与 stval 对应同一访问 |
+| `norm:H_trap_xtinst_guestpage` | GFAULT-07~08 | 本组无 VS-stage 隐式访问，验证非 pseudoinstruction 分支 |
+| `norm:H_trap_xtinst_guestpage_rw` | 部分：read pseudoinstruction 分支由本组 GFAULT-07~08 背景覆盖 | write pseudoinstruction 场景需 VS-stage 隐式访问，由 `Hypervisor_2_stage_test_plan.md`（TS-IMPL、TS-AD 系列）覆盖 |
+| `norm:H_trap_xtinst_exception_list` | GFAULT-07 | htinst 非零时必须为 transformed 标准指令或 custom 值 |
+| `norm:hgatp_tvm_illegal` | GHCSR-08 | TVM=1 时 HS-mode 访问 hgatp 触发 illegal-instruction |
+| `norm:hstatus_gva_op` | GFAULT-06、GBARE-05 | GVA=1/0 设置规则（含与 SPV 同值的 NOTE） |
+| `norm:hgatp_mode_bare_trans` | GHCSR-09、GBARE-01~04 | Bare 平凡翻译直通且无保护 |
+| `norm:H_pmp` | GBARE-04 | V=1 下 PMP 仍对 SPA 生效 |
+
+未覆盖/不可测说明：
+
+- `norm:H_trap_xtinst_guestpage_rw` 的 write pseudoinstruction 分支属两阶段联合行为，在本方案（VS-stage Bare）中不可达，已由配套方案覆盖，不算本方案的覆盖缺口。
+- 本方案其余规范点均有对应用例，无未覆盖项。

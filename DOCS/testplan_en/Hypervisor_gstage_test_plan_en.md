@@ -4,7 +4,7 @@
 
 This document defines the test plan for **G-stage** (second-stage) address translation in the RISC-V Hypervisor extension, covering Sv39x4/Sv48x4/Sv57x4 translation algorithms, `hgatp` CSR, 16KB root page table, GPA high-bit checks, U-bit always-effective, guest-page-fault reporting, and other core specification points.
 
-> **Scope**: This plan covers only **G-stage independent translation** (i.e., `vsatp.MODE = Bare`, `hgatp.MODE = Sv39x4 / Sv48x4 / Sv57x4`), with the goal of verifying the Sv*x4 algorithm itself in the simplified scenario where VS-stage is pass-through. Tests involving joint VS-stage and G-stage behavior (complete two-stage chain, HFENCE, HLV/HSV, `mstatus.MPRV+MPV`, etc.) are located in the companion document `docs/two_stage_translation_test_plan.md`.
+> **Scope**: This plan covers only **G-stage independent translation** (i.e., `vsatp.MODE = Bare`, `hgatp.MODE = Sv39x4 / Sv48x4 / Sv57x4`), with the goal of verifying the Sv*x4 algorithm itself in the simplified scenario where VS-stage is pass-through. Tests involving joint VS-stage and G-stage behavior (complete two-stage chain, HFENCE, HLV/HSV, `mstatus.MPRV+MPV`, etc.) are located in the companion document `Hypervisor_2_stage_test_plan.md`.
 
 > **Note**: The current repository is RV64; **Sv32x4 is not within the scope of this plan**.
 
@@ -28,18 +28,22 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 
 ---
 
-## Specification References
+## SPEC Sections Covered by This Document
 
-- `SPEC/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0
-  - Hypervisor Guest Address Translation and Protection (`hgatp`) Register
-  - Two-Stage Address Translation
-  - Guest Physical Address Translation
-  - Guest-Page Faults
-  - Hypervisor Trap Value (`htval`) Register
-  - Hypervisor Trap Instruction (`htinst`) Register
-  - Trap Cause Codes
+- Local path: `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`
+- Official repository: https://github.com/riscv/riscv-isa-manual
 
-## Normative Rules
+Covers the following chapters of `hypervisor.adoc` ("H" Extension for Hypervisor Support, Version 1.0):
+
+- Hypervisor Guest Address Translation and Protection (`hgatp`) Register
+- Two-Stage Address Translation
+- Guest Physical Address Translation
+- Guest-Page Faults
+- Hypervisor Trap Value (`htval`) Register
+- Hypervisor Trap Instruction (`htinst`) Register
+- Trap Cause Codes
+
+## Covered Specification Points
 
 | Norm ID | Original Text |
 |---------|------|
@@ -48,7 +52,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:hgatp_mode_sv` | When HSXLEN=32, the only other valid setting for MODE is Sv32x4. When HSXLEN=64, modes Sv39x4, Sv48x4, and Sv57x4 are defined. |
 | `norm:hgatp_mode_warl` | A write to `hgatp` with an unsupported MODE value is not ignored as it is for `satp`. Instead, the fields of `hgatp` are WARL in the normal way, when so indicated. |
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. |
-| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. (GHCSR-07 probes VMIDLEN and verifies legal-range round-trips, tolerating VMIDLEN=0.) |
+| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. |
 | `norm:hgatp_vmid_lsbs` | The least-significant bits of VMID are implemented first: that is, if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable. The maximal value of VMIDLEN, termed VMIDMAX, is 7 for Sv32x4 or 14 for Sv39x4, Sv48x4, and Sv57x4. |
 | `norm:hgatp_mode_sv39x4` | For Sv39x4, partitioning is identical to Sv39, except with 2 more bits at the high end in VPN[2]. Address bits 63:41 must all be zeros, or else a guest-page-fault exception occurs. |
 | `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. |
@@ -57,7 +61,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:H_vm_gpatrans` | The conversion of an Sv32x4, Sv39x4, Sv48x4, or Sv57x4 guest physical address uses the same algorithm as Sv32, Sv39, Sv48, or Sv57, except: `hgatp` substitutes for `satp`; the effective privilege mode must be VS-mode or VU-mode; the current privilege mode is always taken to be U-mode when checking the U bit; and guest-page-fault exceptions are raised instead of regular page-fault exceptions. |
 | `norm:H_vm_gpapriv` | For G-stage address translation, all memory accesses are considered to be user-level accesses. Access type permissions are checked during G-stage translation the same as for VS-stage. For memory accesses supporting VS-stage translation, permissions and A/D bit needs are checked as though for an implicit load or store, not for the original access type. However, any exception is always reported for the original access type. |
 | `norm:H_vm_gpa_g` | The G bit in all G-stage PTEs is currently not used. It should be cleared by software for forward compatibility, and must be ignored by hardware. |
-| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. This suite verifies guest-page-fault causes 20/21/23 (GFAULT/TS/AD case series). |
+| `norm:H_cause` | The hypervisor extension augments the trap cause encoding. Codes are added for VS-level interrupts (2, 6, 10), for supervisor-level guest external interrupts (12), for virtual-instruction exceptions (22), and for guest-page faults (20, 21, 23). Environment calls from VS-mode are assigned cause 10. |
 | `norm:H_guest_page_fault` | Guest-page-fault traps may be delegated from M-mode to HS-mode under the control of `medeleg`, but cannot be delegated to other privilege modes. On a guest-page fault, `mtval` or `stval` is written with the faulting guest virtual address, and `mtval2` or `htval` is written either with zero or with the faulting guest physical address, shifted right by 2 bits. |
 | `norm:htval_trapval` | When a guest-page-fault trap is taken into HS-mode, `htval` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `htval` is set to zero. |
 | `norm:mtval2_htval_virtaddr` | When a guest-page fault is not due to an implicit memory access for VS-stage address translation, a nonzero guest physical address written to `mtval2`/`htval` shall correspond to the exact virtual address written to `mtval`/`stval`. |
@@ -67,6 +71,8 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. |
 | `norm:hgatp_mode_bare_trans` | When the address translation scheme selected by the MODE field of `hgatp` is Bare, guest physical addresses are equal to supervisor physical addresses without modification, and no memory protection applies in the trivial translation of guest physical addresses to supervisor physical addresses. |
 | `norm:H_pmp` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. |
+| `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero, but a future standard or extension may redefine `mtval2`'s setting for other traps. |
+| `norm:H_trap_xtinst_exception_list` | On a synchronous exception, if a nonzero value is written, one of the following shall be true about the value: bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid encoding of a standard instruction (the register value is the transformation of the trapping instruction); or bit 0 is 1, and replacing bit 1 with 1 makes the value into an instruction encoding explicitly designated for a custom instruction (a custom value). |
 
 ---
 
@@ -108,7 +114,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|----------|----------|----------|
-| GROOT-01 | Sv39x4 16KB-aligned root table works normally | Allocate a 16KB-aligned root table from G-stage page table pool (verify `((uintptr_t)root_pt & 0x3FFF) == 0`), enable Sv39x4 and access a mapped GPA | Root table alignment meets requirements; translation succeeds |
+| GROOT-01 | Sv39x4 16KB-aligned root table works normally | Allocate a 16KB-aligned root table from the G-stage page table pool and verify the root table address is 16KB-aligned, enable Sv39x4 and access a mapped GPA | Root table alignment meets requirements; translation succeeds |
 | GROOT-02 | Sv48x4 16KB-aligned root table works normally | Same as GROOT-01 but mode is Sv48x4. Sv48x4 shares the 16KB alignment requirement with Sv39x4 (`norm:hgatp_mode_x4`); this test case verifies the framework indeed allocates a 16KB-aligned root table in this mode | Translation succeeds |
 | GROOT-03 | Sv57x4 16KB-aligned root table works normally | Same as GROOT-01 but mode is Sv57x4 | Translation succeeds |
 | GROOT-04 | hgatp.PPN[1:0] always reads back 0 | Write PPN bits 1:0 = 0b11 via `MAKE_HGATP`, read back hgatp, then enable translation and access a mapped GPA | hgatp.PPN[1:0] reads back 0; translation uses the aligned PPN, access succeeds |
@@ -149,7 +155,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | G48-MAP-04 | Sv48x4 4KB page mapping | Establish 4KB identity mapping | Read/write succeeds |
 
 > [!WARNING]
-> G48-MAP-01 (512GB terapage) may not fully cover the entire 512GB range on the QEMU virt platform due to physical memory size limitations; only sub-ranges within actual physical memory should be accessed.
+> G48-MAP-01 (512GB terapage) may not fully cover the entire 512GB range due to platform physical memory size limitations; only sub-ranges within actual physical memory should be accessed.
 
 ---
 
@@ -167,7 +173,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | G57-MAP-03 | Sv57x4 4KB page mapping | Establish 4KB identity mapping | Read/write succeeds |
 
 > [!NOTE]
-> 256TB petapage and 512GB terapage tests are limited by QEMU physical memory; supplementary testing is recommended with dedicated large-memory configurations.
+> 256TB petapage and 512GB terapage tests are limited by platform physical memory size; only sub-ranges within actual physical memory are covered.
 
 ---
 
@@ -242,8 +248,8 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | GUBIT-01 | VS-mode access to U=0 G-stage page (load) | G-stage mapping U=0, VS-mode (nominal S) load | load guest-page-fault |
 | GUBIT-02 | VS-mode access to U=0 G-stage page (store) | Same as above, store | store guest-page-fault |
 | GUBIT-03 | VS-mode access to U=0 G-stage page (fetch) | Same as above, fetch | inst guest-page-fault |
-| GUBIT-04 | VU-mode access to U=1 G-stage page | G-stage U=1, switch to VU-mode via framework's `run_in_vu_mode` and access | Succeeds |
-| GUBIT-05 | VS-mode access to U=1 G-stage page | G-stage U=1, VS-mode (`run_in_vs_mode` / `two_stage_run_in_vs`) access | Succeeds (G-stage perspective is always U-mode, U=1 always permitted) |
+| GUBIT-04 | VU-mode access to U=1 G-stage page | G-stage U=1, switch to VU-mode and access | Succeeds |
+| GUBIT-05 | VS-mode access to U=1 G-stage page | G-stage U=1, VS-mode access | Succeeds (G-stage perspective is always U-mode, U=1 always permitted) |
 
 ---
 
@@ -322,7 +328,7 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 | GFAULT-08 | htinst on inst guest-page-fault | Check htinst after instruction guest-page-fault | 0 (per tinst-values: inst guest-page-fault does not permit writing a transformed standard instruction; this group has no VS-stage implicit accesses, so it will not be a pseudoinstruction either; therefore the implementation can only write 0 or custom — for standard instruction scenarios it should be 0) |
 
 > [!NOTE]
-> The **write pseudoinstruction** (0x00002020 / 0x00003020) scenario in `norm:H_trap_xtinst_guestpage_rw` only occurs when a VS-stage implicit access updating A/D bits triggers a G-stage fault, which is a joint two-stage behavior covered by `docs/two_stage_translation_test_plan.md`. This group (VS-stage Bare) has no VS-stage implicit accesses, so only read pseudoinstruction / transformed instruction / 0 cases are verified.
+> The **write pseudoinstruction** (0x00002020 / 0x00003020) scenario in `norm:H_trap_xtinst_guestpage_rw` only occurs when a VS-stage implicit access updating A/D bits triggers a G-stage fault, which is a joint two-stage behavior covered by `Hypervisor_2_stage_test_plan.md`. This group (VS-stage Bare) has no VS-stage implicit accesses, so only read pseudoinstruction / transformed instruction / 0 cases are verified.
 
 ---
 
@@ -335,15 +341,15 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 - `norm:htval_trapval`: For traps other than guest-page-fault, `htval` is set to zero
 - `norm:hstatus_gva_op`: Traps that write a guest virtual address to `stval` set `hstatus.GVA` to 1; its NOTE states that memory access traps set GVA the same as SPV (except HLV/HLVX/HSV)
 
-**Test Responsibility**: Under `vsatp=Bare` + `hgatp=Bare` (both stages trivial), verify GPA==SPA pass-through (including fetch and VU-mode), that guest-page-fault can never occur, that PMP is the only remaining protection, and the htval/GVA trap-reporting behavior under Bare. Implementation file: `Sv39x4/tests/test_gstage_bare.c` (GBARE-01~05).
+**Test Responsibility**: Under `vsatp=Bare` + `hgatp=Bare` (both stages trivial), verify GPA==SPA pass-through (including fetch and VU-mode), that guest-page-fault can never occur, that PMP is the only remaining protection, and the htval/GVA trap-reporting behavior under Bare.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|----------|----------|----------|
-| GBARE-01 | VS-mode fetch pass-through | Both stages Bare (`two_stage_init(ctx, BARE, BARE)`), VS-mode jumps to `test_exec_page` and executes | Execution returns successfully, no trap (trivial translation applies no protection) |
-| GBARE-02 | VU-mode load/store pass-through | Both stages Bare, `two_stage_run_in_vu` reads/writes `test_data_area` | Read/write succeed, value matches |
+| GBARE-01 | VS-mode fetch pass-through | Both stages Bare (vsatp=Bare, hgatp=Bare), VS-mode jumps to the test execution page for fetch | Execution returns successfully, no trap (trivial translation applies no protection) |
+| GBARE-02 | VU-mode load/store pass-through | Both stages Bare, VU-mode reads/writes the test data area | Read/write succeed, value matches |
 | GBARE-03 | Multi-address GPA==SPA strict equivalence | Both stages Bare, VS-mode accesses three distinct physical regions in turn (code/data/test region) | All pass through successfully, proving GPA equals SPA without modification |
-| GBARE-04 | PMP fallback -> access fault | Both stages Bare, mirroring the Group 19 technique: override entry0 with a deny rule for the target 4KB page (entry1 as allow-all RWX fall-through), VS-mode performs load / store / fetch respectively | cause=5 / 7 / 1 (access fault), and assert cause is NOT in {20,21,23} (no guest-page-fault possible under Bare) |
-| GBARE-05 | Trap reporting under Bare | Following the PMP load fault of GBARE-04, inspect the trap context | `trap_get_htval()==0` (`norm:htval_trapval`: not a guest-page-fault); `hstatus.GVA==SPV==1` (the `norm:hstatus_gva_op` NOTE: memory access traps writing a nonzero stval set GVA the same as SPV; with V=1 the faulting address is a guest virtual address) |
+| GBARE-04 | PMP fallback -> access fault | Both stages Bare, configure PMP entry0 to deny the target 4KB page (remaining entries as allow-all RWX fall-through), VS-mode performs load / store / fetch respectively | cause=5 / 7 / 1 (access fault), and assert cause is NOT in {20,21,23} (no guest-page-fault possible under Bare) |
+| GBARE-05 | Trap reporting under Bare | Following the PMP load fault of GBARE-04, inspect the trap context | observed htval/mtval2 is 0 (`norm:htval_trapval`: not a guest-page-fault); `hstatus.GVA==SPV==1` (the `norm:hstatus_gva_op` NOTE: memory access traps writing a nonzero stval set GVA the same as SPV; with V=1 the faulting address is a guest virtual address) |
 
 ---
 
@@ -358,92 +364,46 @@ Key differences of each mode relative to the corresponding Sv39/Sv48/Sv57:
 
 ---
 
-## Test Implementation Notes
+## References
 
-### File Organization
-
-Each G-stage mode (Sv39x4 / Sv48x4 / Sv57x4) has its own test directory, consistent with the existing `sv39/sv48/sv57` naming convention. This plan shares the same directory structure and framework code with `two_stage_translation_test_plan.md`:
-
-```
-sv39x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # G-stage independent + same-width two-stage test cases
-
-sv48x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # Same as above
-
-sv57x4/
-├── Makefile
-├── kernel.ld
-└── main.c              # Same as above
-
-common/hyp/             # Hypervisor test framework (per docs/hypervisor_framework.md)
-├── hyp_defs.h
-├── hyp_csr.c
-├── hyp_priv.c
-├── hyp_trap.c
-├── hyp_trap_asm.S
-├── hyp_fence.c
-├── hyp_ldst.c
-├── gstage_pt.c         # G-stage page table management (gpt_*)
-├── two_stage.c         # Two-stage management (two_stage_*)
-├── hyp_reset.c
-└── hyp_test.h
-```
-
-### Common Test Pattern
-
-Each G-stage test case follows this pattern:
-
-1. Initialize G-stage pool and context
-2. Set up code + data region G-stage identity mapping (U=1 required)
-3. Optionally map test pages with special permissions
-4. Execute in VS-mode + G-stage
-5. Clean up
-
-### VS-mode Test Helper Functions
-
-| Function Name | Purpose | Return Value |
-|--------|------|--------|
-| `test_vs_read_write` | VS-mode writes magic value and reads back for verification | 0=success |
-| `test_vs_load` | VS-mode executes load | 0=success |
-| `test_vs_store` | VS-mode executes store | 0=success |
-| `test_vs_load_expect_fault` | VS-mode load, expects fault | fault cause |
-| `test_vs_store_expect_fault` | VS-mode store, expects fault | fault cause |
-| `test_vs_exec_expect_fault` | VS-mode jump-execute, expects fault | fault cause |
-
-### Key Considerations
-
-1. **G-stage PTE must set U=1**: Unlike VS-stage, G-stage treats all accesses as U-mode (`norm:H_vm_gpapriv`). Even accesses triggered from VS-mode will trigger a guest-page-fault if the G-stage PTE has U=0.
-
-2. **Fault cause distinction**: G-stage faults use cause 20/21/23 (Instruction/Load/Store guest-page fault), strictly distinguished from regular page-fault causes 12/13/15. Test assertions must use the correct cause constants.
-
-3. **htval encoding**: `htval` is always written with the GPA right-shifted by 2 bits (consistent with PMP / PTE PPN encoding). The low 2-bit information can be recovered from the low 2 bits of `stval` (for non-implicit access scenarios).
-
-4. **hgatp unsupported MODE is not ignored**: Unlike `satp`'s WARL behavior, writing an unsupported MODE to `hgatp` is not silently discarded; software must read back to verify (`norm:hgatp_mode_warl`).
-
-5. **TVM control**: When `mstatus.TVM=1`, HS-mode access to `hgatp` or execution of HFENCE.GVMA triggers an illegal-instruction exception; M-mode is unaffected by TVM.
-
-6. **VMID probing**: The implemented VMIDLEN is not fixed; when testing the VMID field, first write all 1s and read back to probe VMIDLEN, then use valid VMID values.
-
-7. **Code + data region mapping requirements**: Identity mapping must cover code segment, data segment, stack, page table pool, and UART. For G-stage, all these segments must also be mapped in GPA space with U=1.
-
-8. **QEMU platform limitations**:
-   - QEMU virt platform requires `-cpu rv64,h=true` (or newer versions with H extension enabled by default)
-   - 512GB / 256TB large superpage tests are limited by physical memory
-   - QEMU implements Svade by default (A=0 / D=0 triggers fault)
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `Hypervisor_2_stage_test_plan.md` — Two-stage joint behavior test plan (companion)
+- `vm_test_plan.md` — VS-stage / regular VM test plan (behavior baseline)
 
 ---
 
-## References
+## Appendix A: Specification Point Coverage Matrix
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `docs/two_stage_translation_test_plan.md` — Two-stage joint behavior test plan (companion)
-- `docs/vm_test_plan.md` — VS-stage / regular VM test plan (behavior baseline)
-- `docs/hypervisor_framework.md` — Hypervisor test framework design
-- `common/hyp/gstage_pt.c` — G-stage page table management API
-- `common/hyp/two_stage.c` — Two-stage management API
-- `common/hyp/hyp_defs.h` — Hypervisor CSR and cause code definitions
+| Norm ID | Covered Test Cases | Notes |
+|---------|--------------------|-------|
+| `norm:hgatp_sz_acc_op` | GHCSR-01~04 | hgatp read/write and field write-read for each MODE |
+| `norm:hgatp_mode_bare` | GHCSR-01, GBARE-01~03 | MODE=Bare write-read and pass-through verification |
+| `norm:hgatp_mode_sv` | GHCSR-02~04 | Write-read for the three modes Sv39x4/Sv48x4/Sv57x4 |
+| `norm:hgatp_mode_warl` | GHCSR-05 | Unsupported MODE handled per WARL, not ignored |
+| `norm:hgatp_ppn_op` | GHCSR-06, GROOT-04 | PPN[1:0] forced read-zero and 16KB alignment |
+| `norm:hgatp_vmid` | GHCSR-07 | VMIDLEN probing and legal-range write-read (tolerating VMIDLEN=0) |
+| `norm:hgatp_vmid_lsbs` | GHCSR-07 | VMID least-significant bits implemented first, VMIDMAX=14 verification |
+| `norm:hgatp_mode_sv39x4` | G39-MAP-01~03, GHIGH-01~02, GALIGN-01~02 | Sv39x4 translation and bits 63:41 must-be-zero check |
+| `norm:hgatp_mode_sv48x4` | G48-MAP-01~04, GHIGH-03~04, GALIGN-03 | Sv48x4 translation and bits 63:50 must-be-zero check |
+| `norm:hgatp_mode_sv57x4` | G57-MAP-01~03, GHIGH-05~06, GALIGN-04~05 | Sv57x4 translation and bits 63:59 must-be-zero check |
+| `norm:hgatp_mode_x4` | GROOT-01~04 | 16KB root page table size and alignment requirement |
+| `norm:H_vm_gpatrans` | All of G39/G48/G57-MAP, GVALID-01~05, GRWX-01~07, GAD-01~04, GALIGN-01~05 | G-stage follows the Sv algorithm and fault type is guest-page-fault |
+| `norm:H_vm_gpapriv` | GRWX-01~07, GUBIT-01~05, GAD-01~04 | All accesses treated as U-level, permission and A/D need checks |
+| `norm:H_vm_gpa_g` | GGBIT-01~02 | G-bit ignored by hardware |
+| `norm:H_cause` | GVALID-01~05, GRWX-01~07, GFAULT-01~03 | guest-page-fault cause 20/21/23 |
+| `norm:H_guest_page_fault` | GFAULT-01~06, GBARE-04 | Delegation, stval/htval writes, and no-guest-fault assertion under Bare |
+| `norm:htval_trapval` | GFAULT-04~05, GBARE-05 | On guest-page fault htval written with GPA>>2 or 0; zero for other traps |
+| `norm:mtval2_trapval` | GFAULT-04 | mtval2 written with zero or GPA>>2 when trap delivered to M-mode |
+| `norm:mtval2_htval_virtaddr` | GFAULT-04~05 | For non-implicit accesses htval/mtval2 correspond to the same access as stval |
+| `norm:H_trap_xtinst_guestpage` | GFAULT-07~08 | No VS-stage implicit accesses in this group; verifies the non-pseudoinstruction branch |
+| `norm:H_trap_xtinst_guestpage_rw` | Partial: the read pseudoinstruction branch is covered in the context of GFAULT-07~08 in this group | The write pseudoinstruction scenario requires VS-stage implicit accesses and is covered by `Hypervisor_2_stage_test_plan.md` (TS-IMPL, TS-AD series) |
+| `norm:H_trap_xtinst_exception_list` | GFAULT-07 | Nonzero htinst must be a transformed standard instruction or a custom value |
+| `norm:hgatp_tvm_illegal` | GHCSR-08 | HS-mode access to hgatp with TVM=1 triggers illegal-instruction |
+| `norm:hstatus_gva_op` | GFAULT-06, GBARE-05 | GVA=1/0 setting rules (including the NOTE on same value as SPV) |
+| `norm:hgatp_mode_bare_trans` | GHCSR-09, GBARE-01~04 | Bare trivial translation pass-through without protection |
+| `norm:H_pmp` | GBARE-04 | PMP still applies to SPA under V=1 |
+
+Notes on uncovered/untestable items:
+
+- The write pseudoinstruction branch of `norm:H_trap_xtinst_guestpage_rw` is a joint two-stage behavior, unreachable in this plan (VS-stage Bare); it is already covered by the companion plan and is not a coverage gap of this plan.
+- All other specification points of this plan have corresponding test cases; there are no uncovered items.

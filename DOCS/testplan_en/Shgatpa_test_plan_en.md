@@ -10,17 +10,21 @@ This document describes the test plan for the Shgatpa (Translation Mode Support 
 
 ### Specification Sources
 
-- `SPEC/shgatpa.adoc` — Shgatpa Extension for Translation Mode Support, Version 1.0
-- `SPEC/hypervisor.adoc` lines 986–1089 (`hgatp` register definition) — Provides `hgatp` field layout, MODE encoding table, WARL write semantics
-- `SPEC/supervisor.adoc` lines 997–1065 (`satp` register and MODE field encoding) — Provides satp MODE encoding table, which is the source of Shgatpa mapping relationships
+This plan is based on the RISC-V Privileged Architecture specification (the Shgatpa extension chapter and the Hypervisor/Supervisor extension chapters related to hgatp/satp):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/shgatpa.adoc` — Shgatpa Extension for Translation Mode Support, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `hgatp` register definition (lines 986–1089): field layout, MODE encoding table, WARL write semantics
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — `satp` register and MODE field encoding (lines 997–1065): the source of Shgatpa mapping relationships
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/shgatpa.adoc` | Full Shgatpa specification (11 lines total, 2 norms) |
-| `SPEC/hypervisor.adoc:986-1089` | `hgatp` register specification: HSXLEN-bit RW, MODE encoding (Bare/Sv39x4/Sv48x4/Sv57x4), WARL behavior |
-| `SPEC/supervisor.adoc:997-1065` | `satp` register specification: MODE encoding table (Bare=0, Sv39=8, Sv48=9, Sv57=10), WARL behavior |
+| `shgatpa.adoc` | Full Shgatpa specification (11 lines total, 2 norms) |
+| `hypervisor.adoc:986-1089` | `hgatp` register specification: HSXLEN-bit RW, MODE encoding (Bare/Sv39x4/Sv48x4/Sv57x4), WARL behavior |
+| `supervisor.adoc:997-1065` | `satp` register specification: MODE encoding table (Bare=0, Sv39=8, Sv48=9, Sv57=10), WARL behavior |
 | `common/encoding.h:284` | `CSR_HGATP = 0x680` |
 | `common/encoding.h:145` | `CSR_SATP = 0x180` |
 | `common/encoding.h:332-340` | `HGATP64_MODE_SHIFT=60`, `HGATP_MODE_BARE=0`, `HGATP_MODE_SV39X4=8`, `HGATP_MODE_SV48X4=9`, `HGATP_MODE_SV57X4=10` |
@@ -44,6 +48,9 @@ This document describes the test plan for the Shgatpa (Translation Mode Support 
 | `norm:hgatp_ppn_op` | For the paged virtual-memory schemes, the root page table is 16 KiB and must be aligned to a 16-KiB boundary. In these modes, the lowest two bits of the physical page number (PPN) in `hgatp` always read as zeros. |
 | `norm:satp_mode_sxlen64` | When SXLEN=64, three paged virtual-memory schemes are defined: Sv39, Sv48, and Sv57. One additional scheme, Sv64, will be defined in a later version. The remaining MODE settings are reserved for future use. |
 | `norm:satp_mode_op_unsupported` | If a write to `satp` specifies a MODE value that is not supported, the entire write has no effect; no fields in `satp` are modified. |
+| `norm:hgatp_vmid` | The number of VMID bits is UNSPECIFIED and may be zero. |
+| `norm:hgatp_vmid_lsbs` | The least-significant bits of VMID are implemented first: that is, if VMIDLEN > 0, VMID[VMIDLEN-1:0] is writable. The maximal value of VMIDLEN, termed VMIDMAX, is 7 for Sv32x4 or 14 for Sv39x4, Sv48x4, and Sv57x4. |
+| `norm:hgatp_tvm_illegal` | When `mstatus`.TVM=1, attempts to read or write `hgatp` while executing in HS-mode will raise an illegal-instruction exception. |
 
 > [!IMPORTANT]
 > Shgatpa has two core constraints: (1) If satp supports SvNN → hgatp must support SvNNx4; (2) hgatp.MODE=Bare must be available. Note that the WARL behavior of hgatp and satp is **different**: when writing an unsupported MODE to satp, the entire write is ignored, whereas when writing an unsupported MODE to hgatp, fields are processed according to normal WARL rules (`norm:hgatp_mode_warl`).
@@ -128,15 +135,15 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ## Test Groups
 
 > [!IMPORTANT]
-> Total of 6 test groups, 21 test cases. Group 1 detects satp supported mode set in M/HS-mode; Group 2 verifies hgatp corresponding SvNNx4 mode support consistency (core verification group); Group 3 verifies mandatory hgatp Bare mode support; Group 4 verifies hgatp MODE WARL behavior; Group 5 verifies hgatp PPN field lower 2 bits behavior; Group 6 verifies VMID field width. Each group provides: specification basis, test responsibilities, test case table (ID/name/description/expected result); each group provides 1 key C code example.
+> Total of 6 test groups, 21 test cases. Group 1 detects satp supported mode set in M/HS-mode; Group 2 verifies hgatp corresponding SvNNx4 mode support consistency (core verification group); Group 3 verifies mandatory hgatp Bare mode support; Group 4 verifies hgatp MODE WARL behavior; Group 5 verifies hgatp PPN field lower 2 bits behavior; Group 6 verifies VMID field width. Each group provides: specification basis, test scope, test case table (ID/name/description/expected result).
 
 ---
 
 ### Group 1: `satp` MODE Support Detection (Baseline Establishment)
 
 **Specification Basis**:
-- `norm:satp_mode_sxlen64` (`SPEC/supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
-- `norm:satp_mode_op_unsupported` (`SPEC/supervisor.adoc:1052-1055`): Writing unsupported MODE causes entire write to be invalid
+- `norm:satp_mode_sxlen64` (`supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
+- `norm:satp_mode_op_unsupported` (`supervisor.adoc:1052-1055`): Writing unsupported MODE causes entire write to be invalid
 
 **Test Responsibilities**: Detect the set of translation modes supported by `satp` in M/HS-mode to establish comparison baseline for Group 2. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
 
@@ -155,9 +162,9 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ### Group 2: `hgatp` SvNNx4 MODE Consistency Verification Against `satp` Supported Modes
 
 **Specification Basis**:
-- `norm:shgatpa_satp_hgatp_mode_support` (`SPEC/shgatpa.adoc:4-7`): satp supports SvNN → hgatp must support SvNNx4
-- `norm:hgatp_sz_acc_op` (`SPEC/hypervisor.adoc:989-994`): `hgatp` is HSXLEN-bit RW register
-- `norm:hgatp_mode_sv` (`SPEC/hypervisor.adoc:1020-1027`): Defines Sv39x4/Sv48x4/Sv57x4 when HSXLEN=64
+- `norm:shgatpa_satp_hgatp_mode_support` (`shgatpa.adoc:4-7`): satp supports SvNN → hgatp must support SvNNx4
+- `norm:hgatp_sz_acc_op` (`hypervisor.adoc:989-994`): `hgatp` is HSXLEN-bit RW register
+- `norm:hgatp_mode_sv` (`hypervisor.adoc:1020-1027`): Defines Sv39x4/Sv48x4/Sv57x4 when HSXLEN=64
 
 **Test Responsibilities**: For each SvNN MODE detected as supported by satp in Group 1, directly write the corresponding SvNNx4 value to `hgatp` (CSR 0x680) in M/HS-mode and verify readback MODE matches, confirming Shgatpa mapping relationship holds.
 
@@ -176,8 +183,8 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ### Group 3: `hgatp` Bare Mode Mandatory Support Verification
 
 **Specification Basis**:
-- `norm:shgatpa_hgatp_bare_mode` (`SPEC/shgatpa.adoc:9-10`): `hgatp` Bare mode must be supported
-- `norm:hgatp_mode_bare` (`SPEC/hypervisor.adoc:1010-1015`): No translation protection when MODE=Bare; remaining fields must be written as zero when selecting Bare
+- `norm:shgatpa_hgatp_bare_mode` (`shgatpa.adoc:9-10`): `hgatp` Bare mode must be supported
+- `norm:hgatp_mode_bare` (`hypervisor.adoc:1010-1015`): No translation protection when MODE=Bare; remaining fields must be written as zero when selecting Bare
 
 **Test Responsibilities**: Verify that `hgatp` Bare mode (MODE=0) can always be written and read back correctly, and that remaining fields (VMID/PPN) are zero after selecting Bare.
 
@@ -195,7 +202,7 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ### Group 4: `hgatp` MODE WARL Behavior Verification
 
 **Specification Basis**:
-- `norm:hgatp_mode_warl` (`SPEC/hypervisor.adoc:1073-1076`): Writing unsupported MODE value to hgatp is **not** ignored (unlike satp), fields are processed according to normal WARL rules
+- `norm:hgatp_mode_warl` (`hypervisor.adoc:1073-1076`): Writing unsupported MODE value to hgatp is **not** ignored (unlike satp), fields are processed according to normal WARL rules
 
 **Test Responsibilities**: Verify hgatp WARL behavior when writing unsupported MODE values—MODE is forced to a legal value, but the write is not completely ignored (other fields may be updated).
 
@@ -215,7 +222,7 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ### Group 5: `hgatp` PPN Field Lower 2 Bits Behavior Verification
 
 **Specification Basis**:
-- `norm:hgatp_ppn_op` (`SPEC/hypervisor.adoc:1078-1085`): In Sv*x4 modes, PPN lower 2 bits always read as zero (root page table 16KB alignment constraint)
+- `norm:hgatp_ppn_op` (`hypervisor.adoc:1078-1085`): In Sv*x4 modes, PPN lower 2 bits always read as zero (root page table 16KB alignment constraint)
 
 **Test Responsibilities**: Verify that when writing non-zero values to hgatp.PPN lower 2 bits in Sv*x4 modes, readback of these bits is always zero; record behavior in Bare mode (specification does not mandate constraint).
 
@@ -230,7 +237,7 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 ### Group 6: VMID Field Width Verification
 
 **Specification Basis**:
-- `norm:hgatp_vmid_op` (`SPEC/hypervisor.adoc:1000-1010`): hgatp VMID field is WARL, implementation may support fewer than 14 bits (RV64) VMID width
+- `norm:hgatp_vmid` (`hypervisor.adoc:1087`) and `norm:hgatp_vmid_lsbs` (`hypervisor.adoc:1090-1094`): the number of VMID bits of hgatp is UNSPECIFIED and may be zero; implemented bits are contiguous low bits (up to 14 bits on RV64)
 - Shgatpa implies "MODE supported by hgatp also means VMID field is available"
 
 **Test Responsibilities**: Verify actual supported width of VMID field (confirmed by writing all 1s and reading back); verify whether VMID field is preserved after MODE switching.
@@ -316,3 +323,22 @@ After Group 1 detects the set of MODEs supported by `satp`, results are stored i
 | HGATP-WARL-01/02/03 readback MODE equals reserved value | hgatp.MODE WARL implementation abnormal (should not hold illegal values) |
 | HGATP-WARL-05 fails | MODE readback is reserved value from 1-7 or 11-15, WARL not working correctly |
 | HGATP-PPN-01/03 fail (PPN[1:0] != 0) | hgatp.PPN lower 2 bits not correctly implemented as read-only zero, violates `norm:hgatp_ppn_op` |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shgatpa_satp_hgatp_mode_support` | HGATP-MODE-01 ~ HGATP-MODE-04 | Core constraint: satp supports SvNN → hgatp supports SvNNx4 |
+| `norm:shgatpa_hgatp_bare_mode` | HGATP-BARE-01 ~ HGATP-BARE-03 | Core constraint: Bare must be supported |
+| `norm:hgatp_sz_acc_op` | HGATP-MODE-01 ~ HGATP-MODE-04 | Register read/writability is a prerequisite, implicitly verified through the write-readback cases |
+| `norm:hgatp_mode_bare` | HGATP-BARE-01 ~ HGATP-BARE-03 | The requirement to write zero to remaining fields under Bare is verified by HGATP-BARE-03 |
+| `norm:hgatp_mode_sv` | HGATP-MODE-01 ~ HGATP-MODE-03 | Basis for SvNNx4 mode encoding under HSXLEN=64 |
+| `norm:hgatp_mode_warl` | HGATP-WARL-01 ~ HGATP-WARL-05 | Writing unsupported MODE to hgatp is not ignored as a whole (difference from satp) |
+| `norm:hgatp_ppn_op` | HGATP-PPN-01 ~ HGATP-PPN-03 | PPN[1:0] reads zero in Sv*x4 modes |
+| `norm:satp_mode_sxlen64` | HGATP-PROBE-01 ~ HGATP-PROBE-04 | Probing baseline: the MODE set defined for SXLEN=64 |
+| `norm:satp_mode_op_unsupported` | HGATP-PROBE-01 ~ HGATP-PROBE-04 | Probing mechanism dependency: writing unsupported MODE to satp ignores the entire write |
+| `norm:hgatp_vmid` | HGATP-VMID-01, HGATP-VMID-02 | VMIDLEN may be zero; requiring at least 1 bit is not allowed |
+| `norm:hgatp_vmid_lsbs` | HGATP-VMID-01 | Implemented bits must be contiguous low bits of 1 |
+| `norm:hgatp_tvm_illegal` | — | Not covered: mstatus.TVM behavior belongs to TVM functional testing, see "Out of Scope" |

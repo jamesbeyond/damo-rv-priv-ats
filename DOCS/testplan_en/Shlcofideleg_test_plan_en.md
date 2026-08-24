@@ -22,18 +22,21 @@ In the context of the H extension, the `hideleg` register controls which interru
 
 ### Specification Sources
 
-- `SPEC/hypervisor.adoc:1276-1283` — `norm:vsip_vsie_lcofi`: Behavior definition of hideleg[13], vsip.LCOFIP, vsie.LCOFIE under the Shlcofideleg extension
-- `SPEC/hypervisor.adoc:1248-1275` — Basic definition of vsip/vsie registers (VSXLEN-bit R/W, substitute for sip/sie when V=1)
-- `SPEC/sscofpmf.adoc` — Sscofpmf extension: LCOFI interrupt definition (bit 13), OF bit semantics
+This plan is based on the RISC-V Privileged Architecture specification (the Hypervisor extension vsip/vsie chapters and the Sscofpmf extension):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `norm:vsip_vsie_lcofi` (lines 1276–1283): behavior definition of hideleg[13], vsip.LCOFIP, vsie.LCOFIE under Shlcofideleg; basic definition of vsip/vsie registers (lines 1248–1275)
+  - `SPEC/riscv-isa-manual/src/priv/sscofpmf.adoc` — Sscofpmf extension: LCOFI interrupt definition (bit 13), OF bit semantics
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/hypervisor.adoc:1276-1283` | `norm:vsip_vsie_lcofi` — Core specification of Shlcofideleg |
-| `SPEC/hypervisor.adoc:1248-1258` | vsip/vsie register size, access attributes, and V=1 substitution semantics |
-| `SPEC/hypervisor.adoc:1285-1300` | `norm:vsip_vsie_sei/sti/ssi` — Similar delegation patterns for SEI/STI/SSI (structural reference) |
-| `SPEC/sscofpmf.adoc` | LCOFI interrupt definition: bit 13, LCOFIP/LCOFIE semantics |
+| `hypervisor.adoc:1276-1283` | `norm:vsip_vsie_lcofi` — Core specification of Shlcofideleg |
+| `hypervisor.adoc:1248-1258` | vsip/vsie register size, access attributes, and V=1 substitution semantics |
+| `hypervisor.adoc:1285-1300` | `norm:vsip_vsie_sei/sti/ssi` — Similar delegation patterns for SEI/STI/SSI (structural reference) |
+| `sscofpmf.adoc` | LCOFI interrupt definition: bit 13, LCOFIP/LCOFIE semantics |
 | `common/encoding.h:271` | `CSR_HIDELEG = 0x603` |
 | `common/encoding.h:290-291` | `CSR_VSIP = 0x244` / `CSR_VSIE = 0x204` |
 | `common/encoding.h:144-145` | `CSR_SIP = 0x144` / `CSR_SIE = 0x104` |
@@ -52,6 +55,9 @@ In the context of the H extension, the `hideleg` register controls which interru
 | `norm:vsip_vsie_lcofi` (R2) | When bit 13 of `hideleg` is zero, `vsip`.LCOFIP and `vsie`.LCOFIE are read-only zeros. |
 | `norm:vsip_vsie_lcofi` (R3) | Else, they are aliases of `sip`.LCOFIP and `sie`.LCOFIE. |
 | `norm:vsip_vsie_sz_acc_op` | The `vsip` and `vsie` registers are VSXLEN-bit read/write registers that are VS-mode's versions of supervisor CSRs `sip` and `sie`. When V=1, `vsip` and `vsie` substitute for the usual `sip` and `sie`. However, interrupts directed to HS-level continue to be indicated in the HS-level `sip` register, not in `vsip`, when V=1. |
+| `norm:vsip_vsie_sei` | When bit 10 of `hideleg` is zero, `vsip`.SEIP and `vsie`.SEIE are read-only zeros. Else, `vsip`.SEIP and `vsie`.SEIE are aliases of `hip`.VSEIP and `hie`.VSEIE. |
+| `norm:vsip_vsie_sti` | When bit 6 of `hideleg` is zero, `vsip`.STIP and `vsie`.STIE are read-only zeros. Else, `vsip`.STIP and `vsie`.STIE are aliases of `hip`.VSTIP and `hie`.VSTIE. |
+| `norm:vsip_vsie_ssi` | When bit 2 of `hideleg` is zero, `vsip`.SSIP and `vsie`.SSIE are read-only zeros. Else, `vsip`.SSIP and `vsie`.SSIE are aliases of `hip`.VSSIP and `hie`.VSSIE. |
 
 ### Out of Scope
 
@@ -308,3 +314,16 @@ If Smstateen/Ssstateen is implemented:
 | Group 4: VS-mode End-to-End | 6 | Actual behavior of csrr sip/sie when V=1 |
 | Group 5: Dynamic Switching Consistency | 4 | Immediate consistency after hideleg switching |
 | **Total** | **25** | |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:vsip_vsie_lcofi` (R1: hideleg[13] writable) | LCFIDLG-WR-01, LCFIDLG-WR-02 | If not writable, Shlcofideleg is judged as not implemented and subsequent cases are SKIPPED |
+| `norm:vsip_vsie_lcofi` (R2: read-only zero when hideleg[13]=0) | LCFIDLG-RO-01 ~ LCFIDLG-RO-06, LCFIDLG-VS-02, LCFIDLG-VS-04, LCFIDLG-VS-06, LCFIDLG-DYN-01 | |
+| `norm:vsip_vsie_lcofi` (R3: alias when hideleg[13]=1) | LCFIDLG-ALIAS-01 ~ LCFIDLG-ALIAS-07, LCFIDLG-VS-01, LCFIDLG-VS-03, LCFIDLG-VS-05, LCFIDLG-DYN-02 ~ LCFIDLG-DYN-04 | |
+| `norm:vsip_vsie_sz_acc_op` | LCFIDLG-VS-01 ~ LCFIDLG-VS-06 | When V=1, csrr sip/sie actually access vsip/vsie |
+| `norm:vsip_vsie_sei` / `norm:vsip_vsie_sti` / `norm:vsip_vsie_ssi` | — | Not covered: serve only as structural reference for similar delegation patterns, belonging to basic H extension tests |
+| Sscofpmf overflow generating LCOFI | — | Not covered: belongs to the separate Sscofpmf test plan; this plan uses M-mode injection of mip.LCOFIP instead |

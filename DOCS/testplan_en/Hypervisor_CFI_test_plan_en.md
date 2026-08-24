@@ -11,9 +11,16 @@ This test plan covers the cross-functional points between the RISC-V Hypervisor 
 
 In a Hypervisor environment, CFI enablement, state save/restore, exception delegation, and page table interaction are all affected by the H extension. This test plan focuses on the intersection behavior of the H extension with the Zicfilp and Zicfiss sub-extensions respectively.
 
-This test plan is written based on specification points (norm tags) in `SPEC/hypervisor.adoc` and `SPEC/cfi.adoc`.
+This test plan is written based on specification points (norm tags) in `hypervisor.adoc` and `cfi.adoc`.
 
 ### SPEC Sections Covered by This Document
+
+This plan is written based on the RISC-V Privileged Architecture specification (Hypervisor extension and CFI extension chapters):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`
+  - `SPEC/riscv-isa-manual/src/priv/cfi.adoc`
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (referencing the Hypervisor extension and Control Flow Integrity parts in the priv chapters)
 
 **From cfi.adoc:**
 - Landing-Pad-Enabled (LPE) State (xLPE determination table; VS-mode is controlled by henvcfg.LPE)
@@ -51,12 +58,14 @@ This section lists all specification points (norm IDs) referenced in the test gr
 | `norm:Zicfilp_pelp_trap` | cfi.adoc | When a trap is taken into privilege mode x, the xpelp is set to ELP and ELP is set to NO_LP_EXPECTED. |
 | `norm:Zicfilp_pelp_trap_return` | cfi.adoc | When executing an xret instruction, if the new privilege mode is y, then ELP is set to the value of xpelp if yLPE is 1; otherwise, it is set to NO_LP_EXPECTED; xpelp is set to NO_LP_EXPECTED. |
 | `norm:Zicfilp_forward_traps` | cfi.adoc | A trap may need to be delivered upon completion of jalr/c.jalr/c.jr but before the target instruction was decoded. The ELP prior to the trap must be preserved. |
+| `norm:Zicfilp_forward_trap_async_interrupt` | cfi.adoc | Asynchronous interrupts. |
+| `norm:Zicfilp_forward_trap_async_exception` | cfi.adoc | Synchronous exceptions with priority higher than that of a software-check exception with xtval set to "landing pad fault (code=2)". |
 | `norm:lpad_sw_exception` | cfi.adoc | The software-check exception due to the instruction not being an lpad instruction when ELP is LP_EXPECTED leads to a trap. |
 | `norm:Zicfilp_exception_priority` | cfi.adoc | The software-check exception caused by Zicfilp has higher priority than an illegal-instruction exception but lower priority than instruction access-fault. |
 | `norm:zicfiss_ssp_csr` | cfi.adoc | Attempts to access the ssp CSR may result in either an illegal-instruction exception or a virtual-instruction exception, contingent upon the state of the envcfg sse fields. |
 | `norm:zicfiss_m_menvcfg_sse` | cfi.adoc | If the privilege mode is less than M and menvcfg.sse is 0, an illegal-instruction exception is raised. |
 | `norm:zicfiss_vs_henvcfg_sse` | cfi.adoc | Otherwise, if in VS-mode and henvcfg.sse is 0, a virtual-instruction exception is raised. |
-| `norm:zicfiss_vu_henvcfg_senvcfg_sse` | cfi.adoc | Otherwise, if in VU-mode and either henvcfg.sse or senvcfg.sse is 0, a virtual-instruction exception is raised. |
+| `norm:zicfiss_vu_senvcfg_sse` | cfi.adoc | Otherwise, if in VU-mode and senvcfg.sse is 0, a virtual-instruction exception is raised. |
 | `norm:zicfiss_sse_access` | cfi.adoc | Otherwise, the access is allowed. |
 | `norm:ss_page_enc` | cfi.adoc | The encoding R=0, W=1, and X=0, is defined to represent an SS page. |
 | `norm:ssmp_henvcfg_sse` | cfi.adoc | When V=1 and henvcfg.sse=0, this encoding remains reserved at VS and VU levels. |
@@ -77,6 +86,8 @@ This section lists all specification points (norm IDs) referenced in the test gr
 | `norm:H_trap_m_csrwrites` | hypervisor.adoc | When a trap is taken into M-mode, V gets set to 0, MPV and MPP in mstatus are set accordingly. |
 | `norm:sret_v1` | hypervisor.adoc | When executed in VS-mode (V=1), SRET sets the privilege mode accordingly, in vsstatus sets SPP=0, SIE=SPIE, and SPIE=1, and sets pc=vsepc. |
 | `norm:sret_v0` | hypervisor.adoc | When executed in M-mode or HS-mode (V=0), SRET determines new mode according to hstatus.SPV and sstatus.SPP, sets SPV=0, SPP=0, SIE=SPIE, SPIE=1, pc=sepc. |
+| `norm:mstateen0_envcfg_op` | smstateen.adoc | The ENVCFG bit in mstateen0 controls access to the henvcfg, henvcfgh, and the senvcfg CSRs. |
+| `norm:hstateen0_envcfg_op` | smstateen.adoc | The ENVCFG bit in hstateen0 controls access to the senvcfg CSRs. |
 
 ---
 
@@ -208,6 +219,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 **Spec Reference**:
 - `norm:henvcfg_sse_op`: SSE=1 activates VS-mode Zicfiss; SSE=0 causes instruction reversion, page table encoding reserved, senvcfg.SSE read-only zero, SSAMOSWAP triggers virtual-instruction exception
 - cfi.adoc xSSE determination table: VS-mode xSSE = henvcfg.SSE; VU-mode xSSE = senvcfg.SSE
+- Smstateen prerequisite: if Smstateen is implemented, accesses to henvcfg/senvcfg below M privilege are gated by mstateen0.ENVCFG (`norm:mstateen0_envcfg_op`), and VS/VU-mode access to senvcfg is additionally gated by hstateen0.ENVCFG (`norm:hstateen0_envcfg_op`); both reset to 0. The verification goal of this suite is Zicfiss enable control rather than Smstateen gating behavior itself, so at suite startup mstateen0.SE0/ENVCFG and hstateen0.ENVCFG must first be set to open the channel (no-op when Smstateen is not implemented)
 
 **Test Scope**: Verify the enable control of the henvcfg.SSE field over the VS-mode Zicfiss extension, including instruction reversion, page table encoding reservation, and other behaviors when SSE=0.
 
@@ -218,9 +230,9 @@ This section lists all specification points (norm IDs) referenced in the test gr
 | HCFI-SS-03 | 32-bit Zicfiss instructions revert to Zimop when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode executes 32-bit SSPUSH instruction | Instruction executes as Zimop no-op, no exception |
 | HCFI-SS-04 | 16-bit Zicfiss instructions revert to Zcmop when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode executes C.SSPUSH instruction | Instruction executes as Zcmop no-op, no exception |
 | HCFI-SS-05 | VS-stage pte.xwr=010 reserved when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-stage page table uses pte.xwr=010 encoding | Encoding reserved, triggers page-fault |
-| HCFI-SS-06 | senvcfg.SSE read-only zero when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode reads senvcfg.SSE | senvcfg.SSE=0 and not writable |
-| HCFI-SS-07 | senvcfg.SSE write ineffective when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode writes senvcfg.SSE=1 and reads back | senvcfg.SSE remains 0 |
-| HCFI-SS-08 | senvcfg.SSE writable when henvcfg.SSE=1 | Set henvcfg.SSE=1, VS-mode writes senvcfg.SSE=1 and reads back | senvcfg.SSE=1 |
+| HCFI-SS-06 | senvcfg.SSE read-only zero when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode reads senvcfg.SSE (Smstateen gating opened) | senvcfg.SSE=0 and not writable |
+| HCFI-SS-07 | senvcfg.SSE write ineffective when henvcfg.SSE=0 | Set henvcfg.SSE=0, VS-mode writes senvcfg.SSE=1 and HS-mode reads back (Smstateen gating opened; the write itself must not trigger an exception) | senvcfg.SSE remains 0 |
+| HCFI-SS-08 | senvcfg.SSE writable when henvcfg.SSE=1 | Set henvcfg.SSE=1, VS-mode writes senvcfg.SSE=1 and HS-mode reads back (Smstateen gating opened; must assert the write did not trigger an exception, to prevent a trap from masking the real behavior) | senvcfg.SSE=1 |
 | HCFI-SS-09 | VS-mode SSAMOSWAP triggers exception when henvcfg.SSE=0 + menvcfg.SSE=1 | Set henvcfg.SSE=0, menvcfg.SSE=1, VS-mode executes SSAMOSWAP.W | virtual-instruction exception (cause=22) |
 | HCFI-SS-10 | VS-mode SSAMOSWAP executes normally when henvcfg.SSE=1 | Set henvcfg.SSE=1, menvcfg.SSE=1, VS-mode executes SSAMOSWAP.W (target is SS page) | Normal execution, no exception |
 | HCFI-SS-11 | VS-mode SSAMOSWAP behavior when henvcfg.SSE=0 + menvcfg.SSE=0 | Set henvcfg.SSE=0, menvcfg.SSE=0, VS-mode executes SSAMOSWAP.W | illegal-instruction exception (cause=2) (SSAMOSWAP is AMO encoding, not Zimop; privilege < M and menvcfg.SSE=0 triggers illegal-instruction per cfi.adoc pseudocode) |
@@ -236,7 +248,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 - `norm:zicfiss_ssp_csr`: ssp CSR access controlled by envcfg sse fields
 - `norm:zicfiss_m_menvcfg_sse`: Privilege < M and menvcfg.SSE=0 → illegal-instruction exception
 - `norm:zicfiss_vs_henvcfg_sse`: VS-mode and henvcfg.SSE=0 → virtual-instruction exception
-- `norm:zicfiss_vu_henvcfg_senvcfg_sse`: VU-mode and henvcfg.SSE=0 or senvcfg.SSE=0 → virtual-instruction exception
+- `norm:zicfiss_vu_senvcfg_sse`: VU-mode and senvcfg.SSE=0 → virtual-instruction exception (when henvcfg.SSE=0, senvcfg.SSE is read-only zero, covered by `norm:henvcfg_sse_op`)
 - `norm:zicfiss_sse_access`: Otherwise access is allowed
 
 **Test Scope**: Verify ssp CSR access control in VS/VU-mode, including exception type distinction (illegal vs virtual) and multi-level enable gating.
@@ -392,75 +404,68 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Test Prerequisites
+## Notes
 
-### Framework-Level Additions Required
-
-> [!IMPORTANT]
-> The following modifications are prerequisites for Hypervisor × CFI cross testing.
-
-1. **henvcfg LPE/SSE field macros**: Add `HENVCFG_LPE` and `HENVCFG_SSE` macros in `common/encoding.h`.
-2. **vsstatus.SPELP field macro**: Add `VSSTATUS_SPELP_BIT` macro in `common/encoding.h`.
-3. **software-check exception cause**: Add `CAUSE_SOFTWARE_CHECK` (18) macro in `common/encoding.h`.
-4. **mtval/stval/vstval CFI encoding**: Add `SWCHECK_LANDING_PAD_FAULT` (2) and `SWCHECK_SHADOW_STACK_FAULT` (3) macros.
-5. **CSR_SSP macro**: Add `CSR_SSP` (0x011) macro in `common/encoding.h`.
-6. **trap handler enhancement**: Recognize software-check exception (cause=18), correctly capture and record `mtval`/`stval`/`vstval` values in armed trap scenarios.
-7. **VS-mode CFI test infrastructure**: Add compilation and execution support for VS-mode Zicfilp/Zicfiss instructions in the Hypervisor test framework.
-
-### Test File Structure
-
-The actual implementation is split into two independent test directories (Zicfilp and Zicfiss built separately):
-
-```
-Hypervisor_Zicfilp/
-├── Makefile
-├── kernel.ld
-├── main.c
-└── tests/
-    ├── test_helpers.h
-    ├── test_hyp_zicfilp_envcfg.c     # Group A1: henvcfg.LPE enable control
-    ├── test_hyp_zicfilp_spelp.c      # Group A2: vsstatus.SPELP save/restore
-    ├── test_hyp_zicfilp_lpad.c       # Group A3: VS-mode Landing Pad functionality
-    ├── test_hyp_zicfilp_deleg.c      # Group A4: software-check exception delegation
-    └── test_hyp_zicfilp_async.c      # Group A5: async events and ELP interaction
-Hypervisor_Zicfiss/
-├── Makefile
-├── kernel.ld
-├── main.c
-└── tests/
-    ├── test_helpers.h
-    ├── test_hyp_zicfiss_envcfg.c     # Group B1: henvcfg.SSE enable control
-    ├── test_hyp_zicfiss_ssp_csr.c    # Group B2: ssp CSR access control
-    ├── test_hyp_zicfiss_ss_page.c    # Group B3: VS-stage SS page type
-    ├── test_hyp_zicfiss_gstage.c     # Group B4: G-stage translation interaction
-    ├── test_hyp_zicfiss_bare.c       # Group B5: satp/vsatp Bare mode
-    ├── test_hyp_zicfiss_deleg.c      # Group B6: Zicfiss exception delegation
-    ├── test_hyp_zicfiss_func.c       # Group B7: Zicfiss functional completeness
-    └── test_hyp_zicfiss_revert.c     # Group B8: SSE=0 reversion behavior
-```
-
----
-
-## Verification Plan
-
-### Automated Tests
-- `cd Hypervisor_Zicfilp && make clean && make qemu` — QEMU simulator (requires H extension + Zicfilp support)
-- `cd Hypervisor_Zicfiss && make clean && make qemu` — QEMU simulator (requires H extension + Zicfiss support)
-- `cd Hypervisor_Zicfilp && make clean && make spike` / `cd Hypervisor_Zicfiss && make clean && make spike` — Spike simulator
-- `cd Hypervisor_Zicfilp && make clean && make sail` / `cd Hypervisor_Zicfiss && make clean && make sail` — Sail simulator
-
-### Manual Verification
-- Compile with `make PLATFORM=haps_xiaohui` on hardware platform, then deploy tests using `remote_debug.py`
-
-### Notes
-1. Confirm that the target platform implements H extension and Zicfilp/Zicfiss extensions before testing.
+1. Confirm that the target platform implements the H extension and Zicfilp/Zicfiss extensions before testing.
 2. If the platform does not implement CFI extensions, henvcfg.LPE/SSE should be read-only zero, and related tests should report "extension not implemented" rather than fail.
 3. Delegation tests for software-check exception (cause=18) require confirming the writability of hedeleg bit 18 on the platform.
 4. Shadow Stack page type tests require fine-grained control of VS-stage page tables to ensure correct pte.xwr encoding.
-5. Do not lower SPEC standards to pass tests. If QEMU/Sail/hardware behavior is inconsistent with SPEC, report the issue rather than modifying the test.
-6. Current known implementation status (known gap):
+5. Current known implementation status (known gap):
    - Group A5 (HCFI-LP-31/42/43) async interrupt injection window (after JALR, before LPAD decode) is non-deterministic; currently uses sync software-check exception as a proxy to verify ELP save/restore mechanism.
    - HCFI-SS-04/60/70 (16-bit compressed instruction reversion/flow), HCFI-SS-30 (real CBO instruction), HCFI-SS-65/66 (non-idempotent memory / AMOSwap PMA) are not directly implemented yet, marked as known gap in comments.
-7. Current QEMU (cskysim) confirmed SPEC deviations (tests remain FAIL to report issues, no workaround):
-   - VS→HS trap saves ELP to vsstatus.SPELP instead of mstatus.SPELP (affects HCFI-LP-15/16/17/31/42).
-   - VS-mode xLPE is gated by menvcfg.LPE (SPEC requires VS xLPE = henvcfg.LPE to take effect independently, affects HCFI-LP-09).
+
+---
+
+## Appendix A: Specification Point Coverage Matrix
+
+The table below indicates which test cases cover each Normative Rule. The Norm IDs are consistent with the "Covered Specification Points" section.
+
+| Norm ID | Covered Test Cases | Notes |
+|---------|--------------------|-------|
+| `norm:henvcfg_lpe_op` | HCFI-LP-01~10 | LPE read/write, enable control, reversion behavior |
+| `norm:henvcfg_sse_op` | HCFI-SS-01~14, HCFI-SS-69~75 | SSE read/write, activation, reversion and switching |
+| `norm:vsstatus_spelp_op` | HCFI-LP-11~14, HCFI-LP-21~24 | SPELP read/write and trap save/restore |
+| `norm:vsstatus_spelp_op2` | HCFI-LP-12, HCFI-LP-13, HCFI-LP-21 | SPELP saves ELP on trap to VS-mode |
+| `norm:cfi_mstatus_mpelp_op` | — | M-mode trap saves MPELP, out of scope for this cross plan (covered by cfi_test_plan.md) |
+| `norm:cfi_mstatus_spelp_op` | HCFI-LP-15~17, HCFI-LP-31, HCFI-LP-42 | mstatus.SPELP save when VS trap delivered to HS |
+| `norm:cfi_sstatus_spelp_op` | — | S-mode (non-virtualization) scenario, covered by cfi_test_plan.md |
+| `norm:Zicfilp_pelp_trap` | HCFI-LP-12, HCFI-LP-15, HCFI-LP-18, HCFI-LP-21, HCFI-LP-31, HCFI-LP-42 | xpelp←ELP on trap entry |
+| `norm:Zicfilp_pelp_trap_return` | HCFI-LP-13, HCFI-LP-14, HCFI-LP-16, HCFI-LP-17, HCFI-LP-19, HCFI-LP-20, HCFI-LP-22, HCFI-LP-23, HCFI-LP-43 | ELP restore/clear on xRET |
+| `norm:Zicfilp_forward_traps` | HCFI-LP-31, HCFI-LP-42, HCFI-LP-43, HCFI-LP-44 | Trap delivery after JALR but before target decode |
+| `norm:Zicfilp_forward_trap_async_interrupt` | HCFI-LP-31, HCFI-LP-42, HCFI-LP-43 | Async interrupt forward delivery (known gap: proxy verification) |
+| `norm:Zicfilp_forward_trap_async_exception` | HCFI-LP-29, HCFI-LP-44 | Forward delivery of higher-priority synchronous exceptions |
+| `norm:lpad_sw_exception` | HCFI-LP-05, HCFI-LP-08, HCFI-LP-26, HCFI-LP-28, HCFI-LP-32, HCFI-LP-33 | LP Fault triggers software-check exception |
+| `norm:Zicfilp_exception_priority` | HCFI-LP-29, HCFI-LP-30 | software-check exception priority |
+| `norm:zicfiss_ssp_csr` | HCFI-SS-15~23, HCFI-SS-71 | ssp CSR access control |
+| `norm:zicfiss_m_menvcfg_sse` | HCFI-SS-17, HCFI-SS-21 | menvcfg.SSE=0 → illegal-instruction |
+| `norm:zicfiss_vs_henvcfg_sse` | HCFI-SS-15, HCFI-SS-71 | VS-mode henvcfg.SSE=0 → virtual-instruction |
+| `norm:zicfiss_vu_senvcfg_sse` | HCFI-SS-18, HCFI-SS-19 | VU-mode senvcfg.SSE=0 → virtual-instruction |
+| `norm:zicfiss_sse_access` | HCFI-SS-16, HCFI-SS-20, HCFI-SS-22 | ssp access allowed when all enables are in place |
+| `norm:ss_page_enc` | HCFI-SS-24 | pte.xwr=010 is the SS page encoding |
+| `norm:ssmp_henvcfg_sse` | HCFI-SS-05, HCFI-SS-14, HCFI-SS-25, HCFI-SS-72 | SS encoding reserved when henvcfg.SSE=0 |
+| `norm:ssmp_menvcfg_sse` | — | Page encoding reserved when menvcfg.SSE=0, out of virtualization cross scope (covered by cfi_test_plan.md) |
+| `norm:satp_mode_bare` | HCFI-SS-43~47 | SS instruction access-fault in vsatp Bare mode |
+| `norm:ssmp_ssamoswap` | — | M-mode-only behavior, out of VS/VU cross scope |
+| `norm:ssmp_ss_page_access_fault` | HCFI-SS-26, HCFI-SS-30, HCFI-SS-53, HCFI-SS-54 | Non-SS instruction writes SS page → access-fault |
+| `norm:ssmp_ss_page_illegeal_access` | HCFI-SS-28, HCFI-SS-64 | SS instruction accesses non-SS page → access-fault |
+| `norm:ssmp_ss_read_only_page` | HCFI-SS-29, HCFI-SS-34, HCFI-SS-55, HCFI-SS-56 | SS instruction accesses read-only page → page-fault |
+| `norm:ss_fault_exception_code` | HCFI-SS-26~29, HCFI-SS-33, HCFI-SS-39~42, HCFI-SS-49~58 | SS exception cause encoding 7/15/23 |
+| `norm:ssp_xlen_aligned` | HCFI-SS-23 | ssp not XLEN aligned → access-fault |
+| `norm:ssmp_ss_idempotent_memory` | HCFI-SS-65 | Non-idempotent memory → access-fault (known gap) |
+| `norm:active_g_stage_pte` | HCFI-SS-38~42 | G-stage read-write permission requirement |
+| `norm:hedeleg_op` | HCFI-LP-35~37, HCFI-SS-50~52 | software-check two-level delegation chain |
+| `norm:hedeleg_acc` | HCFI-LP-34 | hedeleg[18] writability |
+| `norm:H_trap_vs_csrwrites` | HCFI-LP-35, HCFI-LP-38, HCFI-LP-39, HCFI-SS-50, HCFI-SS-57 | CSR writes on trap to VS-mode |
+| `norm:H_trap_hs_csrwrites` | HCFI-LP-36, HCFI-LP-40, HCFI-SS-41, HCFI-SS-54, HCFI-SS-58 | CSR writes on trap to HS-mode |
+| `norm:H_trap_m_csrwrites` | HCFI-LP-37, HCFI-LP-41, HCFI-SS-52 | CSR writes on trap to M-mode |
+| `norm:sret_v1` | HCFI-LP-13, HCFI-LP-14, HCFI-LP-22, HCFI-LP-23 | VS-mode SRET behavior |
+| `norm:sret_v0` | HCFI-LP-16, HCFI-LP-17 | HS-mode SRET returning to VS-mode |
+| `norm:mstateen0_envcfg_op` | HCFI-SS-06~08 (prerequisite) | Smstateen gating, channel opened at suite startup |
+| `norm:hstateen0_envcfg_op` | HCFI-SS-06~08 (prerequisite) | Smstateen gating, channel opened at suite startup |
+
+### Notes on Uncovered/Untestable Specification Points
+
+1. `norm:cfi_mstatus_mpelp_op`, `norm:cfi_sstatus_spelp_op`, `norm:ssmp_menvcfg_sse`, `norm:ssmp_ssamoswap`: belong to M-mode traps, S-mode (non-virtualization), menvcfg.SSE=0 page encoding, and M-mode-only behavior respectively; out of the Hypervisor cross scope, covered by `cfi_test_plan.md`.
+2. `norm:Zicfilp_forward_trap_async_interrupt` (HCFI-LP-31/42/43): async interrupt injection window (after JALR, before LPAD decode) is non-deterministic; currently uses sync software-check exception as a proxy to verify ELP save/restore mechanism (known gap).
+3. `norm:ssmp_ss_idempotent_memory` (HCFI-SS-65): non-idempotent memory / AMOSwap PMA scenarios are not directly implemented yet (known gap).
+4. HCFI-SS-04/60/70 (16-bit compressed instruction reversion/flow) and HCFI-SS-30 (real CBO instruction) are known gaps, corresponding to partial sub-scenarios of `norm:henvcfg_sse_op` and `norm:ssmp_ss_page_access_fault`.

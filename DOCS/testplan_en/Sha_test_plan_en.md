@@ -19,28 +19,32 @@ This document describes the test plan for the Sha (Augmented Hypervisor Extensio
 
 ### Specification Sources
 
-- `SPEC/sha.adoc` — Sha Augmented Hypervisor Extension definition
-- `SPEC/hypervisor.adoc` — H extension specification (vsatp/vstvec/vstval/hgatp/hcounteren register definitions)
-- `SPEC/smstateen.adoc` — Smstateen/Ssstateen extension specification (sstateen/hstateen CSR definitions and behavior)
-- `SPEC/shcounterenw.adoc` — Shcounterenw specification
-- `SPEC/shvstvala.adoc` — Shvstvala specification
-- `SPEC/shtvala.adoc` — Shtvala specification
-- `SPEC/shvstvecd.adoc` — Shvstvecd specification
-- `SPEC/shvsatpa.adoc` — Shvsatpa specification
-- `SPEC/shgatpa.adoc` — Shgatpa specification
-- `SPEC/supervisor.adoc` — Baseline register definitions (satp/stvec/stval, etc.)
+This plan is based on the RISC-V Privileged Architecture specification (the Hypervisor extension and its Sh* sub-extension chapters, and the Smstateen extension chapter):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/sha.adoc` — Sha Augmented Hypervisor Extension definition
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — H extension specification (vsatp/vstvec/vstval/hgatp/hcounteren register definitions)
+  - `SPEC/riscv-isa-manual/src/priv/smstateen.adoc` — Smstateen/Ssstateen extension specification (sstateen/hstateen CSR definitions and behavior)
+  - `SPEC/riscv-isa-manual/src/priv/shcounterenw.adoc` — Shcounterenw specification
+  - `SPEC/riscv-isa-manual/src/priv/shvstvala.adoc` — Shvstvala specification
+  - `SPEC/riscv-isa-manual/src/priv/shtvala.adoc` — Shtvala specification
+  - `SPEC/riscv-isa-manual/src/priv/shvstvecd.adoc` — Shvstvecd specification
+  - `SPEC/riscv-isa-manual/src/priv/shvsatpa.adoc` — Shvsatpa specification
+  - `SPEC/riscv-isa-manual/src/priv/shgatpa.adoc` — Shgatpa specification
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — Baseline register definitions (satp/stvec/stval, etc.)
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/sha.adoc` | Sha composite extension definition (lists 8 sub-extension dependencies) |
-| `SPEC/smstateen.adoc:46-183` | Ssstateen specification: sstateen0-3/hstateen0-3 CSR definitions and hierarchical control |
-| `SPEC/hypervisor.adoc:986-1089` | hgatp register specification |
-| `SPEC/hypervisor.adoc:1382-1425` | vsatp register specification |
-| `SPEC/hypervisor.adoc:1300-1312` | vstvec register specification |
-| `SPEC/hypervisor.adoc:1364-1380` | vstval register specification |
-| `SPEC/hypervisor.adoc:846-877` | hcounteren register specification |
+| `sha.adoc` | Sha composite extension definition (lists 8 sub-extension dependencies) |
+| `smstateen.adoc:46-183` | Ssstateen specification: sstateen0-3/hstateen0-3 CSR definitions and hierarchical control |
+| `hypervisor.adoc:986-1089` | hgatp register specification |
+| `hypervisor.adoc:1382-1425` | vsatp register specification |
+| `hypervisor.adoc:1300-1312` | vstvec register specification |
+| `hypervisor.adoc:1364-1380` | vstval register specification |
+| `hypervisor.adoc:846-877` | hcounteren register specification |
 | `common/encoding.h` | CSR address definitions |
 | `common/hyp/hyp_defs.h` | MAKE_HGATP and other macro definitions |
 | `common/hyp/hyp_priv.h` | run_in_vs_mode / run_in_vu_mode |
@@ -72,6 +76,15 @@ This document describes the test plan for the Sha (Augmented Hypervisor Extensio
 | `norm:hstateen_bit_63_writable` | Bit 63 of each `hstateen` CSR is always writable (not read-only). |
 | `norm:mstateen_zero_initialization` | On reset, all writable `mstateen` bits are initialized by the hardware to zeros. |
 | `norm:hstateen_sstateen_zero_initialization` | If machine-level software changes these values, it is responsible for initializing the corresponding writable bits of the `hstateen` and `sstateen` CSRs to zeros too. |
+| `norm:sstateen_rv64_csrs` | If supervisor mode is implemented, another four CSRs are defined at supervisor level: `sstateen0`, `sstateen1`, `sstateen2`, and `sstateen3`. |
+| `norm:hstateen_rv64_csrs` | And if the hypervisor extension is implemented, another set of CSRs is added: `hstateen0`, `hstateen1`, `hstateen2`, and `hstateen3`. |
+| `norm:stateen_warl_access` | Each standard-defined bit of a `stateen` CSR is WARL and may be read-only zero or one, subject to the following conditions. |
+| `norm:stateen_reserved_roz` | Likewise, all reserved bits not yet given a defined meaning are also read-only zeros. |
+| `norm:mstateen_lower_priv_roz` | For every bit in an `mstateen` CSR that is zero (whether read-only zero or set to zero), the same bit appears as read-only zero in the matching `hstateen` and `sstateen` CSRs. |
+| `norm:sstateen_vsmode_access_roz` | For every bit in an `hstateen` CSR that is zero (whether read-only zero or set to zero), the same bit appears as read-only zero in `sstateen` when accessed in VS-mode. |
+| `norm:mstateen_bit_63_op` | For each `mstateen` CSR, bit 63 is defined to control access to the matching `sstateen` and `hstateen` CSRs. |
+| `norm:hstateen_bit_63_op` | Likewise, bit 63 of each `hstateen` correspondingly controls access to the matching `sstateen` CSR. |
+| `HSyncExcPrio` | Synchronous exception priority table: when multiple synchronous exceptions could be taken, the one listed earlier (e.g. instruction guest-page fault over VS-stage page fault) takes priority. |
 
 > [!IMPORTANT]
 > As a composite extension, each sub-extension of Sha has its own independent detailed test plan (see reference files above). The positioning of this test plan is: (1) Verify that all sub-extensions **coexist** and function correctly (integration-level existence testing); (2) Verify the functionality of the Ssstateen extension in the context of the H extension (this extension currently has no independent test plan); (3) Verify **interaction behavior** between sub-extensions (e.g., the impact on vstvec/vstval/vsatp access when hstateen prohibits access).
@@ -142,14 +155,14 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ## Test Groups
 
 > [!IMPORTANT]
-> Total of 6 test groups and 28 test cases. Group 1 verifies existence of all sub-extensions (smoke test); Group 2 verifies basic accessibility and WARL behavior of Ssstateen CSRs; Group 3 verifies hstateen access control for VS/VU modes; Group 4 verifies hstateen bit 63 gating behavior on sstateen; Group 5 verifies interaction between hstateen and other Sh* sub-extension CSRs; Group 6 verifies exception priority in two-stage translation. Each group provides: specification basis, test responsibilities, test case table (ID/name/description/expected result); each group provides 1 key C code example.
+> Total of 6 test groups and 28 test cases. Group 1 verifies existence of all sub-extensions (smoke test); Group 2 verifies basic accessibility and WARL behavior of Ssstateen CSRs; Group 3 verifies hstateen access control for VS/VU modes; Group 4 verifies hstateen bit 63 gating behavior on sstateen; Group 5 verifies interaction between hstateen and other Sh* sub-extension CSRs; Group 6 verifies exception priority in two-stage translation. Each group provides: specification basis, test scope, test case table (ID/name/description/expected result).
 
 ---
 
 ### Group 1: Sub-Extension Existence Verification (Integration Smoke Test)
 
 **Specification Basis**:
-- `SPEC/sha.adoc:4-14`: Sha depends on H + Ssstateen + Shcounterenw + Shvstvala + Shtvala + Shvstvecd + Shvsatpa + Shgatpa
+- `sha.adoc:4-14`: Sha depends on H + Ssstateen + Shcounterenw + Shvstvala + Shtvala + Shvstvecd + Shvsatpa + Shgatpa
 
 **Test Responsibilities**: Quickly verify that core features of each sub-extension are available on the platform, confirming completeness of the Sha composite extension. Make a minimal "capability existence" assertion for each sub-extension.
 
@@ -172,12 +185,12 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ### Group 2: Ssstateen CSR Basic Accessibility and WARL Behavior
 
 **Specification Basis**:
-- `norm:sstateen_rv64_csrs` (`SPEC/smstateen.adoc:56-59`): sstateen0-3 exist
-- `norm:hstateen_rv64_csrs` (`SPEC/smstateen.adoc:61-63`): hstateen0-3 exist
-- `norm:stateen_warl_access` (`SPEC/smstateen.adoc:134-136`): stateen bits are WARL
-- `norm:stateen_reserved_roz` (`SPEC/smstateen.adoc:139-140`): Reserved bits are read-only zero
-- `norm:mstateen_zero_initialization` (`SPEC/smstateen.adoc:153`): On reset, writable mstateen bits are zero
-- `norm:hstateen_bit_63_writable` (`SPEC/smstateen.adoc:182-183`): hstateen bit 63 is always writable
+- `norm:sstateen_rv64_csrs` (`smstateen.adoc:56-59`): sstateen0-3 exist
+- `norm:hstateen_rv64_csrs` (`smstateen.adoc:61-63`): hstateen0-3 exist
+- `norm:stateen_warl_access` (`smstateen.adoc:134-136`): stateen bits are WARL
+- `norm:stateen_reserved_roz` (`smstateen.adoc:139-140`): Reserved bits are read-only zero
+- `norm:mstateen_zero_initialization` (`smstateen.adoc:153`): On reset, writable mstateen bits are zero
+- `norm:hstateen_bit_63_writable` (`smstateen.adoc:182-183`): hstateen bit 63 is always writable
 
 **Test Responsibilities**: Verify that all 8 CSRs (sstateen0-3 and hstateen0-3) are accessible; verify hstateen bit 63 is writable; verify reserved bits exhibit read-only zero behavior.
 
@@ -197,9 +210,9 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ### Group 3: hstateen Access Control for VS/VU Modes
 
 **Specification Basis**:
-- `norm:hstateen_encoding` (`SPEC/smstateen.adoc:129-132`): hstateen controls VS/VU mode access to state
-- `norm:stateen_illegal_state_access` (`SPEC/smstateen.adoc:89-95`): Access triggers illegal-instruction or virtual-instruction exception when stateen prohibits access
-- `norm:sstateen_vsmode_access_roz` (`SPEC/smstateen.adoc:144-146`): When hstateen bit is 0, VS-mode access to corresponding sstateen bit appears as read-only zero
+- `norm:hstateen_encoding` (`smstateen.adoc:129-132`): hstateen controls VS/VU mode access to state
+- `norm:stateen_illegal_state_access` (`smstateen.adoc:89-95`): Access triggers illegal-instruction or virtual-instruction exception when stateen prohibits access
+- `norm:sstateen_vsmode_access_roz` (`smstateen.adoc:144-146`): When hstateen bit is 0, VS-mode access to corresponding sstateen bit appears as read-only zero
 
 **Test Responsibilities**: Verify that when hstateen0 bit 63=0, VS-mode access to sstateen0 triggers virtual-instruction exception; when bit 63=1, VS-mode can normally access sstateen0.
 
@@ -219,9 +232,9 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ### Group 4: hstateen bit 63 Hierarchical Gating on sstateen
 
 **Specification Basis**:
-- `norm:mstateen_bit_63_op` (`SPEC/smstateen.adoc:162-164`): mstateen0 bit 63 controls access to sstateen0 and hstateen0
-- `norm:hstateen_bit_63_op` (`SPEC/smstateen.adoc:165-166`): hstateen0 bit 63 controls access to sstateen0 as seen by VS-mode
-- `norm:mstateen_lower_priv_roz` (`SPEC/smstateen.adoc:141-143`): When mstateen bit is 0, corresponding hstateen and sstateen bits appear as read-only zero
+- `norm:mstateen_bit_63_op` (`smstateen.adoc:162-164`): mstateen0 bit 63 controls access to sstateen0 and hstateen0
+- `norm:hstateen_bit_63_op` (`smstateen.adoc:165-166`): hstateen0 bit 63 controls access to sstateen0 as seen by VS-mode
+- `norm:mstateen_lower_priv_roz` (`smstateen.adoc:141-143`): When mstateen bit is 0, corresponding hstateen and sstateen bits appear as read-only zero
 
 **Test Responsibilities**: Verify the hierarchical gating chain: mstateen0 → hstateen0 → sstateen0(VS).
 
@@ -239,8 +252,8 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ### Group 5: Ssstateen Interaction with Other Sh* Sub-Extension CSRs
 
 **Specification Basis**:
-- `norm:stateen_op` (`SPEC/smstateen.adoc:86-88`): stateen controls lower-privilege access to state
-- `norm:stateen_illegal_state_access` (`SPEC/smstateen.adoc:89-95`): Violation triggers exception
+- `norm:stateen_op` (`smstateen.adoc:86-88`): stateen controls lower-privilege access to state
+- `norm:stateen_illegal_state_access` (`smstateen.adoc:89-95`): Violation triggers exception
 - Various sub-extension norms (see respective sub-extension specifications)
 
 **Test Responsibilities**: Verify that when hstateen-related bits prohibit access to specific state, VS-mode access to relevant CSRs (if controlled by stateen) behaves correctly; also verify existence of Shvstvala and Shtvala (by triggering traps to verify vstval/htval are correctly written).
@@ -261,8 +274,8 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 ### Group 6: Exception Priority Verification
 
 **Specification Basis**:
-- `norm:HSyncExcPrio` (`SPEC/hypervisor.adoc:2201-2230`): Synchronous exception priority table, G-stage fault takes priority over VS-stage fault
-- `SPEC/hypervisor.adoc:2043-2051`: In two-stage translation, G-stage check completes before VS-stage
+- `HSyncExcPrio`: G-stage fault takes priority over VS-stage fault
+- `hypervisor.adoc:2043-2051`: In two-stage translation, G-stage check completes before VS-stage
 
 **Test Responsibilities**: Verify that exception priority relationships defined in Hypervisor extension specification are correctly observed in two-stage translation scenarios.
 
@@ -333,16 +346,6 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 
 ## Test Execution Notes
 
-### Subdirectory and Build Integration (Implementation Phase Reference, Not Produced by This Plan)
-
-> [!IMPORTANT]
-> This planning phase **only produces `DOCS/testplan/sha_test_plan.md`**, does not create `sha/` subdirectory, does not modify top-level `Makefile`, and does not write C test code. Subsequent implementation phase should create per this document:
-> - `sha/main.c` (reference existing extensions like `svadu/main.c`)
-> - `sha/Makefile` (`SPIKE_ISA_EXT = _sha`, must enable all sub-extensions simultaneously)
-> - `sha/kernel.ld`
-> - `sha/tests/test_exist.c`, `test_stateen.c`, `test_hctl.c`, `test_hierarchy.c`, `test_cross.c`
-> And add `sha` to the `EXTENSIONS` list in top-level `Makefile`.
-
 ### Runtime Environment
 
 - Group 1: M-mode directly operates various CSRs for quick existence verification
@@ -350,7 +353,7 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 - Group 3: M-mode configures hstateen then enters VS-mode via `run_in_vs_mode` to verify gating behavior
 - Group 4: M-mode verifies mstateen → hstateen hierarchical relationship
 - Group 5: Comprehensive environment (M-mode + VS-mode + G-stage mapping), verifies cross-sub-extension interaction
-- Must enable all sub-extensions via `SPIKE_ISA_EXT = _sha` or equivalent
+- Must enable all sub-extensions in the build configuration (e.g., `_sha` or equivalent ISA configuration)
 - Single-core environment, no IPI required
 - Group 5 trap-related tests require G-stage identity mapping
 
@@ -383,3 +386,34 @@ Ssstateen requires both sstateen0-3 and hstateen0-3 to exist. Key behaviors:
 | SHA-CROSS-02 fails (htval=0) | Shtvala not satisfied, htval not written during guest page fault |
 | SHA-CROSS-03 fails | Shvsatpa or Shgatpa mode mapping inconsistent on same platform |
 | SHA-CROSS-04 fails | Shvstvecd Direct jump or Shvstvala vstval write coordination abnormal |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shvstvecd_vstvec_mode_direct` | SHA-EXIST-05, SHA-CROSS-04 | Full BASE/MODE capability belongs to the Shvstvecd independent plan |
+| `norm:shvstvecd_vstvec_base_aligned_address` | SHA-CROSS-04 | Integration-level verification: Direct trap jumps to BASE |
+| `norm:shcounterenw_hpmcounter_hcounteren` | SHA-EXIST-04 | Full writability verification belongs to the Shcounterenw independent plan |
+| `norm:shvstvala_vstval_written` | SHA-CROSS-01, SHA-CROSS-04, SHA-CROSS-05 | Full scenario coverage belongs to the Shvstvala independent plan |
+| `norm:shtvala_htval_faulting_gpa` | SHA-CROSS-02, SHA-CROSS-05, SHA-PRIO-01 | Full scenario coverage belongs to the Shtvala independent plan |
+| `norm:shvsatpa_satp_vsatp_modes` | SHA-EXIST-06, SHA-CROSS-03 | Full mode consistency belongs to the Shvsatpa independent plan |
+| `norm:shgatpa_satp_hgatp_mode_support` | SHA-EXIST-08, SHA-CROSS-03 | Full mode mapping belongs to the Shgatpa independent plan |
+| `norm:shgatpa_hgatp_bare_mode` | SHA-EXIST-07 | |
+| `norm:sstateen_user_access_control` | SHA-HCTL-01 ~ SHA-HCTL-05 | Indirect coverage: verified via hstateen-gated VS access; no dedicated cases for U/VU-level sstateen gating |
+| `norm:hstateen_encoding` | SHA-EXIST-02, SHA-HCTL-01 ~ SHA-HCTL-05 | |
+| `norm:stateen_op` | SHA-HCTL-01 ~ SHA-HCTL-05, SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:stateen_illegal_state_access` | SHA-HCTL-01, SHA-HCTL-03, SHA-HCTL-05, SHA-HIER-03 | |
+| `norm:hstateen_bit_63_writable` | SHA-EXIST-02, SHA-STATEEN-03, SHA-STATEEN-04 | |
+| `norm:mstateen_zero_initialization` | — | Not covered: reset initial state cannot be reproduced during test execution; belongs to platform reset behavior |
+| `norm:hstateen_sstateen_zero_initialization` | — | Not covered: same as above; a machine-level software responsibility statement, not hardware-observable behavior |
+| `norm:sstateen_rv64_csrs` | SHA-EXIST-03, SHA-STATEEN-02 | |
+| `norm:hstateen_rv64_csrs` | SHA-EXIST-02, SHA-STATEEN-01 | |
+| `norm:stateen_warl_access` | SHA-STATEEN-03 ~ SHA-STATEEN-05 | |
+| `norm:stateen_reserved_roz` | SHA-STATEEN-05 | |
+| `norm:sstateen_vsmode_access_roz` | SHA-HCTL-04 | |
+| `norm:mstateen_bit_63_op` | SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:hstateen_bit_63_op` | SHA-HCTL-01 ~ SHA-HCTL-04, SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:mstateen_lower_priv_roz` | SHA-HIER-02, SHA-HIER-03 | |
+| `HSyncExcPrio` | SHA-PRIO-01, SHA-PRIO-02 | From the `[[HSyncExcPrio]]` priority table in hypervisor.adoc |

@@ -14,7 +14,7 @@ RISC-V Hypervisor 扩展中，`vstval`（CSR 0x243）是 VS-mode 版本的 `stva
 
 **Shvstvala 扩展的核心约束**：
 
-> `vstval` 必须在 Sstvala 规范（`SPEC/sstvala.adoc`）为 `stval` 描述的所有场景下被写入：
+> `vstval` 必须在 Sstvala 规范（`sstvala.adoc`）为 `stval` 描述的所有场景下被写入：
 > 1. **地址类异常**（page-fault、access-fault、misaligned、非 EBREAK 的 breakpoint）→ `vstval` = 故障虚拟地址
 > 2. **指令类异常**（illegal-instruction）→ `vstval` = 故障指令编码
 
@@ -24,21 +24,24 @@ RISC-V Hypervisor 扩展中，`vstval`（CSR 0x243）是 VS-mode 版本的 `stva
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/shvstvala.adoc` — Shvstvala Extension for Trap Value Reporting, Version 1.0
-- `SPEC/sstvala.adoc` — Sstvala Extension for Trap Value Reporting, Version 1.0（Shvstvala 引用 Sstvala 的写入场景定义）
-- `SPEC/hypervisor.adoc` 第 1364–1380 行 — `vstval` 寄存器定义
-- `SPEC/hypervisor.adoc` 第 2549–2554 行 — trap 进入 VS-mode 时写 `vstval`
+本方案依据 RISC-V Privileged Architecture 规范（Shvstvala/Sstvala 扩展章节与 Hypervisor 扩展 vstval 相关章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/shvstvala.adoc` — Shvstvala Extension for Trap Value Reporting, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/sstvala.adoc` — Sstvala Extension for Trap Value Reporting, Version 1.0（Shvstvala 引用 Sstvala 的写入场景定义）
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `vstval` 寄存器定义（第 1364–1380 行）；trap 进入 VS-mode 时写 `vstval`（第 2549–2554 行）
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/shvstvala.adoc` | Shvstvala 规范全文（共 6 行） |
-| `SPEC/sstvala.adoc` | Sstvala 规范全文，定义 stval 必须写入的场景（Shvstvala 引用） |
-| `SPEC/hypervisor.adoc:1364-1380` | `vstval` 寄存器规范：VSXLEN-bit RW WARL，V=1 时替代 `stval` |
-| `SPEC/hypervisor.adoc:2549-2554` | `norm:H_trap_vs_csrwrites`：trap 进入 VS-mode 时写 `vsepc`、`vscause`、`vstval` |
+| `shvstvala.adoc` | Shvstvala 规范全文（共 6 行） |
+| `sstvala.adoc` | Sstvala 规范全文，定义 stval 必须写入的场景（Shvstvala 引用） |
+| `hypervisor.adoc:1364-1380` | `vstval` 寄存器规范：VSXLEN-bit RW WARL，V=1 时替代 `stval` |
+| `hypervisor.adoc:2549-2554` | `norm:H_trap_vs_csrwrites`：trap 进入 VS-mode 时写 `vsepc`、`vscause`、`vstval` |
 | `common/encoding.h:293` | `CSR_VSTVAL = 0x243` |
 | `common/encoding.h:143` | `CSR_STVAL = 0x143` |
 | `common/hyp/hyp_priv.h:21,24` | `run_in_vs_mode(fn, arg)` / `run_in_vu_mode(fn, arg)` |
@@ -109,27 +112,7 @@ M-mode ──medeleg──> HS-mode ──hedeleg──> VS-mode
 
 ### 3. VS-mode trap entry 的设计
 
-```asm
-.section .text
-.globl  shvstvala_trap_entry
-.align  2
-shvstvala_trap_entry:
-    csrrw   t0, sscratch, t0       /* V=1 时实际操作 vsscratch */
-    /* 读取 stval (V=1 时实际读 vstval) */
-    csrr    t1, stval
-    la      t0, g_shvstvala_vstval
-    sd      t1, 0(t0)
-    /* 读取 scause (V=1 时实际读 vscause) */
-    csrr    t1, scause
-    la      t0, g_shvstvala_cause
-    sd      t1, 0(t0)
-    /* sepc += 4 (简化：假设 4 字节指令; 实际应判断指令长度) */
-    csrr    t1, sepc
-    addi    t1, t1, 4
-    csrw    sepc, t1
-    csrrw   t0, sscratch, t0
-    sret
-```
+trap entry 需 4 字节对齐，处理流程为：借助 `sscratch`（V=1 时实际操作 `vsscratch`）保存临时寄存器；读取 `stval`（V=1 时实际读 `vstval`）与 `scause`（V=1 时实际读 `vscause`）并分别保存到全局变量 `g_shvstvala_vstval` / `g_shvstvala_cause`；将 `sepc`（V=1 时实际写 `vsepc`）推进跳过故障指令（需按实际指令长度推进，兼容压缩指令）；最后经 `sret` 返回。
 
 ### 4. VS-stage 页表配置
 
@@ -168,8 +151,8 @@ VS-mode 中执行非法指令（如未实现的 opcode、写只读 CSR）会触�
 ### Group 1：Page-Fault 地址类异常（vstval = 故障虚拟地址）
 
 **规范依据**：
-- `norm:shvstvala_vstval_written`（`SPEC/shvstvala.adoc:4-6`）：vstval 必须在 Sstvala 为 stval 描述的场景下被写入
-- `norm:sstvala_stval_faulting_vaddr`（`SPEC/sstvala.adoc:4-9`）：page-fault 时写入故障虚拟地址
+- `norm:shvstvala_vstval_written`（`shvstvala.adoc:4-6`）：vstval 必须在 Sstvala 为 stval 描述的场景下被写入
+- `norm:sstvala_stval_faulting_vaddr`（`sstvala.adoc:4-9`）：page-fault 时写入故障虚拟地址
 
 **测试职责**：验证在 VS-mode 中，当 VS-stage 翻译触发 page-fault 时，`vstval` 等于触发异常的 guest 虚拟地址。
 
@@ -187,71 +170,13 @@ VS-mode 中执行非法指令（如未实现的 opcode、写只读 CSR）会触�
 | VSTVAL-LPF-02 | load page-fault：不同地址验证 | 同 LPF-01 但使用不同的未映射 VA，确认 vstval 跟随实际访问地址变化 | `g_shvstvala_cause == 13`；`g_shvstvala_vstval == different_va` |
 | VSTVAL-SPF-02 | store page-fault：未映射 VA | VS-mode 对未映射 VA 执行 `sd`，触发 store page-fault（cause=15） | `g_shvstvala_cause == 15`；`g_shvstvala_vstval == unmapped_va` |
 
-#### 关键代码示例：VSTVAL-LPF-01
-
-```c
-/* tests/test_pagefault.c — VSTVAL-LPF-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "hyp/two_stage.h"
-
-extern void shvstvala_trap_entry(void);
-extern volatile uintptr_t g_shvstvala_vstval;
-extern volatile uintptr_t g_shvstvala_cause;
-
-#define UNMAPPED_VA  0x40000000UL
-
-static uintptr_t vsmode_load_unmapped(uintptr_t addr) {
-    /* 先设置 vstvec（V=1 时通过 stvec 指令名） */
-    uintptr_t entry = (uintptr_t)&shvstvala_trap_entry;
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    /* 触发 load page-fault */
-    volatile uintptr_t *ptr = (volatile uintptr_t *)addr;
-    (void)*ptr;
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_load_pagefault_vstval);
-bool test_shvstvala_load_pagefault_vstval(void) {
-    TEST_BEGIN("VSTVAL-LPF-01: load page-fault vstval == faulting VA");
-
-    /* 委托 load page-fault (cause=13) 到 VS-mode */
-    hyp_delegate_to_vs(1UL << 13, 0);
-
-    g_shvstvala_vstval = 0;
-    g_shvstvala_cause  = 0;
-
-    /* 配置两阶段翻译：
-     * - VS-stage (vsatp): Sv39，代码/栈恒等映射，UNMAPPED_VA 不映射
-     * - G-stage (hgatp): Sv39x4 恒等映射 */
-    two_stage_context_t ts_ctx;
-    two_stage_init(&ts_ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-    two_stage_identity_map_all(&ts_ctx);
-    /* UNMAPPED_VA 在 VS-stage 不映射（不调用 vs_stage_map） */
-
-    two_stage_run_in_vs(&ts_ctx, vsmode_load_unmapped, UNMAPPED_VA);
-
-    /* 验证 vstval == 故障虚拟地址 */
-    TEST_ASSERT_EQ("vscause == load page-fault (13)",
-                   g_shvstvala_cause, (uintptr_t)CAUSE_LOAD_PAGE_FAULT);
-    TEST_ASSERT_EQ("vstval == faulting VA",
-                   g_shvstvala_vstval, UNMAPPED_VA);
-
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 2：Access-Fault 地址类异常（vstval = 故障虚拟地址）
 
 **规范依据**：
-- `norm:shvstvala_vstval_written`（`SPEC/shvstvala.adoc:4-6`）
-- `norm:sstvala_stval_faulting_vaddr`（`SPEC/sstvala.adoc:4-9`）：access-fault 时写入故障虚拟地址
+- `norm:shvstvala_vstval_written`（`shvstvala.adoc:4-6`）
+- `norm:sstvala_stval_faulting_vaddr`（`sstvala.adoc:4-9`）：access-fault 时写入故障虚拟地址
 
 **测试职责**：验证在 VS-mode 中，当 PMP 限制导致 access-fault 时，`vstval` 等于被拒绝访问的 guest 虚拟地址。
 
@@ -266,74 +191,13 @@ bool test_shvstvala_load_pagefault_vstval(void) {
 | VSTVAL-SAF-01 | store access-fault：PMP 禁写区域 | PMP 禁止特定 PA 写入，VS-mode 对该区域执行 `sd` | `g_shvstvala_cause == 7`；`g_shvstvala_vstval == target_va` |
 | VSTVAL-IAF-01 | instruction access-fault：PMP 禁执行区域 | PMP 禁止特定 PA 执行，VS-mode 跳转到该区域取指 | `g_shvstvala_cause == 1`；`g_shvstvala_vstval == target_pc` |
 
-#### 关键代码示例：VSTVAL-LAF-01
-
-```c
-/* tests/test_accessfault.c — VSTVAL-LAF-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "hyp/two_stage.h"
-
-extern void shvstvala_trap_entry(void);
-extern volatile uintptr_t g_shvstvala_vstval;
-extern volatile uintptr_t g_shvstvala_cause;
-
-#define PMP_NOREAD_PA    0x80600000UL
-#define TEST_VA_LAF      0x80600000UL  /* VA == GPA == PA (恒等映射) */
-
-static uintptr_t vsmode_load_pmp_blocked(uintptr_t addr) {
-    uintptr_t entry = (uintptr_t)&shvstvala_trap_entry;
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    volatile uintptr_t *ptr = (volatile uintptr_t *)addr;
-    (void)*ptr;  /* 触发 load access-fault */
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_load_accessfault_vstval);
-bool test_shvstvala_load_accessfault_vstval(void) {
-    TEST_BEGIN("VSTVAL-LAF-01: load access-fault vstval == faulting VA");
-
-    /* 委托 load access-fault (cause=5) 到 VS-mode */
-    hyp_delegate_to_vs(1UL << 5, 0);
-
-    /* PMP 配置：PMP_NOREAD_PA 区域禁读 */
-    pmp_clear_all();
-    pmp_entry_t e0 = PMP_ENTRY_NAPOT(PMP_NOREAD_PA, 0x1000, PMP_W);
-    pmp_set_entry(0, &e0);
-    pmp_entry_t e1 = PMP_ENTRY_NAPOT(0x0, 0x100000000UL, PMP_RWX);
-    pmp_set_entry(1, &e1);
-
-    g_shvstvala_vstval = 0;
-    g_shvstvala_cause  = 0;
-
-    /* 两阶段恒等映射 */
-    two_stage_context_t ts_ctx;
-    two_stage_init(&ts_ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-    two_stage_identity_map_all(&ts_ctx);
-
-    two_stage_run_in_vs(&ts_ctx, vsmode_load_pmp_blocked, TEST_VA_LAF);
-
-    TEST_ASSERT_EQ("vscause == load access-fault (5)",
-                   g_shvstvala_cause, (uintptr_t)CAUSE_LOAD_ACCESS_FAULT);
-    TEST_ASSERT_EQ("vstval == faulting VA",
-                   g_shvstvala_vstval, TEST_VA_LAF);
-
-    pmp_clear_all();
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 3：Misaligned 地址类异常（vstval = 故障虚拟地址）
 
 **规范依据**：
-- `norm:shvstvala_vstval_written`（`SPEC/shvstvala.adoc:4-6`）
-- `norm:sstvala_stval_faulting_vaddr`（`SPEC/sstvala.adoc:4-9`）：misaligned 异常时写入故障虚拟地址
+- `norm:shvstvala_vstval_written`（`shvstvala.adoc:4-6`）
+- `norm:sstvala_stval_faulting_vaddr`（`sstvala.adoc:4-9`）：misaligned 异常时写入故障虚拟地址
 
 **测试职责**：验证在 VS-mode 中，当 load/store/instruction misaligned 异常被触发并委托到 VS-mode 时，`vstval` 等于未对齐的访问地址。
 
@@ -351,61 +215,13 @@ bool test_shvstvala_load_accessfault_vstval(void) {
 | VSTVAL-LMA-01 | load misaligned：非对齐 load | VS-mode 对非 8 字节对齐地址执行 `ld`，若平台不支持非对齐则触发 cause=4 | `g_shvstvala_cause == 4`；`g_shvstvala_vstval == misaligned_addr`；若平台支持非对齐则 `TEST_SKIP` |
 | VSTVAL-SMA-01 | store misaligned：非对齐 store | VS-mode 对非 8 字节对齐地址执行 `sd`，若平台不支持非对齐则触发 cause=6 | `g_shvstvala_cause == 6`；`g_shvstvala_vstval == misaligned_addr`；若平台支持非对齐则 `TEST_SKIP` |
 
-#### 关键代码示例：VSTVAL-IMA-01
-
-```c
-/* tests/test_misaligned.c — VSTVAL-IMA-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-extern void shvstvala_trap_entry(void);
-extern volatile uintptr_t g_shvstvala_vstval;
-extern volatile uintptr_t g_shvstvala_cause;
-
-static uintptr_t vsmode_jump_misaligned(uintptr_t target) {
-    uintptr_t entry = (uintptr_t)&shvstvala_trap_entry;
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    /* 跳转到奇数地址（非 2 字节对齐）→ instruction misaligned */
-    asm volatile ("jalr zero, %0, 0" :: "r"(target) : "memory");
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_inst_misaligned_vstval);
-bool test_shvstvala_inst_misaligned_vstval(void) {
-    TEST_BEGIN("VSTVAL-IMA-01: instruction misaligned vstval == faulting addr");
-
-    /* 委托 instruction address misaligned (cause=0) 到 VS-mode */
-    hyp_delegate_to_vs(1UL << 0, 0);
-
-    g_shvstvala_vstval = 0;
-    g_shvstvala_cause  = ~0UL;
-
-    /* 构造奇数目标地址 */
-    extern void _start(void);
-    uintptr_t target = ((uintptr_t)&_start) | 0x1UL;
-
-    run_in_vs_mode(vsmode_jump_misaligned, target);
-
-    TEST_ASSERT_EQ("vscause == instruction address misaligned (0)",
-                   g_shvstvala_cause, (uintptr_t)CAUSE_INST_ADDR_MISALIGN);
-    TEST_ASSERT_EQ("vstval == misaligned target address",
-                   g_shvstvala_vstval, target);
-
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：Illegal Instruction 指令类异常（vstval = 故障指令编码）
 
 **规范依据**：
-- `norm:shvstvala_vstval_written`（`SPEC/shvstvala.adoc:4-6`）
-- `norm:sstvala_stval_faulting_instruction`（`SPEC/sstvala.adoc:11-13`）：illegal-instruction 异常时写入故障指令编码
+- `norm:shvstvala_vstval_written`（`shvstvala.adoc:4-6`）
+- `norm:sstvala_stval_faulting_instruction`（`sstvala.adoc:11-13`）：illegal-instruction 异常时写入故障指令编码
 
 **测试职责**：验证在 VS-mode 中执行非法指令触发 illegal-instruction 异常（cause=2）并委托到 VS-mode 时，`vstval` 等于故障指令的编码值。
 
@@ -428,62 +244,13 @@ bool test_shvstvala_inst_misaligned_vstval(void) {
 > - `0xFFF022F3`：`csrrs x5, 0xFFF, x0` — 访问不存在的 CSR 0xFFF
 > - `0x0000`：C 扩展中全零 16 位编码，defined as illegal
 
-#### 关键代码示例：VSTVAL-ILL-01
-
-```c
-/* tests/test_illegal.c — VSTVAL-ILL-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-extern void shvstvala_trap_entry(void);
-extern volatile uintptr_t g_shvstvala_vstval;
-extern volatile uintptr_t g_shvstvala_cause;
-
-/* 预置非法指令 */
-static uint32_t illegal_custom0 __attribute__((aligned(4))) = 0x0000000B;
-
-static uintptr_t vsmode_exec_illegal(uintptr_t addr) {
-    uintptr_t entry = (uintptr_t)&shvstvala_trap_entry;
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    /* 跳转到预置的非法指令地址执行 */
-    void (*fn)(void) = (void (*)(void))addr;
-    fn();
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_illegal_custom0_vstval);
-bool test_shvstvala_illegal_custom0_vstval(void) {
-    TEST_BEGIN("VSTVAL-ILL-01: illegal custom-0 vstval == instruction encoding");
-
-    /* 委托 illegal-instruction (cause=2) 到 VS-mode */
-    hyp_delegate_to_vs(1UL << 2, 0);
-
-    g_shvstvala_vstval = 0;
-    g_shvstvala_cause  = 0;
-
-    uintptr_t addr = (uintptr_t)&illegal_custom0;
-    run_in_vs_mode(vsmode_exec_illegal, addr);
-
-    TEST_ASSERT_EQ("vscause == illegal-instruction (2)",
-                   g_shvstvala_cause, (uintptr_t)CAUSE_ILLEGAL_INST);
-    TEST_ASSERT_EQ("vstval == 0x0000000B (32-bit instruction encoding)",
-                   g_shvstvala_vstval, 0x0000000BUL);
-
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：vstval 透传验证（V=1 时 stval 访问实际操作 vstval）
 
 **规范依据**：
-- `norm:vstval_sz_acc_op`（`SPEC/hypervisor.adoc:1366-1372`）：When V=1, `vstval` substitutes for the usual `stval`
-- `norm:vstval_warl`（`SPEC/hypervisor.adoc:1374-1376`）：vstval 是 WARL，必须能持有与 stval 相同的值集合
+- `norm:vstval_sz_acc_op`（`hypervisor.adoc:1366-1372`）：When V=1, `vstval` substitutes for the usual `stval`
+- `norm:vstval_warl`（`hypervisor.adoc:1374-1376`）：vstval 是 WARL，必须能持有与 stval 相同的值集合
 
 **测试职责**：验证 V=1 时通过 `stval` 指令名写入的值能从 M/HS-mode 通过 `vstval`（CSR 0x243）读回；验证 trap 后 vstval 的值不被 VS-mode 外的操作覆盖。
 
@@ -494,49 +261,13 @@ bool test_shvstvala_illegal_custom0_vstval(void) {
 | VSTVAL-TRANS-03 | VS-mode trap 后 vstval 不被清零 | VS-mode 触发 trap，VS-mode handler 读 vstval；返回 M-mode 后再次读 vstval 确认值未被覆盖 | M-mode 读 vstval == 预期值（trap 时写入的故障信息） |
 | VSTVAL-TRANS-04 | vstval 持有地址级宽值 | M-mode 写 vstval = 高位地址（如 `0x7FFFFFFFFF`），回读确认 WARL 不截断 | 回读 == 写入值 |
 
-#### 关键代码示例：VSTVAL-TRANS-01
-
-```c
-/* tests/test_transparent.c — VSTVAL-TRANS-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-static uintptr_t vsmode_write_stval(uintptr_t val) {
-    /* V=1：csrw stval 实际写 vstval */
-    asm volatile ("csrw stval, %0" :: "r"(val));
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_transparent_vs_write);
-bool test_shvstvala_transparent_vs_write(void) {
-    TEST_BEGIN("VSTVAL-TRANS-01: VS writes stval, M reads vstval");
-
-    uintptr_t saved;
-    asm volatile ("csrr %0, 0x243" : "=r"(saved));
-
-    uintptr_t test_val = 0xDEADBEEFUL;
-    run_in_vs_mode(vsmode_write_stval, test_val);
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x243" : "=r"(readback));
-    TEST_ASSERT_EQ("vstval == value written by VS via stval",
-                   readback, test_val);
-
-    asm volatile ("csrw 0x243, %0" :: "r"(saved));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 6：Breakpoint 场景（非 EBREAK 的断点异常）
 
 **规范依据**：
-- `norm:sstvala_stval_faulting_vaddr`（`SPEC/sstvala.adoc:4-9`）：stval must be written with the faulting virtual address for ... breakpoint exceptions that are defined to write an address to stval, other than those caused by execution of the `EBREAK` or `C.EBREAK` instructions.
-- `norm:shvstvala_vstval_written`（`SPEC/shvstvala.adoc:4-6`）：vstval 必须在 Sstvala 为 stval 描述的所有场景下被写入
+- `norm:sstvala_stval_faulting_vaddr`（`sstvala.adoc:4-9`）：stval must be written with the faulting virtual address for ... breakpoint exceptions that are defined to write an address to stval, other than those caused by execution of the `EBREAK` or `C.EBREAK` instructions.
+- `norm:shvstvala_vstval_written`（`shvstvala.adoc:4-6`）：vstval 必须在 Sstvala 为 stval 描述的所有场景下被写入
 
 **测试职责**：验证 VS-mode 触发地址匹配断点（非 EBREAK）时 vstval 被正确写入断点地址；验证 EBREAK/C.EBREAK 触发的 breakpoint 不属于 Shvstvala 的写入要求。
 
@@ -552,83 +283,6 @@ bool test_shvstvala_transparent_vs_write(void) {
 > [!NOTE]
 > VSTVAL-BRK-01 依赖 Sdtrig 扩展提供的 trigger 机制。如果平台不支持 trigger type 2 或 type 6（mcontrol/mcontrol6），测试应通过读取 `tinfo` CSR 探测支持的 trigger 类型，不支持时执行 `TEST_SKIP`。
 > VSTVAL-BRK-02 验证的是 Sstvala 的排除条款（"other than those caused by execution of the EBREAK or C.EBREAK instructions"），确认 EBREAK 场景下 vstval 不受 Shvstvala 约束。
-
-#### 关键代码示例：VSTVAL-BRK-01
-
-```c
-/* tests/test_breakpoint.c — VSTVAL-BRK-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "hyp/hyp_trap.h"
-
-#define CSR_TSELECT    0x7A0
-#define CSR_TDATA1     0x7A1
-#define CSR_TDATA2     0x7A2
-#define CSR_TINFO      0x7A5
-
-#define CAUSE_BREAKPOINT  3
-
-/* mcontrol6 type=6, DMODE=0, EXECUTE=1, M=0, S=0, VS=1 */
-#define MCONTROL6_TYPE6    (6UL << 60)
-#define MCONTROL6_EXECUTE  (1UL << 2)
-#define MCONTROL6_VS       (1UL << 24)
-#define MCONTROL6_MATCH_EQ (0UL << 7)
-
-extern volatile uintptr_t g_shvstvala_vstval;
-extern volatile uintptr_t g_shvstvala_cause;
-
-static void vs_breakpoint_target(void) {
-    /* 此函数地址将被配置为断点目标 */
-    asm volatile ("nop");
-}
-
-static uintptr_t vsmode_trigger_breakpoint(uintptr_t target_addr) {
-    /* VS-mode：跳转到 target_addr 触发断点 */
-    void (*fn)(void) = (void (*)(void))target_addr;
-    fn();
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvala_breakpoint_addr_match);
-bool test_shvstvala_breakpoint_addr_match(void) {
-    TEST_BEGIN("VSTVAL-BRK-01: address-match breakpoint writes vstval");
-
-    /* 探测 Sdtrig 支持 */
-    uintptr_t tinfo;
-    asm volatile ("csrr %0, 0x7A5" : "=r"(tinfo));
-    if ((tinfo & (1UL << 6)) == 0 && (tinfo & (1UL << 2)) == 0) {
-        TEST_SKIP("platform does not support mcontrol6 (type 6) or mcontrol (type 2)");
-    }
-
-    /* 配置 trigger：在 vs_breakpoint_target 地址触发 */
-    uintptr_t target = (uintptr_t)&vs_breakpoint_target;
-    asm volatile ("csrw 0x7A0, zero");  /* tselect = 0 */
-    uintptr_t tdata1_val = MCONTROL6_TYPE6 | MCONTROL6_EXECUTE |
-                           MCONTROL6_VS | MCONTROL6_MATCH_EQ;
-    asm volatile ("csrw 0x7A1, %0" :: "r"(tdata1_val));
-    asm volatile ("csrw 0x7A2, %0" :: "r"(target));
-
-    /* 委托 breakpoint 到 VS-mode */
-    hyp_delegate_to_vs((1UL << CAUSE_BREAKPOINT), 0);
-
-    g_shvstvala_vstval = 0;
-    g_shvstvala_cause = 0;
-    run_in_vs_mode(vsmode_trigger_breakpoint, target);
-
-    TEST_ASSERT_EQ("cause == breakpoint (3)",
-                   g_shvstvala_cause, CAUSE_BREAKPOINT);
-    TEST_ASSERT_EQ("vstval == breakpoint address",
-                   g_shvstvala_vstval, target);
-
-    /* 清除 trigger */
-    asm volatile ("csrw 0x7A1, zero");
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -687,7 +341,7 @@ bool test_shvstvala_breakpoint_addr_match(void) {
 - `hyp_undelegate()`：清除所有 hypervisor 委托
 - `HYP_TEST_END()`：测试结束宏（含 hyp_reset_state）
 
-### 全局变量（`shvstvala/tests/shvstvala_strap.S` 提供）
+### 全局变量（由 VS-mode trap entry 提供）
 
 | 变量 | 类型 | 说明 |
 |------|------|------|
@@ -736,3 +390,18 @@ bool test_shvstvala_breakpoint_addr_match(void) {
 | VSTVAL-BRK-01 SKIP | 平台未实现 Sdtrig 扩展（tinfo 探测失败），无法配置地址匹配断点 |
 | VSTVAL-BRK-01 失败（vstval≠target） | trigger 配置错误（tdata1 type/VS 位设置不正确）或 hedeleg bit 3 未委托 |
 | 所有用例均 cause 不匹配 | medeleg 未委托到 HS-mode，或 hedeleg 未进一步委托到 VS-mode |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:shvstvala_vstval_written` | VSTVAL-LPF-01 ~ VSTVAL-LPF-02, VSTVAL-SPF-01 ~ VSTVAL-SPF-02, VSTVAL-IPF-01, VSTVAL-LAF-01, VSTVAL-SAF-01, VSTVAL-IAF-01, VSTVAL-IMA-01, VSTVAL-LMA-01, VSTVAL-SMA-01, VSTVAL-ILL-01 ~ VSTVAL-ILL-05, VSTVAL-BRK-01 ~ VSTVAL-BRK-02 | 核心约束：所有 Sstvala 描述场景下 vstval 均被写入 |
+| `norm:sstvala_stval_faulting_vaddr` | Group 1-3（page-fault/access-fault/misaligned）与 Group 6（breakpoint）全部用例 | 地址类异常写故障虚拟地址 |
+| `norm:sstvala_stval_faulting_instruction` | VSTVAL-ILL-01 ~ VSTVAL-ILL-05 | illegal-instruction 写故障指令编码 |
+| `norm:vstval_sz_acc_op` | VSTVAL-TRANS-01 ~ VSTVAL-TRANS-04 | V=1 时 stval 指令实际访问 vstval |
+| `norm:vstval_warl` | VSTVAL-TRANS-01 ~ VSTVAL-TRANS-04 | WARL 值集合与 stval 一致（经透传写回读验证） |
+| `norm:H_trap_vs_csrwrites` | Group 1-6 全部委托到 VS-mode 的用例 | 硬件写 vsepc/vscause/vstval 是所有用例的前置行为 |
+| EBREAK/C.EBREAK 断点排除 | — | 不覆盖：Sstvala 规范明确排除，见“不在测试范围内” |
+| Guest page-fault（cause 20/21/23） | — | 不覆盖：不会委托到 VS-mode，见“不在测试范围内” |

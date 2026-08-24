@@ -9,7 +9,11 @@
 
 本测试计划覆盖 RISC-V Hypervisor (H) 扩展的异常与 trap 相关功能点，包括 virtual-instruction exception 全场景、trap entry/return 行为、htinst/mtinst 转换指令、mstatus Hypervisor 增强（MPV/GVA/TVM/MPRV）、mtval2/mtinst 寄存器、异常优先级以及 hedeleg 异常委托链路。CSR 寄存器字段行为、中断递送机制分别由兄弟子集覆盖。
 
-本测试计划依据 `SPEC/hypervisor.adoc` 中的规范点（norm 标记）编写。
+本测试计划依据 RISC-V 官方 SPEC 中的规范点（norm 标记）编写：
+
+- 本地路径：`SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`（virtual-instruction、trap entry/return、htinst/htval、hedeleg 等）、`SPEC/riscv-isa-manual/src/priv/machine.adoc`（mstatus MPV/GVA/TVM/MPRV、mtval2/mtinst、MRET 增强）
+- 官方仓库：https://github.com/riscv/riscv-isa-manual （对应仓库内上述路径文件）
+- 任一平台违反 SPEC 时用例保持 FAIL 并记录至 `bugs/` 目录
 
 ### 本文档覆盖的 SPEC 章节
 - Hypervisor and Virtual Supervisor CSRs（hedeleg 异常委托行为）
@@ -51,7 +55,8 @@
 | `norm:H_trap_m_csrwrites` | When a trap is taken into M-mode, V gets set to 0, and fields MPV and MPP in `mstatus` are set accordingly. A trap into M-mode also writes fields GVA, MPIE, and MIE in `mstatus` and writes CSRs `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. | 陷阱进入 M 模式时，V 设为 0，`mstatus` 的 MPV 和 MPP 相应设置。同时写入 GVA、MPIE、MIE 及 CSR `mepc`、`mcause`、`mtval`、`mtval2`、`mtinst`。 |
 | `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. | 陷阱进入 VS 模式时，`vsstatus`.SPP 相应设置。`hstatus` 和 HS 级 `sstatus` 不修改，V 保持 1。同时写入 `vsstatus` 的 SPIE/SIE 及 CSR `vsepc`、`vscause`、`vstval`。 |
 | `norm:H_trap_xtinst` | On any trap into M-mode or HS-mode, one of these values is written to `mtinst` or `htinst`: zero; a transformation of the trapping instruction; a custom value (only if the trapping instruction is non-standard); or a special pseudoinstruction. | 任何陷阱进入 M/HS 模式时，`mtinst`/`htinst` 写入以下之一：零；陷阱指令的转换；自定义值（仅限非标准指令）；或特殊伪指令。 |
-| `norm:H_trap_xtinst_exception` | On a synchronous exception, if a nonzero value is written to the trap instruction register, it must be one of: a standard transformed instruction (bit 0 = 1, replacing bit 1 with 1 yields a valid standard encoding); a custom value (bit 0 = 1, replacing bit 1 with 1 yields a designated custom encoding); or a special pseudoinstruction (bits 1:0 = 00). All other values (e.g. bits 1:0 = 10) are illegal. | 同步异常时，若陷阱指令寄存器写入非零值，必须是以下之一：标准转换指令（bit0=1，将 bit1 置 1 后为标准指令编码）；custom 值（bit0=1，bit1 置 1 后为指定的 custom 编码）；特殊伪指令（bits1:0=00）。其他值（如 bits1:0=10）非法。 |
+| `norm:H_trap_xtinst_exception_lead-in` | On a synchronous exception, if a nonzero value is written to the trap instruction register, one of the following shall be true about the value. | 同步异常时，若陷阱指令寄存器写入非零值，该值必须满足下列条件之一。 |
+| `norm:H_trap_xtinst_exception_list` | One of the following shall be true about the value: bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid encoding of a standard instruction (a standard transformed instruction); bit 0 is 1, and replacing bit 1 with 1 makes the value into an instruction encoding explicitly designated for a custom instruction (a custom value); or the value is one of the special pseudoinstructions, all of which have bits 1:0 equal to 00. These three cases exclude all other values, such as those having bits 1:0 equal to binary 10. | 该值必须是以下之一：标准转换指令（bit0=1，将 bit1 置 1 后为标准指令的有效编码）；custom 值（bit0=1，将 bit1 置 1 后为明确指定的 custom 指令编码）；或特殊伪指令（bits1:0=00）。这三类排除其他所有值（如 bits1:0=10）。 |
 | `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value is written to `mtval2` or `htval`. If both conditions are met, zero is not allowed. | 对于客户页错误，若 (a) 故障由 VS 阶段地址翻译的隐式内存访问引起，且 (b) `mtval2`/`htval` 写入非零值，则陷阱指令寄存器必须写入特殊伪指令值，不允许零。 |
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. | 写伪指令（0x00002020 或 0x00003020）用于机器自动更新 VS 级页表 A/D 位的情况。所有其他 VS 阶段翻译的隐式内存访问为读取。 |
 | `norm:H_trap_xtinst_interrupt` | On an interrupt, the value written to the trap instruction register is always zero. | 中断时，陷阱指令寄存器写入值始终为零。 |
@@ -67,6 +72,7 @@
 | `norm:H_virtinst_xtval` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. | 虚拟指令陷阱时，`mtval` 或 `stval` 的写入方式与非法指令陷阱相同。 |
 | `norm:hedeleg_acc` | Each bit of `hedeleg` shall be either writable or read-only zero. Many bits of `hedeleg` are required specifically to be writable or zero, as enumerated in the table. Bit 0, corresponding to instruction address-misaligned exceptions, must be writable if IALIGN=32. | `hedeleg` 的每一位要么可写要么为只读零。第 0 位（指令地址未对齐异常）在 IALIGN=32 时必须可写。 |
 | `norm:hedeleg_op` | A synchronous trap that has been delegated to HS-mode (using `medeleg`) is further delegated to VS-mode if V=1 before the trap and the corresponding `hedeleg` bit is set. | 已通过 `medeleg` 委托给 HS 模式的同步陷阱，若陷阱前 V=1 且对应的 `hedeleg` 位已设置，则进一步委托给 VS 模式。 |
+| `norm:htval_trapval` | When a guest-page-fault trap is taken into HS-mode, `htval` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `htval` is set to zero. | 客户页错误陷阱进入 HS 模式时，`htval` 写入零或故障客户物理地址右移 2 位。其他陷阱时 `htval` 设为零。 |
 | `norm:mret_h` | MRET first determines the new privilege mode according to MPP and MPV in `mstatus`. MRET then sets MPV=0, MPP=0, MIE=MPIE, and MPIE=1. Lastly, MRET sets the privilege mode as previously determined, and sets pc=mepc. | MRET 先根据 `mstatus` 中 MPP 和 MPV 确定新特权模式，然后设 MPV=0、MPP=0、MIE=MPIE、MPIE=1，最后设置特权模式并 pc=mepc。 |
 | `norm:mstatus_gva_op` | Field GVA is written by the implementation whenever a trap is taken into M-mode. For any trap that writes a guest virtual address to `mtval`, GVA is set to 1. For any other trap into M-mode, GVA is set to 0. | GVA 字段在陷阱进入 M 模式时由实现写入。写入客户虚拟地址到 `mtval` 的陷阱设 GVA=1，其他设 GVA=0。 |
 | `norm:mstatus_modes` | The TSR and TVM fields of `mstatus` affect execution only in HS-mode, not in VS-mode. The TW field affects execution in all modes except M-mode. | `mstatus` 的 TSR 和 TVM 字段仅影响 HS 模式执行，不影响 VS 模式。TW 字段影响除 M 模式外的所有模式。 |
@@ -230,7 +236,7 @@
 | TRET-15 | MRET mepc 恢复 PC | 设 mepc=目标地址, 执行 MRET | PC=mepc |
 | TRET-16 | SRET(V=1) 不修改 V=0 状态 | 预置 hstatus.SPV=1、sstatus.SPP=1、毒化 HS sepc，VS-mode 实际执行 SRET（vsstatus.SPP=1） | 返回后 hstatus.SPV、sstatus.SPP、HS sepc 均保持不变（sret_v1 只操作 vsstatus/vsepc） |
 | TRET-17 | SRET(V=0) 不修改 VS 状态 | 预置 vsstatus.SPP=1、毒化 vsepc，HS-mode 实际执行 SRET（SPV=1, SPP=1）返回 VS-mode | 返回后 vsstatus.SPP、vsepc 保持不变（sret_v0 只操作 hstatus/sstatus/sepc） |
-| TRET-18 | VU trap→HS 处理后 SRET 返回的完整闭环 | medeleg[3] 委托 ebreak 到 HS-mode，stvec 指向 HS handler，VU-mode 执行 ebreak | trap 进入 HS-mode（trap_get_spv()=1）；HS handler 经 SRET 返回 VU-mode 恢复执行（标志写入成功）；返回后 hstatus.SPV=0（SRET 清除） |
+| TRET-18 | VU trap→HS 处理后 SRET 返回的完整闭环 | medeleg[3] 委托 ebreak 到 HS-mode，stvec 指向 HS handler，VU-mode 执行 ebreak | trap 进入 HS-mode（SPV=1）；HS handler 经 SRET 返回 VU-mode 恢复执行（标志写入成功）；返回后 hstatus.SPV=0（SRET 清除） |
 | TRET-19 | VS 嵌套 trap→VS handler SRET 返回的完整闭环 | medeleg[3]+hedeleg[3] 委托 ebreak 到 VS-mode，vstvec 指向自定义 VS handler，VS-mode 执行 ebreak | trap 进入 VS handler（vscause=3）；handler 的 SRET 返回 ebreak 之后的 VS 上下文恢复执行；HS 级 sstatus.SPP 不受影响 |
 
 
@@ -241,7 +247,7 @@
 **规范依据**：
 - `norm:H_trap_xtinst`：trap 时写入 mtinst/htinst 的值类型（零/转换指令/custom/pseudoinstruction）；除强制伪指令场景外，实现始终允许写零
 - `norm:H_trap_xtinst_interrupt`：中断时写零
-- `norm:H_trap_xtinst_exception`：同步异常写入非零值时必须满足三类合法形式之一（标准转换指令/custom/伪指令）
+- `norm:H_trap_xtinst_exception_lead-in` / `norm:H_trap_xtinst_exception_list`：同步异常写入非零值时必须满足三类合法形式之一（标准转换指令/custom/伪指令）
 - `norm:H_trap_xtinst_val`：各异常类型可写入的值类型（tinst-values 表）；custom 值仅限非标准指令，标准指令（如 ecall/illegal-instruction）只允许写零
 - `norm:H_trap_xtinst_guestpage`：隐式 VS-stage 访问引发 guest-page-fault 且 htval/mtval2 非零时必须写 pseudoinstruction，不允许零
 - `norm:H_trap_xtinst_guestpage_rw`：read 用 0x00003000，write（A/D 更新）用 0x00003020（RV64）
@@ -261,7 +267,7 @@
 | TINST-05 | 隐式 VS-stage 读 fault 的 pseudoinstruction | VS-stage 叶页表页在 G-stage 不可读，触发隐式读 guest-page-fault | htval≠0 时 htinst=0x00003000（零不允许）；htval=0 时接受 |
 | TINST-06 | 隐式写（A/D 更新）的 pseudoinstruction | VS-stage 叶页表页在 G-stage D=0，触发隐式写 fault；平台支持 Svadu 时 SKIP | htval≠0 时 htinst=0x00003020（零不允许） |
 | TINST-07 | 转换指令字段结构验证 | 32-bit load 触发 fault，htinst 非零时逐字段校验 | opcode/funct3/rd 保留、imm 清零、Addr Offset 正确、bits1:0=11 |
-| TINST-08 | 压缩指令转换编码 | 16-bit `c.lw`（0x4108）触发 load guest-page-fault | htinst == 0 或 == 压缩转换值（展开为 32 位等效指令后转换，bit1 置 0，bits1:0=01，`norm:H_trap_xtinst_exception`） |
+| TINST-08 | 压缩指令转换编码 | 16-bit `c.lw`（0x4108）触发 load guest-page-fault | htinst == 0 或 == 压缩转换值（展开为 32 位等效指令后转换，bit1 置 0，bits1:0=01，`norm:H_trap_xtinst_exception_lead-in`/`norm:H_trap_xtinst_exception_list`） |
 | TINST-09 | page-fault 不产生 pseudoinstruction | VS-stage 叶 PTE R=0 触发 load page-fault（cause=13，非 guest-page-fault） | htinst=0 或转换指令（golden 精确匹配）；不允许伪指令值 |
 | TINST-10 | illegal-instruction 只允许写零 | VS-mode 执行非法指令（标准异常，tinst-values 表仅允许 Zero） | htinst=0（严格） |
 
@@ -308,7 +314,7 @@
 - `norm:mtinst_sz_acc_op` / `norm:mtinst_val`：mtinst 格式与 WARL（仅需能保持 trap 时可能自动写入的值）
 - `norm:htinst_val`：htinst WARL（仅需能保持 trap 时可能自动写入的值，零恒在其内），读写语义与 mtinst 相同
 
-**测试职责**：验证 M-mode trap 时 mtval2/mtinst 的写入行为。本套件中 VS/HS trap 默认不委托，统一进入 M-mode，框架在 M-mode trap 入口捕获 mtval2/mtinst（`trap_get_htval()`/`trap_get_htinst()` 在 M-mode 递送路径下即为 mtval2/mtinst）。
+**测试职责**：验证 M-mode trap 时 mtval2/mtinst 的写入行为。本套件中 VS/HS trap 默认不委托，统一进入 M-mode，在 M-mode trap 入口捕获 mtval2/mtinst。
 
 **严格验证原则**（针对评审 Gap）：trap 写入值按 SPEC 允许集精确断言 —— GPF 时 mtval2 必须是 `0` 或 `GPA>>2` 二者之一（不允许其他值）；WARL 读写不要求原值回显但必须稳定且零必须可保持；隐式访问 fault 时 mtval2 非零则必须精确等于隐式访问 GPA>>2。
 
@@ -360,3 +366,63 @@
 | DELEG-07 | hedeleg 委托 ecall-from-VU 到 VS | 设 medeleg[8]=1, hedeleg[8]=1，VU-mode 执行 ECALL | trap 进入 VS-mode（vscause=8） |
 | DELEG-15 | guest-page-fault 不可委托到 VS | 验证 hedeleg bits 20/21/23 只读零 | guest-page-fault 始终 trap 到 HS-mode |
 | DELEG-16 | virtual-instruction 不可委托到 VS | 验证 hedeleg bit 22 只读零 | virtual-instruction exception 始终 trap 到 HS-mode |
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+下表标明"覆盖的规范点"章节中每条规范点被哪些测试用例覆盖。
+
+| Norm ID | 覆盖的测试 ID |
+|---------|---------------|
+| `norm:H_cause` | VINST-01~20、VINST-25~44、VINST-49~52（cause=22 编码）、TENT-01、TENT-02（cause=10/8 编码） |
+| `norm:H_cause_ecall` | TENT-01、TENT-02、PRIO-03~05 |
+| `norm:H_cause_virtual_instruction` | VINST-01~20、VINST-25~44、VINST-49~52 |
+| `norm:H_cause_virtual_instruction_high` | 条件规范点（XLEN=32 场景），RV64 平台不触发该分支；XLEN>32 一侧的对偶规则由 VINST-45~48 验证 |
+| `norm:H_csrs_hs_not_vs` | VINST-07~10、VINST-25~32、VINST-49~52 |
+| `norm:H_exception_priority` | PRIO-01、PRIO-02 |
+| `norm:H_illegal_high_half` | VINST-45~48 |
+| `norm:H_illegalinst_xstatus_fs_vs` | VINST-21、VINST-22 |
+| `norm:H_trap_deleg` | TENT-01~14、DELEG-04~07 |
+| `norm:H_trap_hs_csrwrites` | TENT-01~09、TENT-15、TENT-16 |
+| `norm:H_trap_m_csrwrites` | TENT-12~14 |
+| `norm:H_trap_vs_csrwrites` | TENT-10、TENT-11 |
+| `norm:H_trap_xtinst` | TINST-01~10 |
+| `norm:H_trap_xtinst_exception_lead-in` | TINST-02~04、TINST-07~10 |
+| `norm:H_trap_xtinst_exception_list` | TINST-07、TINST-08 |
+| `norm:H_trap_xtinst_guestpage` | TINST-05、TINST-06 |
+| `norm:H_trap_xtinst_guestpage_rw` | TINST-06 |
+| `norm:H_trap_xtinst_interrupt` | TINST-01 |
+| `norm:H_trap_xtinst_val` | TINST-02、TINST-10 |
+| `norm:H_virtinst_vs_sfence_sinval_satp_vtvm1` | VINST-18~20、VINST-37 |
+| `norm:H_virtinst_vs_sret_vtsr1` | VINST-17 |
+| `norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0` | VINST-14、VINST-15 |
+| `norm:H_virtinst_vu_sret_sfence` | VINST-12、VINST-13 |
+| `norm:H_virtinst_vu_vs_hinst` | VINST-01~06、VINST-38~43 |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | VINST-07~10、VINST-25~34、VINST-49~52 |
+| `norm:H_virtinst_vu_wfi_tw0` | VINST-11 |
+| `norm:H_virtinst_wfi_vtw1_tw0` | VINST-16 |
+| `norm:H_virtinst_xtval` | VINST-23 |
+| `norm:hedeleg_acc` | DELEG-15、DELEG-16 |
+| `norm:hedeleg_op` | DELEG-04~07 |
+| `norm:htval_trapval` | TENT-16 |
+| `norm:mret_h` | TRET-01~05、TRET-15 |
+| `norm:mstatus_gva_op` | MSTAT-05 |
+| `norm:mstatus_modes` | MSTAT-06、MSTAT-14、VINST-24、VINST-44 |
+| `norm:mstatus_mprv_hlsv` | MSTAT-13 |
+| `norm:mstatus_mprv_hypervisor` | MSTAT-11、MSTAT-12 |
+| `norm:mstatus_mpv_op` | MSTAT-01~04 |
+| `norm:mstatus_tvm_hs` | MSTAT-07~10 |
+| `norm:mtinst_sz_acc_op` | MTVAL-04 |
+| `norm:mtinst_val` | MTVAL-04、MTVAL-05 |
+| `norm:htinst_val` | MTVAL-07 |
+| `norm:mtval2_sz_acc_op` | MTVAL-01 |
+| `norm:mtval2_trapval` | MTVAL-02、MTVAL-03 |
+| `norm:mtval2_trapval_vstrans` | MTVAL-06 |
+| `norm:mtval2_val` | MTVAL-01 |
+| `norm:sret_dt` | 未覆盖：条件规范点（仅实现 Ssdbltrp 时），本文档无 SRET 清除 vsstatus.SDT 的专项用例；SDT 字段读写行为由 CSR 子集 HENV-16/17 覆盖 |
+| `norm:sret_h` | TRET-06~14、TRET-16~19 |
+| `norm:sret_v0` | TRET-06~10、TRET-14、TRET-17 |
+| `norm:sret_v1` | TRET-11~13、TRET-16 |
+
+未被覆盖/不可测规范点说明：除上述标注外，本文档声明的规范点均有对应用例。`norm:H_cause_virtual_instruction_high` 为条件规范点（XLEN=32 场景），RV64 平台不触发该分支，由 XLEN>32 对偶规则用例（VINST-45~48）从反向验证；`norm:sret_dt` 为条件规范点（依赖 Ssdbltrp），本文档未设专项用例，SDT 相关字段行为见 CSR 子集；TINST-06 为条件用例（平台支持 Svadu 时跳过）。

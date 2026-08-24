@@ -4,16 +4,21 @@
 
 This test plan covers the cross-functional interaction points between the RISC-V Hypervisor (H) extension and the CMO (Cache Management Operations) extension.
 
-Reference specifications:
-- `SPEC/hypervisor.adoc`: henvcfg CBIE/CBCFE/CBZE field definitions
-- `SPEC/riscv-isa-manual/src/unpriv/cmo.adoc`: CMO instruction behavior when V=1, htinst/mtinst standard transformation
-
 The CMO extension comprises three sub-extensions:
 - **Zicbom**: Cache-Block Management instructions (cbo.inval, cbo.clean, cbo.flush)
 - **Zicboz**: Cache-Block Zero instruction (cbo.zero)
 - **Zicbop**: Cache-Block Prefetch instructions (prefetch.r, prefetch.w, prefetch.i)
 
 ### SPEC Sections Covered by This Document
+
+This plan is based on the official RISC-V specifications. Local SPEC paths are as follows:
+
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`: henvcfg CBIE/CBCFE/CBZE field definitions
+- `SPEC/riscv-isa-manual/src/unpriv/cmo.adoc`: CMO instruction behavior when V=1, htinst/mtinst standard transformation
+
+Official repository: https://github.com/riscv/riscv-isa-manual (files at the above paths within the repository)
+
+Coverage scope:
 - henvcfg CBIE/CBCFE/CBZE field control of VS/VU-mode CBO instructions
 - cbo.inval flush override semantics when V=1 (HS-mode CBIE=01 forces flush)
 - htinst/mtinst standard transformation format for CBO instructions
@@ -43,6 +48,9 @@ The CMO extension comprises three sub-extensions:
 | `norm:cbp_unperm_noexcep` | If access not permitted, a cache-block prefetch instruction does not raise any exceptions. |
 | `norm:fault_excep_csr` | When a page-fault, guest-page-fault, or access-fault exception is taken, the relevant *tval CSR is written with the faulting effective address (i.e. the value of rs1). |
 | `norm:cbxe_unaffected` | The CBIE/CBCFE/CBZE fields in each envcfg register do not affect the read and write behavior of the same fields in the other envcfg registers. |
+| `norm:H_trap_xtinst_val` | The values that may be automatically written to the trap instruction register for each standard exception cause are specified. For exceptions that prevent the fetching of an instruction, only zero or a pseudoinstruction value may be written. |
+| `norm:H_virtinst_xtval` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. |
+| `prefetch_no_virtinst` | The CBIE/CBCFE/CBZE fields of envcfg registers apply only to CBO instructions; cache-block prefetch instructions are not controlled by them and do not raise illegal-instruction or virtual-instruction exceptions in VS/VU-mode. |
 
 ---
 
@@ -122,7 +130,7 @@ The CMO extension comprises three sub-extensions:
 
 **Spec Reference**:
 - `norm:h_trans_cache`: Standard transformation format for CBO instructions is {operation[11:0], 0x0, funct3, 0x0, opcode}
-- Hypervisor SPEC: htinst may be written as zero instead of the standard transformation
+- `norm:H_trap_xtinst_val`: htinst/mtinst may be written as zero instead of the standard transformation
 
 **Standard Transformation Format**:
 ```
@@ -187,7 +195,7 @@ Transformation values:
 ## Group 6. CMO virtual-instruction Exception stval Behavior
 
 **Spec Reference**:
-- Hypervisor SPEC: stval write rules for virtual-instruction exception are the same as illegal-instruction
+- `norm:H_virtinst_xtval`: stval write rules for virtual-instruction exception are the same as illegal-instruction
 - `norm:fault_excep_csr`: *tval written with faulting address on exception
 
 **Test Scope**: Verify stval write behavior when CMO instructions trigger virtual-instruction exceptions.
@@ -206,7 +214,7 @@ Transformation values:
 
 **Spec Reference**:
 - `norm:cbp_unperm_noexcep`: prefetch does not raise any exceptions
-- CMO SPEC: prefetch does not raise illegal-instruction or virtual-instruction
+- `prefetch_no_virtinst` (not an official SPEC Normative Rule): prefetch is not controlled by envcfg CBO fields and does not raise illegal-instruction or virtual-instruction
 
 **Test Scope**: Verify that prefetch instructions in VS/VU-mode are not controlled by henvcfg CMO fields and do not trigger virtual-instruction.
 
@@ -220,3 +228,30 @@ Transformation values:
 | HPREFETCH-06 | VU-mode prefetch.i does not trigger virtual-instruction | Same configuration, VU-mode executes prefetch.i | Normal execution, no exception |
 | HPREFETCH-07 | VS-mode prefetch G-stage no permission does not trigger exception | G-stage page table no permission, VS-mode executes prefetch.r | No exception triggered |
 | HPREFETCH-08 | VS-mode prefetch does not check A/D bits | VS-stage page table A=0 D=0, VS-mode executes prefetch.w | No exception triggered, A/D bits not set |
+
+---
+
+## Appendix A: Specification Point Coverage Matrix
+
+The table below indicates which test cases cover each specification point listed in the "Covered Specification Points" section.
+
+| Norm ID | Covered Test IDs |
+|---------|------------------|
+| `norm:henvcfg_cbie` | HCBIE-01~10 |
+| `norm:cbo-inval_h-mode_veq1_op` | HCBIE-01~08 |
+| `norm:cbo-inval_h-mode_op0` | HCBIE-11, HCBIE-12 |
+| `norm:cbo-inval_h-mode_op1` | HCBIE-02, HCBIE-07, HCBIE-08 |
+| `norm:cbo-inval_h-mode_op2` | HCBIE-03, HCBIE-06 |
+| `norm:henvcfg_cbcfe` | HCBCFE-01~09 |
+| `norm:henvcfg_cbze` | HCBZE-01~06 |
+| `norm:cbxe_unaffected` | HCBIE-13, HCBCFE-10, HCBZE-07 |
+| `norm:h_trans_cache` | HCXINST-01~11 |
+| `norm:H_trap_xtinst_val` | HCXINST-01~11 |
+| `norm:cbm_unperm_fault` | HCGSTAGE-01~03, HCGSTAGE-08, HCGSTAGE-09, HCGSTAGE-12 |
+| `norm:cbz_unperm_fault` | HCGSTAGE-04, HCGSTAGE-10 |
+| `norm:cbp_unperm_noexcep` | HCGSTAGE-11, HPREFETCH-07, HPREFETCH-08 |
+| `norm:fault_excep_csr` | HCGSTAGE-05~07, HVINST-01~05 |
+| `norm:H_virtinst_xtval` | HVINST-01~05 |
+| `prefetch_no_virtinst` (unofficial) | HPREFETCH-01~06 |
+
+Notes on uncovered/untestable specification points: none. Every specification point covered by this document has corresponding test cases; HCBIE-10, HCBCFE-09, and HCBZE-06 are conditional cases (verifying read-only zero only when Zicbom/Zicboz is not implemented).
