@@ -9,7 +9,11 @@
 
 This test plan covers the exception and trap related functionality of the RISC-V Hypervisor (H) extension, including full scenarios of the virtual-instruction exception, trap entry/return behavior, htinst/mtinst transformed instructions, mstatus Hypervisor enhancements (MPV/GVA/TVM/MPRV), mtval2/mtinst registers, exception priority, and the hedeleg exception delegation chain. CSR register field behavior and interrupt delivery mechanisms are covered by the sibling subsets respectively.
 
-This test plan is written based on specification points (norm tags) in `SPEC/hypervisor.adoc`.
+This test plan is written based on specification points (norm tags) in the official RISC-V SPEC:
+
+- Local paths: `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` (virtual-instruction, trap entry/return, htinst/htval, hedeleg, etc.), `SPEC/riscv-isa-manual/src/priv/machine.adoc` (mstatus MPV/GVA/TVM/MPRV, mtval2/mtinst, MRET enhancements)
+- Official repository: https://github.com/riscv/riscv-isa-manual (files at the above paths within the repository)
+- If any platform violates the SPEC, the corresponding test cases remain FAIL and are recorded in the `bugs/` directory
 
 ### SPEC Chapters Covered by This Document
 - Hypervisor and Virtual Supervisor CSRs (hedeleg exception delegation behavior)
@@ -51,7 +55,8 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | `norm:H_trap_m_csrwrites` | When a trap is taken into M-mode, V gets set to 0, and fields MPV and MPP in `mstatus` are set accordingly. A trap into M-mode also writes fields GVA, MPIE, and MIE in `mstatus` and writes CSRs `mepc`, `mcause`, `mtval`, `mtval2`, and `mtinst`. |
 | `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. |
 | `norm:H_trap_xtinst` | On any trap into M-mode or HS-mode, one of these values is written to `mtinst` or `htinst`: zero; a transformation of the trapping instruction; a custom value (only if the trapping instruction is non-standard); or a special pseudoinstruction. |
-| `norm:H_trap_xtinst_exception` | On a synchronous exception, if a nonzero value is written to the trap instruction register, it must be one of: a standard transformed instruction (bit 0 = 1, replacing bit 1 with 1 yields a valid standard encoding); a custom value (bit 0 = 1, replacing bit 1 with 1 yields a designated custom encoding); or a special pseudoinstruction (bits 1:0 = 00). All other values (e.g. bits 1:0 = 10) are illegal. |
+| `norm:H_trap_xtinst_exception_lead-in` | On a synchronous exception, if a nonzero value is written to the trap instruction register, one of the following shall be true about the value. |
+| `norm:H_trap_xtinst_exception_list` | One of the following shall be true about the value: bit 0 is 1, and replacing bit 1 with 1 makes the value into a valid encoding of a standard instruction (a standard transformed instruction); bit 0 is 1, and replacing bit 1 with 1 makes the value into an instruction encoding explicitly designated for a custom instruction (a custom value); or the value is one of the special pseudoinstructions, all of which have bits 1:0 equal to 00. These three cases exclude all other values, such as those having bits 1:0 equal to binary 10. |
 | `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value is written to `mtval2` or `htval`. If both conditions are met, zero is not allowed. |
 | `norm:H_trap_xtinst_guestpage_rw` | A write pseudoinstruction (0x00002020 or 0x00003020) is used for the case that the machine is attempting automatically to update bits A and/or D in VS-level page tables. All other implicit memory accesses for VS-stage address translation will be reads. |
 | `norm:H_trap_xtinst_interrupt` | On an interrupt, the value written to the trap instruction register is always zero. |
@@ -67,6 +72,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | `norm:H_virtinst_xtval` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. |
 | `norm:hedeleg_acc` | Each bit of `hedeleg` shall be either writable or read-only zero. Many bits of `hedeleg` are required specifically to be writable or zero, as enumerated in the table. Bit 0, corresponding to instruction address-misaligned exceptions, must be writable if IALIGN=32. |
 | `norm:hedeleg_op` | A synchronous trap that has been delegated to HS-mode (using `medeleg`) is further delegated to VS-mode if V=1 before the trap and the corresponding `hedeleg` bit is set. |
+| `norm:htval_trapval` | When a guest-page-fault trap is taken into HS-mode, `htval` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `htval` is set to zero. |
 | `norm:mret_h` | MRET first determines the new privilege mode according to MPP and MPV in `mstatus`. MRET then sets MPV=0, MPP=0, MIE=MPIE, and MPIE=1. Lastly, MRET sets the privilege mode as previously determined, and sets pc=mepc. |
 | `norm:mstatus_gva_op` | Field GVA is written by the implementation whenever a trap is taken into M-mode. For any trap that writes a guest virtual address to `mtval`, GVA is set to 1. For any other trap into M-mode, GVA is set to 0. |
 | `norm:mstatus_modes` | The TSR and TVM fields of `mstatus` affect execution only in HS-mode, not in VS-mode. The TW field affects execution in all modes except M-mode. |
@@ -230,7 +236,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | TRET-15 | MRET restores PC from mepc | Set mepc=target address, execute MRET | PC=mepc |
 | TRET-16 | SRET(V=1) does not modify V=0 state | Pre-set hstatus.SPV=1, sstatus.SPP=1 and poison HS sepc, execute a real SRET in VS-mode (vsstatus.SPP=1) | Afterwards hstatus.SPV, sstatus.SPP and HS sepc all remain unchanged (sret_v1 only operates on vsstatus/vsepc) |
 | TRET-17 | SRET(V=0) does not modify VS state | Pre-set vsstatus.SPP=1 and poison vsepc, execute a real SRET in HS-mode (SPV=1, SPP=1) returning to VS-mode | Afterwards vsstatus.SPP and vsepc remain unchanged (sret_v0 only operates on hstatus/sstatus/sepc) |
-| TRET-18 | Full round-trip: VU trap -> HS handler -> SRET resume | Delegate ebreak to HS-mode via medeleg[3], stvec points to the HS handler, execute ebreak in VU-mode | Trap enters HS-mode (trap_get_spv()=1); the HS handler returns via SRET and resumes VU execution (flag write succeeds); afterwards hstatus.SPV=0 (cleared by SRET) |
+| TRET-18 | Full round-trip: VU trap -> HS handler -> SRET resume | Delegate ebreak to HS-mode via medeleg[3], stvec points to the HS handler, execute ebreak in VU-mode | Trap enters HS-mode (SPV=1); the HS handler returns via SRET and resumes VU execution (flag write succeeds); afterwards hstatus.SPV=0 (cleared by SRET) |
 | TRET-19 | Full round-trip: nested VS trap -> VS handler SRET resume | Delegate ebreak to VS-mode via medeleg[3]+hedeleg[3], vstvec points to a custom VS handler, execute ebreak in VS-mode | Trap enters the VS handler (vscause=3); the handler's SRET resumes the VS context after the ebreak; HS-level sstatus.SPP is unaffected |
 
 
@@ -241,7 +247,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 **Specification References**:
 - `norm:H_trap_xtinst`: Value types written to mtinst/htinst on trap (zero/transformed instruction/custom/pseudoinstruction); except for the mandated pseudoinstruction scenario, the implementation is always allowed to write zero
 - `norm:H_trap_xtinst_interrupt`: Write zero on interrupt
-- `norm:H_trap_xtinst_exception`: When a synchronous exception writes a nonzero value, it must satisfy one of the three legal forms (standard transformed instruction/custom/pseudoinstruction)
+- `norm:H_trap_xtinst_exception_lead-in` / `norm:H_trap_xtinst_exception_list`: When a synchronous exception writes a nonzero value, it must satisfy one of the three legal forms (standard transformed instruction/custom/pseudoinstruction)
 - `norm:H_trap_xtinst_val`: Value types writable for each exception type (tinst-values table); custom values are limited to non-standard instructions, standard instructions (e.g. ecall/illegal-instruction) may only write zero
 - `norm:H_trap_xtinst_guestpage`: Must write pseudoinstruction (zero not allowed) when an implicit VS-stage access causes guest-page-fault and htval/mtval2 is non-zero
 - `norm:H_trap_xtinst_guestpage_rw`: Use 0x00003000 for read, 0x00003020 for write (A/D update) (RV64)
@@ -261,7 +267,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | TINST-05 | Pseudoinstruction for implicit VS-stage read fault | VS-stage leaf page-table page made unreadable at G-stage, triggering an implicit read guest-page-fault | htinst=0x00003000 when htval≠0 (zero NOT allowed); accepted when htval=0 |
 | TINST-06 | Pseudoinstruction for implicit write (A/D update) | VS-stage leaf page-table page has D=0 at G-stage, triggering an implicit write fault; SKIP on platforms with Svadu | htinst=0x00003020 when htval≠0 (zero NOT allowed) |
 | TINST-07 | Transformed instruction field structure verification | 32-bit load triggers fault; field-by-field check when htinst is nonzero | opcode/funct3/rd preserved, imm zeroed, Addr. Offset correct, bits 1:0 = 11 |
-| TINST-08 | Compressed instruction transformed encoding | 16-bit `c.lw` (0x4108) triggers a load guest-page-fault | htinst == 0 or == the compressed transformed value (expand to the 32-bit equivalent, transform, replace bit 1 with 0 so bits 1:0 = 01, `norm:H_trap_xtinst_exception`) |
+| TINST-08 | Compressed instruction transformed encoding | 16-bit `c.lw` (0x4108) triggers a load guest-page-fault | htinst == 0 or == the compressed transformed value (expand to the 32-bit equivalent, transform, replace bit 1 with 0 so bits 1:0 = 01, `norm:H_trap_xtinst_exception_lead-in`/`norm:H_trap_xtinst_exception_list`) |
 | TINST-09 | Page-fault does not produce pseudoinstruction | VS-stage leaf PTE R=0 triggers load page-fault (cause=13, not guest-page-fault) | htinst=0 or transformed instruction (golden exact match); pseudoinstruction values not allowed |
 | TINST-10 | illegal-instruction allows only zero | VS-mode executes an illegal instruction (standard exception, tinst-values table allows Zero only) | htinst=0 (strict) |
 
@@ -308,7 +314,7 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 - `norm:mtinst_sz_acc_op` / `norm:mtinst_val`: mtinst format and WARL (need only hold the values the implementation may automatically write on a trap)
 - `norm:htinst_val`: htinst WARL (need only hold the values the implementation may automatically write on a trap; zero is always among them), same read/write semantics as mtinst
 
-**Test Responsibilities**: Verify write behavior of mtval2/mtinst on M-mode trap. In this suite VS/HS traps are not delegated by default and are all taken into M-mode; the framework captures mtval2/mtinst at M-mode trap entry (`trap_get_htval()`/`trap_get_htinst()` are mtval2/mtinst on the M-mode delivery path).
+**Test Responsibilities**: Verify write behavior of mtval2/mtinst on M-mode trap. In this suite VS/HS traps are not delegated by default and are all taken into M-mode; mtval2/mtinst are captured at M-mode trap entry.
 
 **Strict Verification Principles** (addressing the review gap): trap-written values are asserted exactly against the SPEC-allowed set — on GPF mtval2 must be exactly one of `0` or `GPA>>2` (no other value allowed); WARL read/write does not require echo of the written value but must be stable and zero must be holdable; on an implicit-access fault a nonzero mtval2 must be exactly the implicit-access GPA>>2.
 
@@ -360,3 +366,63 @@ This section lists all specification points (norm IDs) referenced in Groups 1-8 
 | DELEG-07 | hedeleg delegates ecall-from-VU to VS | Set medeleg[8]=1, hedeleg[8]=1, VU-mode executes ECALL | Trap enters VS-mode (vscause=8) |
 | DELEG-15 | guest-page-fault cannot be delegated to VS | Verify hedeleg bits 20/21/23 are read-only zero | guest-page-fault always traps to HS-mode |
 | DELEG-16 | virtual-instruction cannot be delegated to VS | Verify hedeleg bit 22 is read-only zero | virtual-instruction exception always traps to HS-mode |
+
+---
+
+## Appendix A: Specification Point Coverage Matrix
+
+The table below indicates which test cases cover each specification point listed in the "Covered Specification Points" section.
+
+| Norm ID | Covered Test IDs |
+|---------|------------------|
+| `norm:H_cause` | VINST-01~20, VINST-25~44, VINST-49~52 (cause=22 encoding), TENT-01, TENT-02 (cause=10/8 encoding) |
+| `norm:H_cause_ecall` | TENT-01, TENT-02, PRIO-03~05 |
+| `norm:H_cause_virtual_instruction` | VINST-01~20, VINST-25~44, VINST-49~52 |
+| `norm:H_cause_virtual_instruction_high` | Conditional specification point (XLEN=32 scenario); not triggered on RV64 platforms; the dual rule for XLEN>32 is verified by VINST-45~48 |
+| `norm:H_csrs_hs_not_vs` | VINST-07~10, VINST-25~32, VINST-49~52 |
+| `norm:H_exception_priority` | PRIO-01, PRIO-02 |
+| `norm:H_illegal_high_half` | VINST-45~48 |
+| `norm:H_illegalinst_xstatus_fs_vs` | VINST-21, VINST-22 |
+| `norm:H_trap_deleg` | TENT-01~14, DELEG-04~07 |
+| `norm:H_trap_hs_csrwrites` | TENT-01~09, TENT-15, TENT-16 |
+| `norm:H_trap_m_csrwrites` | TENT-12~14 |
+| `norm:H_trap_vs_csrwrites` | TENT-10, TENT-11 |
+| `norm:H_trap_xtinst` | TINST-01~10 |
+| `norm:H_trap_xtinst_exception_lead-in` | TINST-02~04, TINST-07~10 |
+| `norm:H_trap_xtinst_exception_list` | TINST-07, TINST-08 |
+| `norm:H_trap_xtinst_guestpage` | TINST-05, TINST-06 |
+| `norm:H_trap_xtinst_guestpage_rw` | TINST-06 |
+| `norm:H_trap_xtinst_interrupt` | TINST-01 |
+| `norm:H_trap_xtinst_val` | TINST-02, TINST-10 |
+| `norm:H_virtinst_vs_sfence_sinval_satp_vtvm1` | VINST-18~20, VINST-37 |
+| `norm:H_virtinst_vs_sret_vtsr1` | VINST-17 |
+| `norm:H_virtinst_vu_nonhigh_supervisor_allowedhs_tvm0` | VINST-14, VINST-15 |
+| `norm:H_virtinst_vu_sret_sfence` | VINST-12, VINST-13 |
+| `norm:H_virtinst_vu_vs_hinst` | VINST-01~06, VINST-38~43 |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | VINST-07~10, VINST-25~34, VINST-49~52 |
+| `norm:H_virtinst_vu_wfi_tw0` | VINST-11 |
+| `norm:H_virtinst_wfi_vtw1_tw0` | VINST-16 |
+| `norm:H_virtinst_xtval` | VINST-23 |
+| `norm:hedeleg_acc` | DELEG-15, DELEG-16 |
+| `norm:hedeleg_op` | DELEG-04~07 |
+| `norm:htval_trapval` | TENT-16 |
+| `norm:mret_h` | TRET-01~05, TRET-15 |
+| `norm:mstatus_gva_op` | MSTAT-05 |
+| `norm:mstatus_modes` | MSTAT-06, MSTAT-14, VINST-24, VINST-44 |
+| `norm:mstatus_mprv_hlsv` | MSTAT-13 |
+| `norm:mstatus_mprv_hypervisor` | MSTAT-11, MSTAT-12 |
+| `norm:mstatus_mpv_op` | MSTAT-01~04 |
+| `norm:mstatus_tvm_hs` | MSTAT-07~10 |
+| `norm:mtinst_sz_acc_op` | MTVAL-04 |
+| `norm:mtinst_val` | MTVAL-04, MTVAL-05 |
+| `norm:htinst_val` | MTVAL-07 |
+| `norm:mtval2_sz_acc_op` | MTVAL-01 |
+| `norm:mtval2_trapval` | MTVAL-02, MTVAL-03 |
+| `norm:mtval2_trapval_vstrans` | MTVAL-06 |
+| `norm:mtval2_val` | MTVAL-01 |
+| `norm:sret_dt` | Not covered: conditional specification point (only when Ssdbltrp is implemented); this document has no dedicated case for SRET clearing vsstatus.SDT; SDT field read/write behavior is covered by CSR subset HENV-16/17 |
+| `norm:sret_h` | TRET-06~14, TRET-16~19 |
+| `norm:sret_v0` | TRET-06~10, TRET-14, TRET-17 |
+| `norm:sret_v1` | TRET-11~13, TRET-16 |
+
+Notes on uncovered/untestable specification points: except for the items marked above, every specification point declared in this document has corresponding test cases. `norm:H_cause_virtual_instruction_high` is a conditional specification point (XLEN=32 scenario); not triggered on RV64 platforms, and is inversely verified by the dual-rule cases for XLEN>32 (VINST-45~48). `norm:sret_dt` is a conditional specification point (depending on Ssdbltrp); no dedicated case is defined in this document; refer to the CSR subset for SDT-related field behavior. TINST-06 is a conditional case (skipped when the platform supports Svadu).

@@ -656,8 +656,13 @@ unsigned m_trap_handler(void) {
                 /* The record and its mtval2 capture are already
                  * taken; disable DTE so the return path cannot
                  * re-enter the double-trap machinery.  The test
-                 * restores menvcfg. */
+                 * restores menvcfg.  DTE is bit 59 of the combined
+                 * 64-bit menvcfg: on RV64 it is in menvcfg, on RV32
+                 * it would be in menvcfgh.  The Ssdbltrp probe flow
+                 * is currently RV64-only, so guard the clear. */
+#if __riscv_xlen == 64
                 CSRC(menvcfg, (1UL << 59));      /* menvcfg.DTE */
+#endif
             }
         }
 

@@ -6,14 +6,14 @@
 
 > **范围说明**：本计划覆盖以下五类场景：
 > 1. V=1 且 hgatp=Bare：仅 VS-stage（验证 vsatp 与 satp 行为一致）
-> 2. V=1 且 vsatp=Bare（GVA=GPA）：仅 G-stage（已在配套文档 `docs/gstage_translation_test_plan.md` 中详尽覆盖，本文档仅作交叉引用）
+> 2. V=1 且 vsatp=Bare（GVA=GPA）：仅 G-stage（已在配套文档 `Hypervisor_gstage_test_plan.md` 中详尽覆盖，本文档仅作交叉引用）
 > 3. V=1 且两阶段同时启用：VS-stage + G-stage 完整链路
 > 4. HLV/HLVX/HSV：HS-mode（或 U-mode + HU=1）下显式触发两阶段
 > 5. `mstatus.MPRV=1 + MPV=1`：M-mode 显式触发两阶段
 >
 > 当前仓库为 RV64，仅覆盖 Sv39/Sv48/Sv57 与 Sv39x4/Sv48x4/Sv57x4。
 
-> **配套文档**：本计划与 `docs/gstage_translation_test_plan.md` 配套，共享同一套 hypervisor 测试框架（`docs/hypervisor_framework.md`）以及 `sv39x4/`、`sv48x4/`、`sv57x4/` 目录结构。
+> **配套文档**：本计划与 `Hypervisor_gstage_test_plan.md` 配套，纯 G-stage 独立翻译行为由该方案覆盖。
 
 ---
 
@@ -23,31 +23,42 @@
 
 | VS-stage \ G-stage | Bare | Sv39x4 | Sv48x4 | Sv57x4 |
 |-------------------|------|--------|--------|--------|
-| **Bare** | ❌ V=0 等价（不属于本计划） | (Group A) → 见 `gstage_translation_test_plan.md` | (Group A) → 见同文档 | (Group A) → 见同文档 |
+| **Bare** | ❌ V=0 等价（不属于本计划） | (Group A) → 见 `Hypervisor_gstage_test_plan.md` | (Group A) → 见同文档 | (Group A) → 见同文档 |
 | **Sv39** | Group B | **Group C 主组合** | Group C′ | Group C′ |
 | **Sv48** | Group B | Group C′ | **Group C 主组合** | Group C′ |
 | **Sv57** | Group B | Group C′ | Group C′ | **Group C 主组合** |
 
-- **Group A**：仅 G-stage（VS-stage Bare），由 `gstage_translation_test_plan.md` 独立覆盖
+- **Group A**：仅 G-stage（VS-stage Bare），由 `Hypervisor_gstage_test_plan.md` 独立覆盖
 - **Group B**：仅 VS-stage（hgatp=Bare），验证 V=1 下 vsatp 与普通 satp 的行为对等
 - **Group C 主组合**：3 个同位宽匹配组合（Sv39+Sv39x4 / Sv48+Sv48x4 / Sv57+Sv57x4），覆盖核心两阶段行为
 - **Group C′ 异位宽组合**：6 个异位宽组合，每对至少 1~2 个 sanity 用例
 
 ---
 
-## 规范引用
+## 本文档覆盖的 SPEC 章节
 
-- `SPEC/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0
-  - Two-Stage Address Translation
-  - Guest Physical Address Translation
-  - Virtual Supervisor Address Translation and Protection (`vsatp`) Register
-  - Hypervisor Memory-Management Fence Instructions (HFENCE.VVMA / HFENCE.GVMA)
-  - Hypervisor Virtual-Machine Load and Store Instructions (HLV / HLVX / HSV)
-  - Memory-Management Fences (with V=0/V=1 SFENCE.VMA semantics)
-  - Machine Status (`mstatus` and `mstatush`) Registers — MPV / MPRV 表
-  - Trap Cause Codes
-  - Hypervisor Trap Value (`htval`) Register / Hypervisor Trap Instruction (`htinst`) Register
-  - Transformed Instruction or Pseudoinstruction for `mtinst` or `htinst`
+- 本地路径：
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc`
+- 官方仓库：https://github.com/riscv/riscv-isa-manual
+
+覆盖 `hypervisor.adoc`（"H" Extension for Hypervisor Support, Version 1.0）以下章节：
+
+- Two-Stage Address Translation
+- Guest Physical Address Translation
+- Virtual Supervisor Address Translation and Protection (`vsatp`) Register
+- Hypervisor Memory-Management Fence Instructions (HFENCE.VVMA / HFENCE.GVMA)
+- Hypervisor Virtual-Machine Load and Store Instructions (HLV / HLVX / HSV)
+- Memory-Management Fences (with V=0/V=1 SFENCE.VMA semantics)
+- Machine Status (`mstatus` and `mstatush`) Registers — MPV / MPRV 表
+- Trap Cause Codes
+- Hypervisor Trap Value (`htval`) Register / Hypervisor Trap Instruction (`htinst`) Register
+- Transformed Instruction or Pseudoinstruction for `mtinst` or `htinst`
+
+覆盖 `supervisor.adoc` 以下章节：
+
+- Supervisor Address Translation and Protection（Sv39/Sv48/Sv57 的 VPN→PPN 位宽定义）
+- `sstatus` 的 SUM / MXR 字段定义
 
 ## 覆盖的规范点
 
@@ -104,6 +115,14 @@
 | `norm:satp_ppn_sv39_sz` | The 27-bit VPN is translated into a 44-bit PPN via a three-level page table, while the 12-bit page offset is untranslated. | Sv39 将 27 位 VPN 翻译为 44 位 PPN（三级页表），12 位页内偏移不翻译。 |
 | `norm:satp_ppn_sv48_sz` | The 36-bit VPN is translated into a 44-bit PPN via a four-level page table, while the 12-bit page offset is untranslated. | Sv48 将 36 位 VPN 翻译为 44 位 PPN（四级页表），12 位页内偏移不翻译。 |
 | `norm:satp_ppn_sv57_sz` | The 45-bit VPN is translated into a 44-bit PPN via a five-level page table, while the 12-bit page offset is untranslated. | Sv57 将 45 位 VPN 翻译为 44 位 PPN（五级页表），12 位页内偏移不翻译。 |
+| `norm:hgatp_mode_sv39x4` | For Sv39x4, partitioning is identical to Sv39, except with 2 more bits at the high end in VPN[2]. Address bits 63:41 must all be zeros, or else a guest-page-fault exception occurs. | Sv39x4 的分区与 Sv39 相同，但 VPN[2] 高端多 2 位。地址位 63:41 必须全为零，否则发生客户页错误。 |
+| `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. | Sv48x4 的分区与 Sv48 相同，但 VPN[3] 高端多 2 位。地址位 63:50 必须全为零，否则发生客户页错误。 |
+| `norm:hgatp_mode_sv57x4` | For Sv57x4, partitioning is identical to Sv57, except with 2 more bits at the high end in VPN[4]. Address bits 63:59 must all be zeros, or else a guest-page-fault exception occurs. | Sv57x4 的分区与 Sv57 相同，但 VPN[4] 高端多 2 位。地址位 63:59 必须全为零，否则发生客户页错误。 |
+| `norm:hstatus_vtvm_op` | When VTVM=1, an attempt in VS-mode to execute SFENCE.VMA or SINVAL.VMA or to access CSR `satp` raises a virtual-instruction exception. | VTVM=1 时，VS-mode 执行 SFENCE.VMA 或 SINVAL.VMA、或访问 `satp` CSR 引发虚拟指令异常。 |
+| `norm:mstatus_tvm_hs` | Setting TVM=1 prevents HS-mode from accessing `hgatp` or executing HFENCE.GVMA or HINVAL.GVMA, but has no effect on accesses to `vsatp` or instructions HFENCE.VVMA or HINVAL.VVMA. | TVM=1 阻止 HS-mode 访问 `hgatp` 及执行 HFENCE.GVMA 或 HINVAL.GVMA，但不影响对 `vsatp` 的访问及 HFENCE.VVMA 或 HINVAL.VVMA 指令。 |
+| `norm:hlvx-wu_valid32` | HLVX.WU is valid for RV32, even though LWU and HLV.WU are not. (For RV32, HLVX.WU can be considered a variant of HLV.W, as sign extension is irrelevant for 32-bit values.) | HLVX.WU 在 RV32 上有效（尽管 LWU 和 HLV.WU 无效；RV32 下可视为 HLV.W 的变体，符号扩展对 32 位值无意义）。 |
+| `norm:sstatus_sum` | The SUM bit modifies the privilege with which S-mode loads and stores access virtual memory. When SUM=0, S-mode memory accesses to pages that are accessible by U-mode (U=1) will fault. When SUM=1, these accesses are permitted. SUM has no effect when page-based virtual memory is not in effect, nor when executing in U-mode. | SUM 位修改 S 模式读写访问虚拟内存的特权级：SUM=0 时 S 模式访问 U 模式可达页（U=1）将 fault，SUM=1 时允许；页式虚拟内存未生效或在 U 模式执行时无效。 |
+| `norm:sstatus_mxr` | The MXR bit modifies the privilege with which loads access virtual memory. When MXR=0, only loads from pages marked readable (R=1) will succeed. When MXR=1, loads from pages marked either readable or executable (R=1 or X=1) will succeed. MXR has no effect when page-based virtual memory is not in effect. | MXR 位修改 load 访问虚拟内存的特权级：MXR=0 时仅可读页（R=1）load 成功，MXR=1 时可读或可执行页（R=1 或 X=1）均可 load；页式虚拟内存未生效时无效。 |
 
 ---
 
@@ -116,7 +135,7 @@
 - `norm:vsatp_sz_acc_op`：`vsatp` 是 VS-mode 的 `satp`，使用相同的算法与 PTE 格式
 - 当 hgatp=Bare 时，GPA 直接等于 SPA，两阶段退化为单 VS-stage 翻译
 
-**测试职责**：当 hgatp=Bare 时，VS-stage 的行为应与普通 S-mode 下 satp 控制的翻译完全一致。本组以 `docs/vm_test_plan.md` 中的核心 Group 为基线，验证 V=1 下 vsatp 的对等行为。
+**测试职责**：当 hgatp=Bare 时，VS-stage 的行为应与普通 S-mode 下 satp 控制的翻译完全一致。本组以 `vm_test_plan.md` 中的核心 Group 为基线，验证 V=1 下 vsatp 的对等行为。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -132,34 +151,7 @@
 | TS-VS-10 | VS-stage PTE V=0/RW=01 | vsatp=Sv39，PTE V=0 或 R=0,W=1 | page-fault（cause 12/13/15，**非** guest-page-fault） |
 
 > [!NOTE]
-> Group 1 全部用例以 `vm_test_plan.md` 的对应 Group 为基线，但 trap 上下文从 `s_trap_handler` 切换为 `hs_trap_handler`，且 trap 来源 `hstatus.SPV=1`。fault cause 仍是 12/13/15（普通 page-fault），因为 G-stage Bare 不会触发 guest-page-fault。
-
-```c
-/* TS-VS-03 示例：Sv39 vsatp 4KB 映射（hgatp=Bare） */
-TEST_REGISTER(test_vsatp_sv39_4k_only);
-bool test_vsatp_sv39_4k_only(void) {
-    TEST_BEGIN("TS-VS-03: vsatp=Sv39 + hgatp=Bare, 4KB identity mapping");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, /*g=Bare*/0);
-
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-    /* hgatp=Bare 下 G-stage 不参与，VS-stage PTE 不必设置 U=1 */
-    int ret = two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G,
-                                       flags, PT_LEVEL_4K);
-    TEST_ASSERT("VS-stage identity setup", ret == 0);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           (uintptr_t)test_data_area);
-    TEST_ASSERT("VS-mode 4KB R/W via vsatp only", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
+> Group 1 全部用例以 `vm_test_plan.md` 的对应 Group 为基线，但 trap 上下文切换为 HS-mode handler，且 trap 来源为 `hstatus.SPV=1`。fault cause 仍是 12/13/15（普通 page-fault），因为 G-stage Bare 不会触发 guest-page-fault。
 
 ---
 
@@ -208,36 +200,6 @@ bool test_vsatp_sv39_4k_only(void) {
 | TS-MAP-10 | Sv57+Sv57x4 2MB | 同模式 2MB | 成功 |
 | TS-MAP-11 | Sv57+Sv57x4 4KB | 同模式 4KB | 成功 |
 | TS-MAP-12 | VU-mode 两阶段访问 | Sv39+Sv39x4，VS-stage 与 G-stage 均 U=1，进入 VU-mode 访问 | 成功 |
-
-```c
-/* TS-MAP-01：Sv39 + Sv39x4 完整两阶段恒等映射 */
-TEST_REGISTER(test_2s_sv39_sv39x4_identity);
-bool test_2s_sv39_sv39x4_identity(void) {
-    TEST_BEGIN("TS-MAP-01: Sv39+Sv39x4 two-stage identity VA=GPA=SPA");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    /* G-stage PTE 必须 U=1（G-stage 视所有访问为 U-mode）；
-     * VS-stage PTE 不必 U=1（VS-mode 是 S 级），但本用例为简化 setup
-     * 在 two_stage_setup_identity 中统一传入相同 flags */
-    uintptr_t flags = PTE_V | PTE_R | PTE_W | PTE_X
-                    | PTE_U | PTE_A | PTE_D;
-    int ret = two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G,
-                                       flags, PT_LEVEL_1G);
-    TEST_ASSERT("two-stage identity setup", ret == 0);
-
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_read_write,
-                                           (uintptr_t)test_data_area);
-    TEST_ASSERT("VA->GPA->SPA succeeds", result == 0);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -327,86 +289,8 @@ bool test_2s_sv39_sv39x4_identity(void) {
 | TS-IMPL-04 | VS-stage PT G-stage U=0 | VS-stage 页表 GPA 在 G-stage 映射 U=0 | 隐式访问失败，guest-page-fault |
 | TS-IMPL-06 | inst guest-page-fault from implicit | VS-stage 翻译 fetch 时 PT 隐式访问失败 | cause=20, htinst 必须为 pseudoinst（read：`0x00003000`） |
 
-```c
-/* TS-IMPL-01：VS-level 页表自身位于无 G-stage 映射的 GPA */
-TEST_REGISTER(test_2s_implicit_gstage_fault);
-bool test_2s_implicit_gstage_fault(void) {
-    TEST_BEGIN("TS-IMPL-01: VS-stage PT walk implicit access -> G-stage fault");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    /* 1. VS-stage：建立 VA → GPA 映射（VS-stage 页表本身位于 ctx.vs_ctx.pool） */
-    uintptr_t va = TEST_REGION_BASE;
-    uintptr_t gpa_target = TEST_REGION_BASE;
-    pt_map_page(&ctx.vs_ctx, va, gpa_target,
-                PTE_V|PTE_R|PTE_W|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    /* 2. 通过 ctx.vs_ctx.root_pt 显式拿到 VS-level 根页表的物理地址
-     *    (common/vm/page_table.c 的 pt_context 已暴露 root_pt 字段，
-     *     与 hypervisor_framework.md 中 gpt_context 的 root_pt 字段对齐) */
-    uintptr_t vs_root_spa = (uintptr_t)ctx.vs_ctx.root_pt;
-    uintptr_t vs_root_gpa = vs_root_spa;  /* 在恒等映射下 GPA = SPA */
-
-    /* 3. G-stage：先把测试目标页（GPA=va）显式映射，再独立把
-     *    "VS-stage 根页表所在的 GPA" 标记为无效。
-     *    避免使用大 superpage 覆盖整个内存导致根页表也被恒等映射。
-     *    这样保证：
-     *      - VS-mode 取指、栈、目标数据访问都走 G-stage 已映射的页
-     *      - 而对 VS-stage PT 的隐式 walk 被 G-stage 拦截 */
-    /* 3.1 代码段 + 栈 + 目标数据：4KB 颗粒精细映射（仅举关键段，
-     *     具体覆盖范围由 kernel.ld 中 .text/.data/.stack/test_data_area
-     *     等符号决定，此处用伪代码示意） */
-    extern char __text_start[], __text_end[];
-    extern char __data_start[], __data_end[];
-    extern char __stack_start[], __stack_end[];
-    map_range_4k(&ctx.g_ctx, (uintptr_t)__text_start,
-                 (uintptr_t)__text_end - (uintptr_t)__text_start);
-    map_range_4k(&ctx.g_ctx, (uintptr_t)__data_start,
-                 (uintptr_t)__data_end - (uintptr_t)__data_start);
-    map_range_4k(&ctx.g_ctx, (uintptr_t)__stack_start,
-                 (uintptr_t)__stack_end - (uintptr_t)__stack_start);
-    /* 测试目标数据页 */
-    gpt_map_page(&ctx.g_ctx, gpa_target, gpa_target,
-                 PTE_V|PTE_R|PTE_W|PTE_U|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    /* 3.2 显式不映射 VS-stage 根页表所在的 GPA（4KB 粒度，V=0） */
-    gpt_map_page(&ctx.g_ctx, vs_root_gpa, vs_root_gpa,
-                 0, /* V=0：无效 PTE */
-                 PT_LEVEL_4K);
-
-    /* 4. 触发：VS-mode load VA，硬件遍历 VS-stage PT 时
-     *    根页表的隐式 read 被 G-stage 拦截 */
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT,
-        two_stage_run_in_vs(&ctx, test_vs_load, va));
-
-    /* htval 指向 VS-level PTE 的 GPA（不是原始 VA 对应的 GPA） */
-    CHECK_HTVAL("htval points to VS-level root PT GPA",
-                vs_root_gpa >> 2);
-    CHECK_HTINST("htinst is RV64 read pseudoinst", 0x00003000);
-    CHECK_GVA("hstatus.GVA = 1", true);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-
-/* 辅助：按 4KB 粒度恒等映射一段地址范围到 G-stage（U=1, RWX, A/D=1） */
-static inline void map_range_4k(gpt_context_t *g, uintptr_t base,
-                                uintptr_t size) {
-    uintptr_t end = (base + size + PAGE_SIZE_4K - 1) & ~(PAGE_SIZE_4K - 1);
-    base &= ~(PAGE_SIZE_4K - 1);
-    for (uintptr_t p = base; p < end; p += PAGE_SIZE_4K) {
-        gpt_map_page(g, p, p,
-                     PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                     PT_LEVEL_4K);
-    }
-}
-```
-
 > [!NOTE]
-> TS-IMPL-01 通过 `ctx.vs_ctx.root_pt` 字段（仓库 `common/vm/page_table.c` 的 `pt_context` 已提供）拿到 VS-level 根页表物理地址，**不依赖任何未实现的接口**。`__text_start/__text_end` 等 linker symbol 由现有 `kernel.ld` 提供（参见 `sv39/kernel.ld`），新建测试目录时需保持同样的符号导出。`map_range_4k` 是测试文件内的本地辅助函数。
+> 本组用例的关键设计约束：VS-level 根页表的物理地址需可被测试显式获取，以便在 G-stage 中单独把该 GPA 标记为无效，而对代码段、栈、目标数据等其余区域保持 4KB 粒度的正常 G-stage 映射，避免大 superpage 覆盖导致根页表也被恒等映射；htval 应指向 VS-level PTE 的 GPA（而非原始 VA 对应的 GPA）。
 
 ---
 
@@ -450,51 +334,6 @@ static inline void map_range_4k(gpt_context_t *g, uintptr_t base,
 | TS-MXR-03 | vsstatus.MXR=1 不能 override G-stage X-only | RWX | X-only U | 0 | 1 | load | guest-page-fault（vsstatus.MXR 不影响 G-stage） |
 | TS-MXR-04 | sstatus.MXR=1 同时 override 两阶段 | X-only | X-only U | 1 | 0 | load | 成功 |
 | TS-MXR-05 | sstatus.MXR=1 + vsstatus.MXR=1 | X-only | X-only U | 1 | 1 | load | 成功（与 TS-MXR-04 等价） |
-
-```c
-/* TS-MXR-03 示例：vsstatus.MXR=1 不影响 G-stage */
-TEST_REGISTER(test_vsstatus_mxr_does_not_override_gstage);
-bool test_vsstatus_mxr_does_not_override_gstage(void) {
-    TEST_BEGIN("TS-MXR-03: vsstatus.MXR cannot override G-stage execute-only");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    /* 代码区两阶段都 RWX */
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    pt_setup_identity_mapping(&ctx.vs_ctx, code_base, PAGE_SIZE_1G,
-                              PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D, PT_LEVEL_1G);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 测试页：VS-stage RWX，G-stage X-only */
-    uintptr_t test_va = TEST_REGION_BASE;
-    pt_map_page(&ctx.vs_ctx, test_va, test_va,
-                PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D, PT_LEVEL_4K);
-    gpt_map_page(&ctx.g_ctx, test_va, test_va,
-                 PTE_V|PTE_X|PTE_U|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    /* 设 vsstatus.MXR=1，sstatus.MXR=0
-     * 使用仓库 common/encoding.h 提供的 CSRS / CSRC 宏（编译期 CSR 名）。
-     * SSTATUS_MXR 与 vsstatus 对应位的常量来自 encoding.h；vsstatus 与 sstatus
-     * 共享相同字段布局，因此沿用 SSTATUS_MXR 即可。 */
-    CSRS(vsstatus, SSTATUS_MXR);
-    CSRC(sstatus,  SSTATUS_MXR);
-
-    /* VS-mode load 应触发 G-stage load guest-page-fault */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_load_expect_fault,
-                                           test_va);
-    TEST_ASSERT_EQ("vsstatus.MXR does NOT cover G-stage X-only",
-                   result, CAUSE_LOAD_GUEST_PAGE_FAULT);
-
-    CSRC(vsstatus, SSTATUS_MXR);
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -611,60 +450,6 @@ bool test_vsstatus_mxr_does_not_override_gstage(void) {
 | TS-HLV-13 | HLV 各宽度变体的读取与扩展 | guest 页植入宽度判别 pattern，依次执行 HLV.B/BU/H/HU/W/WU/D | 各变体读取宽度正确，符号/零扩展语义正确（`norm:hlsv_op`） |
 | TS-HLV-14 | HSV 各宽度变体的写入隔离 | guest 页预填 0xFF，依次执行 HSV.B/H/W | 仅目标宽度字节被修改，相邻字节保持 0xFF（`norm:hlsv_op`） |
 
-```c
-/* TS-HLV-07：sstatus.MXR=1 使 G-stage X-only 页面可读 */
-TEST_REGISTER(test_sstatus_mxr_overrides_gstage);
-bool test_sstatus_mxr_overrides_gstage(void) {
-    TEST_BEGIN("TS-HLV-07: sstatus.MXR makes G-stage X-only readable via HLV");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    /* 代码区映射：两阶段 RWX */
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    pt_setup_identity_mapping(&ctx.vs_ctx, code_base, PAGE_SIZE_1G,
-                              PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D, PT_LEVEL_1G);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 测试页：VS-stage RWX，G-stage X-only */
-    uintptr_t test_va = TEST_REGION_BASE;
-    pt_map_page(&ctx.vs_ctx, test_va, test_va,
-                PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D, PT_LEVEL_4K);
-    gpt_map_page(&ctx.g_ctx, test_va, test_va,
-                 PTE_V|PTE_X|PTE_U|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    /* 预填 magic value 到测试页（恒等映射下 SPA=test_va） */
-    const uint64_t MAGIC = 0xDEADBEEFCAFEBABEULL;
-    *(volatile uint64_t *)test_va = MAGIC;
-
-    /* 启用两阶段（不进入 VS-mode，HS-mode 直接 HLV） */
-    gpt_enable(&ctx.g_ctx, /*vmid=*/0);
-    /* CSR_VSATP 与 MAKE_SATP 由 common/vm/vm_defs.h 与 common/encoding.h 提供 */
-    CSRW(vsatp, MAKE_SATP(SATP_MODE_SV39, /*asid=*/0,
-                          ((uintptr_t)ctx.vs_ctx.root_pt) >> 12));
-
-    /* sstatus.MXR=1, vsstatus.MXR=0；SPVP=1（VS-level） */
-    CSRS(sstatus,  SSTATUS_MXR);
-    CSRC(vsstatus, SSTATUS_MXR);
-    hstatus_set_spvp(1);
-
-    goto_priv(PRIV_S);  /* HS-mode */
-    uint64_t val = hlv_d(test_va);
-    goto_priv(PRIV_M);
-
-    TEST_ASSERT_EQ("HLV.D returned magic via two-stage with sstatus.MXR",
-                   val, MAGIC);
-
-    CSRC(sstatus, SSTATUS_MXR);
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
-
 > [!NOTE]
 > TS-HLV-09（HLVX）测试要求测试页面在 VS-stage 与 G-stage 两阶段都至少 X=1（read 权限可缺失）。同时 SPA 对应物理内存属性必须 X+R 两种权限都满足（`norm:hlsv_u_op`），实际测试中通过 PMP 配置全 RWX 来满足。
 
@@ -686,68 +471,6 @@ bool test_sstatus_mxr_overrides_gstage(void) {
 | TS-MPRV-03 | MPRV=1 + MPV=1 + MPP=U → VU-level 两阶段 | 1 | 1 | U | 两阶段映射 U=1，M-mode 普通 ld | 经两阶段以 VU 视角翻译；U=0 PTE 触发 fault |
 | TS-MPRV-04 | MPRV=1 + MPP=M → 无翻译 | 1 | x | M | M-mode 普通 ld，MPP=M | 直接物理访问（与 MPV 无关） |
 | TS-MPRV-05 | MPRV 不影响 HLV | 1 | 0 | M | M-mode 设 MPRV=1 + MPV=0，但执行 HLV.D | HLV 仍按 V=1 + SPVP 翻译，与 MPRV/MPV/MPP 无关 |
-
-```c
-/* TS-MPRV-02：M-mode MPRV=1+MPV=1+MPP=S 触发 VS-level 两阶段 */
-TEST_REGISTER(test_mprv_mpv_vs_level);
-bool test_mprv_mpv_vs_level(void) {
-    TEST_BEGIN("TS-MPRV-02: MPRV=1+MPV=1+MPP=S -> VS-level two-stage access");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV39, HGATP_MODE_SV39X4);
-
-    /* 两阶段恒等映射，目标页使用非恒等以验证翻译 */
-    uintptr_t code_base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    pt_setup_identity_mapping(&ctx.vs_ctx, code_base, PAGE_SIZE_1G,
-                              PTE_V|PTE_R|PTE_W|PTE_X|PTE_A|PTE_D, PT_LEVEL_1G);
-    gpt_setup_identity_mapping(&ctx.g_ctx, code_base, PAGE_SIZE_1G,
-                               PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D,
-                               PT_LEVEL_1G);
-
-    /* 测试 VA：VS-stage 把 VA → GPA_X，G-stage 把 GPA_X → SPA_Y */
-    uintptr_t va  = TEST_REGION_BASE;
-    uintptr_t gpa = TEST_REGION_BASE + PAGE_SIZE_4K;
-    uintptr_t spa = TEST_REGION_BASE + 2 * PAGE_SIZE_4K;
-    pt_map_page(&ctx.vs_ctx, va, gpa,
-                PTE_V|PTE_R|PTE_W|PTE_A|PTE_D, PT_LEVEL_4K);
-    gpt_map_page(&ctx.g_ctx, gpa, spa,
-                 PTE_V|PTE_R|PTE_W|PTE_U|PTE_A|PTE_D, PT_LEVEL_4K);
-
-    /* 物理预填 SPA */
-    *(volatile uint64_t *)spa = 0xCAFEBABE12345678ULL;
-
-    /* 启用两阶段 CSR */
-    gpt_enable(&ctx.g_ctx, /*vmid=*/0);
-    CSRW(vsatp, MAKE_SATP(SATP_MODE_SV39, /*asid=*/0,
-                          ((uintptr_t)ctx.vs_ctx.root_pt) >> 12));
-
-    /* M-mode 设置 MPRV=1, MPV=1, MPP=S
-     *
-     * 字段常量来源：
-     *   MSTATUS_MPRV_BIT - common/encoding.h:149（已存在）
-     *   MSTATUS_MPP_OFF/MASK - common/encoding.h:147-148（已存在）
-     *   MSTATUS_MPV_BIT - 由 hyp_csr 模块新增（hypervisor_framework.md 837
-     *                      已规划 mstatus 扩展字段：MPV/GVA）
-     * 写入 MPP=S（值 1）：先清 MASK 再 OR (1 << OFF) */
-    CSRS(mstatus, MSTATUS_MPRV_BIT | MSTATUS_MPV_BIT);
-    CSRC(mstatus, MSTATUS_MPP_MASK);
-    CSRS(mstatus, (1ULL << MSTATUS_MPP_OFF));  /* MPP = S = 1 */
-
-    /* M-mode 执行普通 ld va，应被两阶段翻译到 SPA */
-    uint64_t val = *(volatile uint64_t *)va;
-
-    /* 恢复 MPRV/MPV，避免影响后续访问 */
-    CSRC(mstatus, MSTATUS_MPRV_BIT | MSTATUS_MPV_BIT);
-
-    TEST_ASSERT_EQ("Two-stage translation took effect",
-                   val, 0xCAFEBABE12345678ULL);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
 
 > [!WARNING]
 > TS-MPRV 系列测试需特别注意：M-mode 设置 MPRV=1 后，**M-mode 自身**的所有显式 load/store 都会经过翻译，包括栈访问、trap handler 内的 CSR 读写。务必在最小代码块内启用 MPRV 并在执行完目标访问后立即清除，避免误伤栈 / 局部变量访问。建议使用 inline asm 严格控制 MPRV 启用窗口。
@@ -896,10 +619,10 @@ bool test_mprv_mpv_vs_level(void) {
 | TS-LP-10 | VS=256T G=4K 恒等映射 | 256T | 4K | Sv57 | Sv39x4+ | VS-stage 256TB superpage，G-stage 4KB 逐页映射 | R/W 成功 |
 
 > [!NOTE]
-> - TS-LP-04~08（G=512G/256T）：G-stage 使用 `gpt_map_page(gpa=0, spa=0, level=PT_LEVEL_512G/256T)` 建立单个 superpage 恒等映射覆盖 [0, 512G) 或 [0, 256T)。因 PLATFORM_MEM_BASE（QEMU 0x80000000 / HAPS 0x60000000）均在此范围内，映射可行。
-> - TS-LP-09/10（VS=512G/256T）：VS-stage 使用 `pt_map_page(va=0, gpa=0, level=PT_LEVEL_512G/256T)` 建立单个 superpage 恒等映射。需要 `page_table.c` 的 `page_size_for_level()` 扩展以支持 level 3/4。
+> - TS-LP-04~08（G=512G/256T）：G-stage 建立单个 superpage 恒等映射覆盖 [0, 512G) 或 [0, 256T)。因平台物理内存基址均在此范围内，映射可行。
+> - TS-LP-09/10（VS=512G/256T）：VS-stage 同样建立单个 512GB/256TB superpage 恒等映射。
 > - 所有用例采用 identity 映射（VA=GPA=SPA），成功标准为 VS-mode 对 `test_data_area` 的读写返回正确值。
-> - 512G/256T superpage 需要对应的 hgatp/vsatp MODE 支持：512G 需要 Sv48x4+ 或 Sv48+ vsatp；256T 需要 Sv57x4 或 Sv57 vsatp。不支持时通过 `REQUIRE_HGATP_MODE` / `REQUIRE_VSATP_MODE` 宏自动 SKIP。
+> - 512G/256T superpage 需要对应的 hgatp/vsatp MODE 支持：512G 需要 Sv48x4+ 或 Sv48+ vsatp；256T 需要 Sv57x4 或 Sv57 vsatp。对应模式不受支持时用例自动 SKIP。
 
 ---
 
@@ -921,8 +644,8 @@ bool test_mprv_mpv_vs_level(void) {
 > [!NOTE]
 > - 负向对偶场景「VS-stage 输出的 GPA 超出窄 G-stage 可寻址范围（如 Sv48+Sv39x4 输出 GPA ≥ 2^41）必须触发 guest-page-fault (cause=21)」已由 Group 4 的 TS-XMODE-07/08/09 覆盖，本组为成功路径的互补验证。
 > - 所选 GPA 均低于对应 G-stage GPA 空间上限（Sv48x4 → 2^50，Sv57x4 → 2^59），同时高于较窄模式的上限，保证用例既合法又有区分度。
-> - 高 GPA 区域不对应任何真实内存，G-stage 将其重映射到 `test_data_area` 物理页；测试仅验证翻译路径正确性，与平台内存大小无关。
-> - 用例以 `REQUIRE_VSATP_MODE` / `REQUIRE_HGATP_MODE` 门控，仅在与目录 SUITE 模式匹配的目录中运行，其余目录自动 SKIP。
+> - 高 GPA 区域不对应任何真实内存，G-stage 将其重映射到测试数据区物理页；测试仅验证翻译路径正确性，与平台内存大小无关。
+> - 用例以当前测试套件的 VS/G 模式组合门控，仅在匹配的组合下运行，其余组合自动 SKIP。
 
 ---
 
@@ -937,21 +660,21 @@ bool test_mprv_mpv_vs_level(void) {
 - `norm:hfence-gvma_mode`：`hgatp`.MODE 改变后必须执行 rs1=x0 的 HFENCE.GVMA 排序——即使旧/新 MODE 为 Bare
 - `norm:sstatus_sum` / `norm:sstatus_mxr`：SUM/MXR 仅在页式虚拟内存生效时作用；G-stage Bare 时对 G-stage 无意义
 
-**测试职责**：在 VS-stage 有效或联合机制（HLV/HSV、MPRV+MPV、HFENCE.GVMA）参与的前提下，验证 G-stage Bare 的平凡翻译语义：VS-stage fault 码区分、直通行为、模式切换排序、SUM/MXR 无 G-stage 效果。实现文件：`Sv39x4_Sv39/tests/test_hgatp_bare_joint.c`（TS-BARE-01~06），通过 symlink 在全部 9 个目录运行。
+**测试职责**：在 VS-stage 有效或联合机制（HLV/HSV、MPRV+MPV、HFENCE.GVMA）参与的前提下，验证 G-stage Bare 的平凡翻译语义：VS-stage fault 码区分、直通行为、模式切换排序、SUM/MXR 无 G-stage 效果。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
-| TS-BARE-01 | VS-stage fault 码区分 | `two_stage_init(ctx, SUITE_VSATP_MODE, HGATP_MODE_BARE)` + `ts2_setup_full`，VS-stage 目标页 PTE V=0，VS-mode load | cause=13（load page-fault），且断言 cause 不属于 {20,21,23}（G-stage Bare 不可能产生 guest-page-fault） |
-| TS-BARE-02 | HLV/HSV 直通 | 双 Bare，`two_stage_enable` 后 HS-mode 执行 `hlv_d` 读、`hsv_d` 写 `test_data_area` | 无 trap，读回值与写入一致（G-stage 平凡翻译下 GPA=SPA） |
+| TS-BARE-01 | VS-stage fault 码区分 | 启用 VS-stage（当前套件模式）+ hgatp=Bare，VS-stage 目标页 PTE V=0，VS-mode load | cause=13（load page-fault），且断言 cause 不属于 {20,21,23}（G-stage Bare 不可能产生 guest-page-fault） |
+| TS-BARE-02 | HLV/HSV 直通 | 双 Bare，启用两阶段配置后 HS-mode 执行 HLV 读、HSV 写测试数据区 | 无 trap，读回值与写入一致（G-stage 平凡翻译下 GPA=SPA） |
 | TS-BARE-03 | MPRV+MPV 直通 | 双 Bare，M-mode 设 MPV=1、MPP=VS 后在 MPRV=1 窗口内 ld/sd | 无 trap，访问如同 V=1 平凡翻译直通，值正确 |
-| TS-BARE-04 | Bare→Sv*x4 切换 | hgatp 从 Bare 切换到 SUITE_HGATP_MODE（预建恒等 G-stage 页表），切换后执行 `hfence_gvma_all()`，VS-mode 读写 | 访问成功（`norm:hfence-gvma_mode`：MODE 改变必须 HFENCE.GVMA 排序，新 MODE 生效） |
-| TS-BARE-05 | Sv*x4→Bare 切换 | 先在 SUITE_HGATP_MODE 下访问成功，再切回 Bare + `hfence_gvma_all()`，VS-mode 访问同一 GPA | 直通成功，无残留 G-stage 翻译干扰 |
+| TS-BARE-04 | Bare→Sv*x4 切换 | hgatp 从 Bare 切换到当前套件的 G-stage 模式（预建恒等 G-stage 页表），切换后执行 HFENCE.GVMA 全局刷新，VS-mode 读写 | 访问成功（`norm:hfence-gvma_mode`：MODE 改变必须 HFENCE.GVMA 排序，新 MODE 生效） |
+| TS-BARE-05 | Sv*x4→Bare 切换 | 先在当前套件的 G-stage 模式下访问成功，再切回 Bare + HFENCE.GVMA 全局刷新，VS-mode 访问同一 GPA | 直通成功，无残留 G-stage 翻译干扰 |
 | TS-BARE-06 | 双 Bare 下 SUM/MXR 无效 | 双 Bare，置 `vsstatus.SUM`=1、`vsstatus.MXR`=1 后 VS-mode 访问任意 PMP 允许地址 | 访问成功，行为与 SUM/MXR=0 一致（无页式翻译时 SUM/MXR 无效） |
 
 > [!NOTE]
 > - 本组与 Group 1（TS-VS，hgatp=Bare 基线）互补：Group 1 验证 VS-stage 在 Bare G-stage 下的翻译对等性，本组验证 G-stage Bare 本身的平凡翻译语义与联合机制交叉。
 > - 纯 G-stage Bare 独立行为（直通/取指/VU/PMP 兜底/htval/GVA）由 G-stage 测试计划 Group 14（GBARE-01~05）覆盖。
-> - 双 Bare 场景无需任何页表，`ts2_setup_full(ctx, BARE, BARE)` 仅完成池复位与 CSR 编程。
+> - 双 Bare 场景无需任何页表，用例 setup 仅完成状态复位与 CSR 编程。
 
 ---
 
@@ -966,263 +689,107 @@ bool test_mprv_mpv_vs_level(void) {
 
 ---
 
-## 测试实现说明
+## 测试设计要点
 
-### 文件组织（9 目录拆分布局）
+1. **fault cause 区分阶段来源**：VS-stage 失败 → cause 12/13/15（普通 page-fault）；G-stage 失败 → cause 20/21/23（guest-page-fault）。测试断言必须使用准确的 cause 常量，不能模糊处理。
 
-两阶段（VS+G）测试用例从原 `Sv39x4/`、`Sv48x4/`、`Sv57x4/` 三个 G-stage 目录中剥离出来，按 (G-mode, VS-mode) 笛卡尔积单独建立 **9 个目录**，每个目录独立测试一种 (G, VS) 组合，并完整遍历该组合下支持的所有页面粒度。
+2. **htval 的双重含义**（`norm:htval_trapval`）：显式访问 fault 时 htval = 原始 GPA >> 2，与 stval 对应同一访问；隐式 VS-stage 访问 fault 时 htval = VS-level PTE 的 GPA >> 2，与 stval 不对应同一地址；可通过 htinst 判断是否为隐式访问。
 
-采用「主目录持有 + 其他借用」模式：
+3. **htinst 伪指令编码**（`norm:H_trap_xtinst_guestpage_rw`）：RV64 隐式 read 为 `0x00003000`，隐式 write（A/D 自动更新）为 `0x00003020`；当 mtval2/htval 非零且为隐式 VS-stage 访问时**必须**写 pseudoinst（不允许 0）。
 
-- **主目录** `Sv39x4_Sv39/`：物理持有全部 25 个 group test `.c` 文件 + 1 个 `test_granular_matrix.c` 笛卡尔积驱动文件。
-- **8 个借用目录**：`Sv39x4_Sv48/`、`Sv39x4_Sv57/`、`Sv48x4_Sv39/`、`Sv48x4_Sv48/`、`Sv48x4_Sv57/`、`Sv57x4_Sv39/`、`Sv57x4_Sv48/`、`Sv57x4_Sv57/`。每个目录通过 symlink 共享主目录 `tests/` 下所有源文件，仅在自身 `Makefile` 中定制 `SUITE_VSATP_MODE` / `SUITE_HGATP_MODE` 宏。
-- 原三个 G-stage 目录（`Sv39x4/`、`Sv48x4/`、`Sv57x4/`）退化为**纯 G-stage 测试目录**（保留 11 个 G-stage group：HCSR/ROOT/MAP/HIGH/VALID/RWX/UBIT/AD/ALIGN/GBIT/FAULT），不再承担两阶段测试。
+4. **MXR 双重语义**（`norm:vsstatus_mxr_vm`、`norm:sstatus_mxr_vm`）：HS 级 `sstatus.MXR` 同时影响 VS-stage 与 G-stage；`vsstatus.MXR` 仅影响 VS-stage。测试时需分别设置/清除两个 MXR 字段以验证差异。
 
-```
-damo-priv-test/
-├── Sv39x4/  Sv48x4/  Sv57x4/    # 纯 G-stage 测试（清理 two_stage 后）
-│
-├── Sv39x4_Sv39/                 # 【主目录】持有 25 个 two_stage/*.c
-│   ├── Makefile                 #   ENABLE_TWO_STAGE=1, ENABLE_HYP=1
-│   ├── kernel.ld                #   16KB 对齐根表段（同 Sv39x4）
-│   ├── main.c
-│   └── tests/
-│       ├── test_helpers.h       # forward header（仅转发框架头）
-│       ├── test_register.c      # 25 个 two_stage/*.c #include + SUITE 宏
-│       └── (25 个 group test .c + test_granular_matrix.c)
-│
-├── Sv39x4_Sv48/  ...  Sv57x4_Sv57/   # 8 个借用目录（symlink → 主目录）
-│   ├── Makefile                 #   定制 SUITE_VSATP_MODE / SUITE_HGATP_MODE
-│   ├── kernel.ld                #   与主目录完全一致
-│   ├── main.c                   #   仅 banner 不同
-│   └── tests/
-│       └── test_register.c -> ../../Sv39x4_Sv39/tests/test_register.c
-│
-└── common/hyp/                  # 框架层（仅含通用 helper，禁测试逻辑）
-```
+5. **SUM 仅作用于 VS-stage**：`vsstatus.SUM` 控制 VS-stage 的 U-bit 检查；G-stage 始终为 U-mode 视角，无 SUM 概念；HLV/HSV 时 HS 级 `sstatus.SUM` 被忽略（`norm:hlsv_trans`）。
 
-#### 9 目录映射表
+6. **VMID 切换顺序**：切换 VMID 时严格按 vsatp=0 → 写 hgatp → 写 vsatp 的顺序执行，避免推测执行污染 TLB 标记。
 
-| 目录 | SUITE_VSATP_MODE | SUITE_HGATP_MODE | 笛卡尔积粒度数 |
-|---|---|---|---|
-| `Sv39x4_Sv39` *(主)* | `SATP_MODE_SV39` | `HGATP_MODE_SV39X4` | 3 × 3 = **9** |
-| `Sv39x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV39X4` | 3 × 4 = **12** |
-| `Sv39x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV39X4` | 3 × 5 = **15** |
-| `Sv48x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV48X4` | 4 × 3 = **12** |
-| `Sv48x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV48X4` | 4 × 4 = **16** |
-| `Sv48x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV48X4` | 4 × 5 = **20** |
-| `Sv57x4_Sv39` | `SATP_MODE_SV39` | `HGATP_MODE_SV57X4` | 5 × 3 = **15** |
-| `Sv57x4_Sv48` | `SATP_MODE_SV48` | `HGATP_MODE_SV57X4` | 5 × 4 = **20** |
-| `Sv57x4_Sv57` | `SATP_MODE_SV57` | `HGATP_MODE_SV57X4` | 5 × 5 = **25** |
-| **合计粒度组合** | | | **144** |
+7. **MPRV+MPV 启用窗口安全**：M-mode 设置 MPRV=1 后所有 load/store（含栈访问）都会被翻译，必须在最小窗口内启用 MPRV，并在目标访问完成后立即清除（详见 Group 14 注意事项）。
 
-#### VS×G 粒度矩阵（每目录完整遍历）
+8. **平台能力探测**：512GB/256TB 大 superpage 测试受平台物理内存大小限制；部分实现可能不支持 Sv57/Sv57x4 等模式，用例执行前应先探测模式支持情况，不支持时自动 SKIP。
 
-每个目录均跑 `test_granular_matrix.c` 中的 25 行 `MATRIX_CASE`（覆盖最大集 5×5），每条受 `vs_max_level(SUITE_VSATP_MODE)` / `g_max_level(SUITE_HGATP_MODE)` 边界自动 SKIP——目录内合法子集 PASS、超出边界 SKIP。
+## 组合覆盖策略
 
-- **VS levels**：Sv39 → {4K, 2M, 1G}；Sv48 → {4K, 2M, 1G, 512G}；Sv57 → {4K, 2M, 1G, 512G, 256T}
-- **G levels**：Sv39x4 → {4K, 2M, 1G}；Sv48x4 → {4K, 2M, 1G, 512G}；Sv57x4 → {4K, 2M, 1G, 512G, 256T}
-- **矩阵驱动**：基于框架 helper `vs_max_level()` / `g_max_level()` / `PAGE_SIZE_AT_LEVEL()`（`common/hyp/two_stage_helpers.h`）。
-- **底层 API**：每个 case 调用 `ts2_setup_granular(ctx, vs_mode, g_mode, vs_level, g_level)` 后 `ts2_run_check_no_fault(ctx, test_vs_read_write, va)` 验证 R/W。
+- 两阶段测试用例按 (G-mode, VS-mode) 笛卡尔积（共 9 种组合）分别在独立的测试套件中运行，每个套件独立测试一种组合，并完整遍历该组合下支持的所有页面粒度；与当前套件组合不匹配的用例自动 SKIP。
+- 粒度矩阵用例遍历 VS×G 页面粒度笛卡尔积（4K/2M/1G/512G/256T 中各模式支持的范围）：VS 粒度集合由 vsatp MODE 决定（Sv39 → {4K, 2M, 1G}；Sv48 → {4K, 2M, 1G, 512G}；Sv57 → {4K, 2M, 1G, 512G, 256T}），G 粒度集合由 hgatp MODE 同理决定；超出当前组合支持边界的粒度组合自动 SKIP。
+- 纯 G-stage 独立翻译的测试套件由 `Hypervisor_gstage_test_plan.md` 覆盖，不承担两阶段测试。
 
-#### 25 Group 在 9 目录的分布
-
-所有 9 个目录均包含全部 25 个 group test 文件（共 ≈149 个 `TEST_REGISTER`）+ 1 个 `test_granular_matrix.c` 文件（25 个 `TEST_REGISTER`）。每条用例内部通过 `REQUIRE_VSATP_MODE` / `REQUIRE_HGATP_MODE` 在不匹配的目录中自动 SKIP，因此用例集合**对所有目录是同源的**，目录间差异仅由 `SUITE_*MODE` 宏控制运行时分支。
-
-| Group | 文件 | TEST 数 | 主测 (VS, G) | 在其他目录的行为 |
-|---|---|---|---|---|
-| Group 1  (VS-only) | `test_vs_only.c` | 10 | 由 SUITE 决定 | 全跑 |
-| Group 2  (VSATP CSR) | `test_vsatp_csr.c` | 7 | 全 mode | 全跑 |
-| Group 3  (Same width) | `test_same_width.c` | 12 | VS=G 对角 | 非对角 SKIP |
-| Group 4  (Cross width) | `test_cross_width.c` | 21 | 异位宽组合 | 不匹配的 SKIP |
-| Group 5  (Non-identity) | `test_non_identity.c` | 4 | 由 SUITE | 全跑 |
-| Group 6  (Implicit fault) | `test_implicit_gstage_fault.c` | 4 | 由 SUITE | 全跑 |
-| Group 7  (Perm cross) | `test_perm_cross.c` | 12 | 由 SUITE | 全跑 |
-| Group 8  (MXR) | `test_mxr.c` | 5 | 由 SUITE | 全跑 |
-| Group 9  (SUM) | `test_sum.c` | 3 | 由 SUITE | 全跑 |
-| Group 10 (HFENCE.VVMA) | `test_hfence_vvma.c` | 6 | 由 SUITE | 全跑 |
-| Group 11 (HFENCE.GVMA) | `test_hfence_gvma.c` | 6 | 由 SUITE | 全跑 |
-| Group 12 (SFENCE.VMA) | `test_sfence_vma.c` | 4 | 由 SUITE | 全跑 |
-| Group 13 (HLV/HSV) | `test_hlv_hsv.c` | 12 | 由 SUITE | 全跑 |
-| Group 14 (MPRV+MPV) | `test_mprv_mpv.c` | 5 | 由 SUITE | 全跑 |
-| Group 15 (A/D bits) | `test_ad_two_stage.c` | 6 | 由 SUITE | 全跑 |
-| Group 16 (Page straddle) | `test_page_straddle.c` | 3 | 由 SUITE | 全跑 |
-| Group 17 (G bit) | `test_g_bit.c` | 1 | 由 SUITE | 全跑 |
-| Group 18 (PBMTE) | `test_pbmte.c` | 2 | 由 SUITE | 全跑 |
-| Group 19 (PMP) | `test_pmp.c` | 1 | 由 SUITE | 全跑 |
-| Group 20 (Priority) | `test_priority.c` | 2 | 由 SUITE | 全跑 |
-| Group 21 (HGATP WARL) | `test_hgatp_warl.c` | 2 | 全 G-mode | 全跑 |
-| Group 22 (Svinval) | `test_svinval.c` | 2 | 由 SUITE | 全跑 |
-| Group 23 (Large page) | `test_large_page.c` | 10 | 大页粒度 | 不匹配 SKIP |
-| Group 24 (PPN width) | `test_ppn_width.c` | 4 | 宽 G-stage + 高 GPA | 不匹配 SKIP |
-| Group 25 (G-stage Bare joint) | `test_hgatp_bare_joint.c` | 6 | 由 SUITE | 全跑 |
-| **新增 (Granular matrix)** | `test_granular_matrix.c` | 25 | VS×G 全笛卡尔积 | 超出 (vs_max, g_max) SKIP |
-| **合计** | 26 个文件 | **≈174** | | |
-
-#### 框架层最小增量
-
-`common/hyp/two_stage_helpers.h` 新增（**仅 helper，无任何 `TEST_REGISTER` 或断言**）：
-
-- `vs_max_level(int vs_mode)` — Sv39→1G / Sv48→512G / Sv57→256T
-- `g_max_level(int g_mode)` — Sv39x4→1G / Sv48x4→512G / Sv57x4→256T
-- `PAGE_SIZE_AT_LEVEL(level)` 宏 — 4K/2M/1G/512G/256T → 字节大小
-
-已有但本次重构关键依赖：`ts2_setup_granular()`、`ts2_map_region_g()`、`ts2_map_region_vs()`、`ts2_run_check_no_fault()`、`ts2_finish()`，均已 mode-agnostic（接受 `vs_mode`/`g_mode` 参数），无需改造。
-
-
-### 通用测试模式
-
-#### 模式 1：VS-mode 下两阶段翻译（Group 1/3/4/5/6/7/8/9）
-
-```c
-TEST_REGISTER(test_xxx);
-bool test_xxx(void) {
-    TEST_BEGIN("ID: description");
-
-    two_stage_ctx_t ctx;
-    pt_pool_reset();
-    gpt_pool_reset();
-    two_stage_init(&ctx, SATP_MODE_SV*, HGATP_MODE_SV*X4);
-
-    /* 1. 代码 + 数据区两阶段恒等映射 */
-    uintptr_t base = PLATFORM_MEM_BASE & ~(PAGE_SIZE_1G - 1);
-    uintptr_t flags = PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D;
-    two_stage_setup_identity(&ctx, base, PAGE_SIZE_1G, flags, PT_LEVEL_1G);
-
-    /* 2. 可选：测试页特殊权限映射 */
-    /* pt_map_page(&ctx.vs_ctx, ...) 与 gpt_map_page(&ctx.g_ctx, ...) */
-
-    /* 3. 进入 VS-mode 执行测试函数 */
-    uintptr_t result = two_stage_run_in_vs(&ctx, test_vs_xxx, arg);
-    TEST_ASSERT("description", result == expected);
-
-    two_stage_cleanup(&ctx);
-    HYP_TEST_END();
-}
-```
-
-#### 模式 2：HFENCE / SFENCE 测试（Group 10/11/12）
-
-```c
-TEST_REGISTER(test_fence_xxx);
-bool test_fence_xxx(void) {
-    TEST_BEGIN("ID: fence semantics");
-
-    /* setup ctx 并启用两阶段 */
-    /* HS-mode 修改 PTE */
-    /* 执行 HFENCE.VVMA / HFENCE.GVMA / SFENCE.VMA */
-    hfence_vvma(0, 0);  /* 或对应的 fence 调用 */
-    /* VS-mode 验证新 PTE 生效 */
-    HYP_TEST_END();
-}
-```
-
-#### 模式 3：HLV/HSV 测试（Group 13）
-
-```c
-TEST_REGISTER(test_hlv_xxx);
-bool test_hlv_xxx(void) {
-    TEST_BEGIN("ID: HLV/HSV behavior");
-
-    /* setup 两阶段映射 */
-    gpt_enable(&ctx.g_ctx, vmid);
-    CSRW(vsatp, MAKE_SATP(SATP_MODE_SV39, /*asid=*/0,
-                          ((uintptr_t)ctx.vs_ctx.root_pt) >> 12));
-    hstatus_set_spvp(1);  /* 或 0 */
-
-    goto_priv(PRIV_S);    /* HS-mode */
-    uint64_t val = hlv_d(guest_va);
-    goto_priv(PRIV_M);
-
-    TEST_ASSERT_EQ("HLV.D returned expected value", val, expected);
-    HYP_TEST_END();
-}
-```
-
-#### 模式 4：MPRV+MPV 测试（Group 14）
-
-```c
-TEST_REGISTER(test_mprv_xxx);
-bool test_mprv_xxx(void) {
-    TEST_BEGIN("ID: MPRV+MPV two-stage");
-
-    /* setup 两阶段映射 + 启用 vsatp/hgatp */
-    /* 严格控制 MPRV 启用窗口（最小化 M-mode 自身被翻译的代码段） */
-    CSRS(mstatus, MSTATUS_MPRV_BIT | MSTATUS_MPV_BIT);
-    /* ... 执行最小化的目标访问 ... */
-    CSRC(mstatus, MSTATUS_MPRV_BIT | MSTATUS_MPV_BIT);
-
-    HYP_TEST_END();
-}
-```
-
-### VS-mode 测试辅助函数
-
-| 函数名 | 功能 | 返回值 |
-|--------|------|--------|
-| `test_vs_read_write` | VS-mode 写入 magic value 并读回验证 | 0=成功 |
-| `test_vs_load` | VS-mode 执行 load | 0=成功 |
-| `test_vs_store` | VS-mode 执行 store | 0=成功 |
-| `test_vs_load_expect_fault` | VS-mode load，预期 fault | fault cause |
-| `test_vs_store_expect_fault` | VS-mode store，预期 fault | fault cause |
-| `test_vs_exec_expect_fault` | VS-mode 跳转执行，预期 fault | fault cause |
-
-### 关键注意事项
-
-1. **fault cause 区分阶段来源**：
-   - VS-stage 失败 → cause 12/13/15（普通 page-fault）
-   - G-stage 失败 → cause 20/21/23（guest-page-fault）
-   - 测试断言必须使用准确的 cause 常量，不能模糊处理
-
-2. **htval 的双重含义**（`norm:htval_trapval`）：
-   - 显式访问 fault：htval = 原始 GPA >> 2，与 stval 对应同一访问
-   - 隐式 VS-stage 访问 fault：htval = VS-level PTE 的 GPA >> 2，与 stval 不对应同一地址
-   - 通过 htinst 判断是否为隐式访问
-
-3. **htinst 伪指令编码**（`norm:H_trap_xtinst_guestpage_rw`）：
-   - RV64 隐式 read：`0x00003000`
-   - RV64 隐式 write（A/D 自动更新）：`0x00003020`
-   - 当 mtval2/htval 非零且为隐式 VS-stage 访问时**必须**写 pseudoinst（不允许 0）
-
-4. **MXR 双重语义**（`norm:vsstatus_mxr_vm`、`norm:sstatus_mxr_vm`）：
-   - HS-level `sstatus.MXR` 同时影响 VS-stage 与 G-stage
-   - `vsstatus.MXR` 仅影响 VS-stage
-   - 测试时需要分别设置/清除两个 MXR 字段以验证差异
-
-5. **SUM 仅作用于 VS-stage**：
-   - `vsstatus.SUM` 控制 VS-stage 的 U-bit 检查
-   - G-stage 始终 U-mode 视角，无 SUM 概念
-   - HLV/HSV 时 HS-level `sstatus.SUM` 被忽略（`norm:hlsv_trans`）
-
-6. **VS-stage A 位推测限制**（`norm:vs_stage_speculative_a_bit`）：
-   - VS-stage A 位不得因 mispredict 而被设置（除非真正在 VS/VU-mode）
-   - 这是难以直接测试的微架构行为，在 QEMU 上一般无法可观察验证。本计划不包含直接验证用例，仅在文档中说明该约束
-
-7. **世界切换顺序**（参考 `docs/hypervisor_framework.md`）：
-   - 切换 VMID 时严格顺序：vsatp=0 → 写 hgatp → 写 vsatp
-   - 避免推测执行污染 TLB 标记
-
-8. **HLV/HSV 在 V=1 时触发 virtual-instruction exception**（cause=22），不是 illegal-instruction
-
-9. **MPRV 不影响 HLV/HSV**（`norm:mstatus_mprv_hlsv`）：HLV/HSV 始终按 V=1 + SPVP 行事
-
-10. **MPRV+MPV 测试的栈安全**：M-mode 设置 MPRV=1 后所有 load/store 都被翻译，包括栈访问。务必在最小窗口启用 MPRV 并使用 inline asm 严格控制（详见 Group 14 注意事项）
-
-11. **QEMU 平台限制**：
-    - 需要 `-cpu rv64,h=true`（或更新版本默认开启 H 扩展）
-    - 512GB / 256TB 大 superpage 受物理内存限制
-    - 部分实现可能不支持 Sv57/Sv57x4，应在测试前探测
 
 ---
 
 ## 参考
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `docs/gstage_translation_test_plan.md` — G-stage 独立翻译测试计划（配套）
-- `docs/vm_test_plan.md` — VS-stage / 普通 VM 测试计划（行为基线）
-- `docs/hypervisor_framework.md` — Hypervisor 测试框架设计
-- `common/hyp/two_stage.c` — 两阶段管理 API
-- `common/hyp/gstage_pt.c` — G-stage 页表管理 API
-- `common/hyp/hyp_ldst.c` — HLV/HLVX/HSV 指令封装
-- `common/hyp/hyp_fence.c` — HFENCE.VVMA/GVMA 指令封装
-- `common/hyp/hyp_csr.c` — Hypervisor CSR 操作 API
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `supervisor.adoc` — Sv39/Sv48/Sv57 地址翻译与 `sstatus` 字段定义
+- `Hypervisor_gstage_test_plan.md` — G-stage 独立翻译测试计划（配套）
+- `vm_test_plan.md` — VS-stage / 普通 VM 测试计划（行为基线）
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+| Norm ID | 覆盖的测试用例 | 说明 |
+|---------|--------------|------|
+| `norm:H_vm_twostage` | TS-VS-01~10、TS-MAP-01~12、TS-XMODE 全部、TS-NID-01~04、TS-LP-01~10、粒度矩阵用例、TS-BARE-01 | V=1 两阶段链路与单阶段退化 |
+| `norm:H_vm_gstagetrans` | TS-IMPL-01/03/04/06、TS-PRIO-02 | VS-stage 隐式访问受 G-stage 翻译 |
+| `norm:H_vm_gpatrans` | TS-MAP、TS-PERM-03/05/08/09、TS-BARE-01 | G-stage 算法与 guest-page-fault 来源 |
+| `norm:H_vm_gpapriv` | TS-IMPL-04、TS-AD-03~06、TS-PERM-09 | 隐式访问按 implicit load/store 检查 |
+| `norm:vsstatus_mxr_vm` | TS-MXR-02/03、TS-HLV-08 | vsstatus.MXR 仅覆盖 VS-stage |
+| `norm:sstatus_mxr_vm` | TS-MXR-04/05、TS-HLV-06/07 | HS 级 MXR 覆盖两阶段 |
+| `norm:vsatp_sz_acc_op` | TS-VSATP-01/02、TS-VS-01~10 | V=1 时 satp 访问 vsatp |
+| `norm:vsatp_v0` | TS-VSATP-04、TS-HLV-01/02、TS-MPRV-02/03 | V=0 时 vsatp 仅经 HLV/HSV/MPRV 生效 |
+| `norm:vsatp_mode_unsupported_v0` | TS-VSATP-04 | V=0 写不支持 MODE 被忽略或 WARL |
+| `norm:vsatp_mode_unsupported_v1` | TS-VSATP-03 | V=1 写不支持 MODE 被忽略 |
+| `norm:vs_stage_speculative_a_bit` | 无直接用例 | 见文末不可测说明 |
+| `norm:hlsv_mode` | TS-HLV-10~12 | HLV/HSV 有效模式与 HU 控制 |
+| `norm:hlsv_priv` | TS-HLV-03/04 | SPVP 决定有效特权级 VS/VU |
+| `norm:hlsv_trans` | TS-HLV-01/02/05 | HLV/HSV 两阶段翻译且忽略 HS 级 SUM |
+| `norm:hlsv_sstatus_mxr` | TS-HLV-06/07 | HS 级 MXR 对 HLV 两阶段生效 |
+| `norm:hlsv_vsstatus_mxr` | TS-HLV-08 | vsstatus.MXR 仅影响 HLV 的 VS-stage |
+| `norm:hlsv_u_op` | TS-HLV-09 | HLVX 以 X 权限替代 R 权限 |
+| `norm:hlsv_virtinst` | TS-HLV-10 | V=1 执行 HLV/HSV → virtual-instruction |
+| `norm:hlsv_illegalinst` | TS-HLV-11 | U-mode + HU=0 → illegal-instruction |
+| `norm:hlsv_op` | TS-HLV-13/14 | 各宽度变体读写与扩展语义 |
+| `norm:hfence-vvma_hfence-gvma_op` | TS-HV-01~03、TS-HG-01~03 | HFENCE 类似 SFENCE.VMA 的语义 |
+| `norm:hfence-vvma_mode` | TS-HV-01~03 | HFENCE.VVMA 排序保证与有效模式 |
+| `norm:hfence-vvma_limits` | TS-HV-02/03 | rs1/rs2 选择 VA/ASID 与 VMID 限制 |
+| `norm:hfence-vvma_asid` | TS-HV-03 | ASID 高位忽略规则 |
+| `norm:hfence-vvma_tvm` | TS-HV-04/05 | TVM/VTVM 不影响 HFENCE.VVMA |
+| `norm:hfence-gvma_op` | TS-HG-01~03 | HFENCE.GVMA 排序保证与 rs1=GPA>>2 |
+| `norm:hfence-gvma_mode` | TS-HG-04、TS-BARE-04/05 | MODE 改变后必须 HFENCE.GVMA（含 Bare） |
+| `norm:hfence-gvma_vmid` | TS-HG-03 | rs2 选择 VMID 与高位忽略 |
+| `norm:hfence-vvma_hfence-gvma_exceptions` | TS-HV-06、TS-HG-05/06 | V=1/U-mode/TVM 异常触发 |
+| `norm:sfence_vma_v0` | TS-SF-04 | V=0 SFENCE.VMA 仅刷 HS 级 |
+| `norm:sfence_vma_v1` | TS-SF-01/02 | V=1 SFENCE.VMA 仅刷 VS-stage |
+| `norm:mstatus_mprv_hypervisor` | TS-MPRV-01~04、TS-BARE-03 | MPRV+MPV/MPP 组合的两阶段行为 |
+| `norm:mstatus_mprv_hlsv` | TS-MPRV-05 | MPRV 不影响 HLV/HSV |
+| `norm:H_guest_page_fault` | TS-IMPL、TS-PERM-03/05/08/09、TS-AD-03~06、TS-XMODE-07~09 | guest-page-fault 委托与 trap 值写入 |
+| `norm:htval_trapval` | TS-IMPL-01、TS-STRD-01/02 | htval 写 GPA>>2 或 0 |
+| `norm:H_trap_xtinst_guestpage` | TS-IMPL-01/06、TS-AD-04 | 隐式访问 + 非零 htval 时必须写 pseudoinst |
+| `norm:H_trap_xtinst_guestpage_rw` | TS-IMPL-01/06（read）、TS-AD-04（write） | read/write pseudoinstruction 编码区分 |
+| `norm:henvcfg_adue_op` | TS-AD-01~04 | ADUE 控制 VS-stage A/D 硬件更新 |
+| `norm:henvcfg_pbmte_op` | TS-PBMT-01/02 | PBMTE 控制 VS-stage Svpbmt 可用性 |
+| `norm:H_straddle` | TS-STRD-01~03 | 跨页访问的 fault 与 stval 页边界地址 |
+| `norm:mtval2_htval_virtaddr` | TS-STRD-01/02、TS-XMODE-07~09 | 非隐式 fault 时 htval 与 stval 对应 |
+| `norm:mtval2_trapval_other` | TS-STRD-01/02 | 未对齐/跨页 fault 的故障部分地址 |
+| `norm:H_vm_gpa_g` | TS-GBIT-01 | G-stage PTE G 位被忽略 |
+| `norm:H_pmp` | TS-PMP-01 | 两阶段翻译后 SPA 仍受 PMP 约束 |
+| `norm:hgatp_mode_bare_trans` | TS-VS-01~10、TS-BARE-01~06 | hgatp=Bare 平凡翻译与联合行为 |
+| `norm:H_exception_priority` | TS-PRIO-01/02 | 多异常优先级验证 |
+| `norm:hgatp_ppn_op` | TS-HGATP-01 | PPN[1:0] 强制读零（16KB 对齐） |
+| `norm:hgatp_mode_warl` | TS-HGATP-02 | 不支持 MODE 按 WARL 处理 |
+| `norm:satp_ppn_sv39_sz` | TS-PPNW-01/02 | Sv39 VS-stage 输出 44-bit PPN |
+| `norm:satp_ppn_sv48_sz` | TS-PPNW-03 | Sv48 VS-stage 输出 44-bit PPN |
+| `norm:satp_ppn_sv57_sz` | TS-PPNW-04 | Sv57 VS-stage 输出 44-bit PPN |
+| `norm:hgatp_mode_sv39x4` | TS-MAP-01~04、TS-XMODE-01/02/03/05/07/08、GH 系列两阶段组合 | Sv39x4 GPA 位宽与高位为零检查 |
+| `norm:hgatp_mode_sv48x4` | TS-MAP-05~08、TS-XMODE-01/04/06/09 | Sv48x4 GPA 位宽与高位为零检查 |
+| `norm:hgatp_mode_sv57x4` | TS-MAP-09~11、TS-XMODE-02/04/06 | Sv57x4 GPA 位宽与高位为零检查 |
+| `norm:hstatus_vtvm_op` | TS-VSATP-07、TS-SF-03、TS-SINV-01 | VTVM=1 时 VS-mode 异常触发 |
+| `norm:mstatus_tvm_hs` | TS-HG-05、TS-SINV-02 | TVM=1 阻止 HS-mode 访问 hgatp/HFENCE.GVMA |
+| `norm:hlvx-wu_valid32` | TS-HLV-09（部分） | 见文末不可测说明 |
+| `norm:sstatus_sum` | TS-SUM-01~03、TS-BARE-06 | SUM 语义（经 vsstatus 镜像在 VS-stage 验证） |
+| `norm:sstatus_mxr` | TS-MXR-01~05 | MXR 基础语义（HS 级与 VS 级） |
+
+未覆盖/不可测说明：
+
+- `norm:vs_stage_speculative_a_bit`：VS-stage A 位不得因推测执行被设置属于难以直接观测的微架构行为，无法通过功能用例可观察验证，本计划不包含直接验证用例，仅在此声明该约束。
+- `norm:hlvx-wu_valid32`：当前仓库为 RV64，其 RV32 有效性部分不可测；TS-HLV-09 覆盖 HLVX.WU 的执行权限替代读权限语义。

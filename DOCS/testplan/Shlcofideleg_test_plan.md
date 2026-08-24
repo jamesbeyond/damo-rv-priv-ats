@@ -20,20 +20,23 @@ RISC-V Sscofpmf 扩展定义了 LCOFI 中断（对应中断位 13），当硬件
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/hypervisor.adoc:1276-1283` — `norm:vsip_vsie_lcofi`：Shlcofideleg 扩展对 hideleg[13]、vsip.LCOFIP、vsie.LCOFIE 的行为定义
-- `SPEC/hypervisor.adoc:1248-1275` — vsip/vsie 寄存器基础定义（VSXLEN-bit R/W，V=1 时替代 sip/sie）
-- `SPEC/sscofpmf.adoc` — Sscofpmf 扩展：LCOFI 中断定义（bit 13）、OF 位语义
+本方案依据 RISC-V Privileged Architecture 规范（Hypervisor 扩展 vsip/vsie 章节与 Sscofpmf 扩展）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `norm:vsip_vsie_lcofi`（第 1276–1283 行）：Shlcofideleg 对 hideleg[13]、vsip.LCOFIP、vsie.LCOFIE 的行为定义；vsip/vsie 寄存器基础定义（第 1248–1275 行）
+  - `SPEC/riscv-isa-manual/src/priv/sscofpmf.adoc` — Sscofpmf 扩展：LCOFI 中断定义（bit 13）、OF 位语义
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/hypervisor.adoc:1276-1283` | `norm:vsip_vsie_lcofi` — Shlcofideleg 核心规范 |
-| `SPEC/hypervisor.adoc:1248-1258` | vsip/vsie 寄存器尺寸、访问属性与 V=1 替换语义 |
-| `SPEC/hypervisor.adoc:1285-1300` | `norm:vsip_vsie_sei/sti/ssi` — SEI/STI/SSI 的类似委托模式（结构参考） |
-| `SPEC/sscofpmf.adoc` | LCOFI 中断定义：bit 13、LCOFIP/LCOFIE 语义 |
+| `hypervisor.adoc:1276-1283` | `norm:vsip_vsie_lcofi` — Shlcofideleg 核心规范 |
+| `hypervisor.adoc:1248-1258` | vsip/vsie 寄存器尺寸、访问属性与 V=1 替换语义 |
+| `hypervisor.adoc:1285-1300` | `norm:vsip_vsie_sei/sti/ssi` — SEI/STI/SSI 的类似委托模式（结构参考） |
+| `sscofpmf.adoc` | LCOFI 中断定义：bit 13、LCOFIP/LCOFIE 语义 |
 | `common/encoding.h:271` | `CSR_HIDELEG = 0x603` |
 | `common/encoding.h:290-291` | `CSR_VSIP = 0x244` / `CSR_VSIE = 0x204` |
 | `common/encoding.h:144-145` | `CSR_SIP = 0x144` / `CSR_SIE = 0x104` |
@@ -52,6 +55,9 @@ RISC-V Sscofpmf 扩展定义了 LCOFI 中断（对应中断位 13），当硬件
 | `norm:vsip_vsie_lcofi` (R2) | When bit 13 of `hideleg` is zero, `vsip`.LCOFIP and `vsie`.LCOFIE are read-only zeros. | 第 13 位为零时，`vsip`.LCOFIP 和 `vsie`.LCOFIE 为只读零。 |
 | `norm:vsip_vsie_lcofi` (R3) | Else, they are aliases of `sip`.LCOFIP and `sie`.LCOFIE. | 否则为 `sip`/`sie` 中对应位的别名。 |
 | `norm:vsip_vsie_sz_acc_op` | The `vsip` and `vsie` registers are VSXLEN-bit read/write registers that are VS-mode's versions of supervisor CSRs `sip` and `sie`. When V=1, `vsip` and `vsie` substitute for the usual `sip` and `sie`. However, interrupts directed to HS-level continue to be indicated in the HS-level `sip` register, not in `vsip`, when V=1. | `vsip` 和 `vsie` 是 VSXLEN 位读写寄存器，是 VS 模式版本的 `sip` 和 `sie`。V=1 时替代 `sip`/`sie`。但 HS 级中断仍在 HS 级 `sip` 中指示。 |
+| `norm:vsip_vsie_sei` | When bit 10 of `hideleg` is zero, `vsip`.SEIP and `vsie`.SEIE are read-only zeros. Else, `vsip`.SEIP and `vsie`.SEIE are aliases of `hip`.VSEIP and `hie`.VSEIE. | hideleg[10]=0 时 vsip.SEIP/vsie.SEIE 为只读零，否则为 hip.VSEIP/hie.VSEIE 的别名。（本方案不覆盖，仅作同族委托模式的结构参考） |
+| `norm:vsip_vsie_sti` | When bit 6 of `hideleg` is zero, `vsip`.STIP and `vsie`.STIE are read-only zeros. Else, `vsip`.STIP and `vsie`.STIE are aliases of `hip`.VSTIP and `hie`.VSTIE. | hideleg[6]=0 时 vsip.STIP/vsie.STIE 为只读零，否则为 hip.VSTIP/hie.VSTIE 的别名。（本方案不覆盖，仅作结构参考） |
+| `norm:vsip_vsie_ssi` | When bit 2 of `hideleg` is zero, `vsip`.SSIP and `vsie`.SSIE are read-only zeros. Else, `vsip`.SSIP and `vsie`.SSIE are aliases of `hip`.VSSIP and `hie`.VSSIE. | hideleg[2]=0 时 vsip.SSIP/vsie.SSIE 为只读零，否则为 hip.VSSIP/hie.VSSIE 的别名。（本方案不覆盖，仅作结构参考） |
 
 ### 不在测试范围内
 
@@ -132,34 +138,6 @@ LCOFI 中断（bit 13）的委托链为 `mideleg → hideleg`：
 | LCFIDLG-WR-01 | hideleg[13] 可设置为 1 | 写 hideleg bit 13 = 1，回读 | bit 13 = 1 |
 | LCFIDLG-WR-02 | hideleg[13] 可清除为 0 | 写 hideleg bit 13 = 0，回读 | bit 13 = 0 |
 
-#### 关键代码示例
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-TEST_REGISTER(test_shlcofideleg_hideleg_bit13_writable);
-bool test_shlcofideleg_hideleg_bit13_writable(void) {
-    TEST_BEGIN("LCFIDLG-WR: hideleg[13] writable");
-
-    uintptr_t saved = hideleg_read();
-
-    /* WR-01: 写 1 回读 */
-    hideleg_write(saved | (1UL << 13));
-    TEST_ASSERT("hideleg[13] can be set to 1",
-                (hideleg_read() & (1UL << 13)) != 0);
-
-    /* WR-02: 写 0 回读 */
-    hideleg_write(hideleg_read() & ~(1UL << 13));
-    TEST_ASSERT("hideleg[13] can be cleared to 0",
-                (hideleg_read() & (1UL << 13)) == 0);
-
-    hideleg_write(saved);
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 2：hideleg[13]=0 时 vsip/vsie LCOFI 位 read-only zero
@@ -177,80 +155,6 @@ bool test_shlcofideleg_hideleg_bit13_writable(void) {
 | LCFIDLG-RO-04 | vsie.LCOFIE 写入无效 | hideleg[13]=0，写 vsie bit 13 = 1，回读 | vsie.LCOFIE 仍为 0 |
 | LCFIDLG-RO-05 | sip.LCOFIP=1 不影响 vsip | hideleg[13]=0，M-mode 设 mip.LCOFIP=1，读 vsip bit 13 | vsip.LCOFIP = 0 |
 | LCFIDLG-RO-06 | sie.LCOFIE=1 不影响 vsie | hideleg[13]=0，设 sie.LCOFIE=1，读 vsie bit 13 | vsie.LCOFIE = 0 |
-
-#### 关键代码示例
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "sscofpmf_encoding.h"
-
-#define LCOFI_BIT  (1UL << 13)
-
-TEST_REGISTER(test_shlcofideleg_ro_vsip_lcofip);
-bool test_shlcofideleg_ro_vsip_lcofip(void) {
-    TEST_BEGIN("LCFIDLG-RO: vsip/vsie LCOFI read-only zero when hideleg[13]=0");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
-    uintptr_t saved_mip = CSRR(mip);
-
-    /* 前置：mideleg[13]=1 使 sip.LCOFIP 可见 */
-    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
-    /* 设置 hideleg[13]=0 */
-    hideleg_write(saved_hideleg & ~LCOFI_BIT);
-
-    /* RO-01: vsip.LCOFIP 读为 0 */
-    TEST_ASSERT("vsip.LCOFIP reads 0",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
-
-    /* RO-03: 写 vsip bit 13 应无效 */
-    csr_write(CSR_VSIP, csr_read(CSR_VSIP) | LCOFI_BIT);
-    TEST_ASSERT("vsip.LCOFIP stays 0 after write",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
-
-    /* RO-05: 即使 mip.LCOFIP=1，vsip 仍为 0 */
-    CSRS(mip, MIP_LCOFIP);
-    TEST_ASSERT("vsip.LCOFIP still 0 even when sip.LCOFIP=1",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
-
-    /* 恢复 */
-    CSRC(mip, MIP_LCOFIP);
-    CSRW(mip, saved_mip);
-    csr_write(CSR_MIDELEG, saved_mideleg);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-
-TEST_REGISTER(test_shlcofideleg_ro_vsie_lcofie);
-bool test_shlcofideleg_ro_vsie_lcofie(void) {
-    TEST_BEGIN("LCFIDLG-RO: vsie.LCOFIE read-only zero when hideleg[13]=0");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_sie = csr_read(CSR_SIE);
-
-    hideleg_write(saved_hideleg & ~LCOFI_BIT);
-
-    /* RO-02: vsie.LCOFIE 读为 0 */
-    TEST_ASSERT("vsie.LCOFIE reads 0",
-                (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
-
-    /* RO-04: 写 vsie bit 13 应无效 */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) | LCOFI_BIT);
-    TEST_ASSERT("vsie.LCOFIE stays 0 after write",
-                (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
-
-    /* RO-06: 即使 sie.LCOFIE=1，vsie 仍为 0 */
-    csr_write(CSR_SIE, saved_sie | LCOFI_BIT);
-    TEST_ASSERT("vsie.LCOFIE still 0 even when sie.LCOFIE=1",
-                (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
-
-    csr_write(CSR_SIE, saved_sie);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -277,78 +181,6 @@ bool test_shlcofideleg_ro_vsie_lcofie(void) {
 > [!NOTE]
 > **vsip.LCOFIP 反向写入**：LCOFIP 由硬件设置，spec 中 `sip.LCOFIP` 可能是只读位（写入需通过 mip）。因此 vsip→sip 的反向别名仅适用于 LCOFIE（使能位），不适用于 LCOFIP（挂起位）。
 
-#### 关键代码示例
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "sscofpmf_encoding.h"
-
-#define LCOFI_BIT  (1UL << 13)
-
-TEST_REGISTER(test_shlcofideleg_alias_lcofip_sip_to_vsip);
-bool test_shlcofideleg_alias_lcofip_sip_to_vsip(void) {
-    TEST_BEGIN("LCFIDLG-ALIAS: sip.LCOFIP → vsip.LCOFIP alias");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
-
-    /* 前置：mideleg[13]=1, hideleg[13]=1 */
-    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-
-    /* ALIAS-01: M-mode 设 LCOFIP=1, 验证 vsip 看到 */
-    CSRS(mip, MIP_LCOFIP);
-    TEST_ASSERT("vsip.LCOFIP reflects sip.LCOFIP=1",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) != 0);
-
-    /* ALIAS-02: M-mode 清 LCOFIP=0, 验证 vsip 也清 */
-    CSRC(mip, MIP_LCOFIP);
-    TEST_ASSERT("vsip.LCOFIP reflects sip.LCOFIP=0",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
-
-    /* 恢复 */
-    csr_write(CSR_MIDELEG, saved_mideleg);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-
-TEST_REGISTER(test_shlcofideleg_alias_lcofie_bidirectional);
-bool test_shlcofideleg_alias_lcofie_bidirectional(void) {
-    TEST_BEGIN("LCFIDLG-ALIAS: sie.LCOFIE ↔ vsie.LCOFIE bidirectional alias");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_sie = csr_read(CSR_SIE);
-
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-
-    /* ALIAS-03: sie→vsie 正向 */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) | LCOFI_BIT);
-    TEST_ASSERT("vsie.LCOFIE=1 when sie.LCOFIE=1",
-                (csr_read(CSR_VSIE) & LCOFI_BIT) != 0);
-
-    /* ALIAS-04: sie→vsie 清除 */
-    csr_write(CSR_SIE, csr_read(CSR_SIE) & ~LCOFI_BIT);
-    TEST_ASSERT("vsie.LCOFIE=0 when sie.LCOFIE=0",
-                (csr_read(CSR_VSIE) & LCOFI_BIT) == 0);
-
-    /* ALIAS-05: vsie→sie 反向 */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) | LCOFI_BIT);
-    TEST_ASSERT("sie.LCOFIE=1 when vsie.LCOFIE set",
-                (csr_read(CSR_SIE) & LCOFI_BIT) != 0);
-
-    /* ALIAS-06: vsie→sie 反向清除 */
-    csr_write(CSR_VSIE, csr_read(CSR_VSIE) & ~LCOFI_BIT);
-    TEST_ASSERT("sie.LCOFIE=0 when vsie.LCOFIE cleared",
-                (csr_read(CSR_SIE) & LCOFI_BIT) == 0);
-
-    csr_write(CSR_SIE, saved_sie);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：VS-mode 端到端验证
@@ -368,111 +200,6 @@ bool test_shlcofideleg_alias_lcofie_bidirectional(void) {
 | LCFIDLG-VS-05 | VS-mode 写 sie.LCOFIE 生效 (hideleg[13]=1) | hideleg[13]=1, VS-mode csrs sie LCOFI_BIT, HS-mode 读 sie | sie.LCOFIE = 1（因别名） |
 | LCFIDLG-VS-06 | VS-mode 写 sie.LCOFIE 无效 (hideleg[13]=0) | hideleg[13]=0, VS-mode csrs sie LCOFI_BIT, HS-mode 读 sie | sie.LCOFIE 不变（因 vsie 为 RO-zero） |
 
-#### 关键代码示例
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "sscofpmf_encoding.h"
-
-#define LCOFI_BIT  (1UL << 13)
-
-/* VS-mode helper: read sip (actually vsip when V=1) */
-static uintptr_t vsmode_read_sip(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile("csrr %0, sip" : "=r"(val));
-    return val;
-}
-
-/* VS-mode helper: read sie (actually vsie when V=1) */
-static uintptr_t vsmode_read_sie(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    asm volatile("csrr %0, sie" : "=r"(val));
-    return val;
-}
-
-/* VS-mode helper: set sie LCOFI bit (actually vsie when V=1) */
-static uintptr_t vsmode_set_sie_lcofi(uintptr_t arg) {
-    (void)arg;
-    asm volatile("csrs sie, %0" :: "r"(LCOFI_BIT));
-    uintptr_t val;
-    asm volatile("csrr %0, sie" : "=r"(val));
-    return val;
-}
-
-TEST_REGISTER(test_shlcofideleg_vs_lcofip_visible);
-bool test_shlcofideleg_vs_lcofip_visible(void) {
-    TEST_BEGIN("LCFIDLG-VS-01: VS-mode sees LCOFIP when hideleg[13]=1");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
-
-    /* 前置：mideleg[13]=1, hideleg[13]=1, 注入 LCOFIP */
-    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    CSRS(mip, MIP_LCOFIP);
-
-    /* VS-mode 读 sip（实际是 vsip），应看到 bit 13 = 1 */
-    uintptr_t vs_sip = run_in_vs_mode(vsmode_read_sip, 0);
-    TEST_ASSERT("VS-mode sees LCOFIP=1 via sip",
-                (vs_sip & LCOFI_BIT) != 0);
-
-    CSRC(mip, MIP_LCOFIP);
-    csr_write(CSR_MIDELEG, saved_mideleg);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-
-TEST_REGISTER(test_shlcofideleg_vs_lcofip_hidden);
-bool test_shlcofideleg_vs_lcofip_hidden(void) {
-    TEST_BEGIN("LCFIDLG-VS-02: VS-mode cannot see LCOFIP when hideleg[13]=0");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
-
-    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
-    hideleg_write(saved_hideleg & ~LCOFI_BIT);
-    CSRS(mip, MIP_LCOFIP);
-
-    /* VS-mode 读 sip（实际是 vsip），应看到 bit 13 = 0 */
-    uintptr_t vs_sip = run_in_vs_mode(vsmode_read_sip, 0);
-    TEST_ASSERT("VS-mode sees LCOFIP=0 via sip",
-                (vs_sip & LCOFI_BIT) == 0);
-
-    CSRC(mip, MIP_LCOFIP);
-    csr_write(CSR_MIDELEG, saved_mideleg);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-
-TEST_REGISTER(test_shlcofideleg_vs_write_sie_delegated);
-bool test_shlcofideleg_vs_write_sie_delegated(void) {
-    TEST_BEGIN("LCFIDLG-VS-05: VS-mode write sie.LCOFIE propagates when hideleg[13]=1");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_sie = csr_read(CSR_SIE);
-
-    /* 前置：hideleg[13]=1, 先清 sie.LCOFIE */
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    csr_write(CSR_SIE, saved_sie & ~LCOFI_BIT);
-
-    /* VS-mode 写 sie（实际写 vsie，因别名写入 sie） */
-    run_in_vs_mode(vsmode_set_sie_lcofi, 0);
-
-    /* HS-mode 验证 sie.LCOFIE=1 */
-    TEST_ASSERT("sie.LCOFIE=1 after VS-mode write",
-                (csr_read(CSR_SIE) & LCOFI_BIT) != 0);
-
-    csr_write(CSR_SIE, saved_sie);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：hideleg 动态切换一致性
@@ -491,79 +218,6 @@ bool test_shlcofideleg_vs_write_sie_delegated(void) {
 
 > [!NOTE]
 > **DYN-04 的意义**：hideleg 仅控制中断是否进一步委托到 VS-mode（即 vsip/vsie 是否为别名），不影响 sip/sie 本身的值。切换 hideleg[13] 后，sip.LCOFIP 应保持不变。
-
-#### 关键代码示例
-
-```c
-#include "test_framework.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "sscofpmf_encoding.h"
-
-#define LCOFI_BIT  (1UL << 13)
-
-TEST_REGISTER(test_shlcofideleg_dynamic_toggle);
-bool test_shlcofideleg_dynamic_toggle(void) {
-    TEST_BEGIN("LCFIDLG-DYN: hideleg[13] dynamic toggle consistency");
-
-    uintptr_t saved_hideleg = hideleg_read();
-    uintptr_t saved_mideleg = csr_read(CSR_MIDELEG);
-    uintptr_t saved_sie = csr_read(CSR_SIE);
-
-    csr_write(CSR_MIDELEG, saved_mideleg | LCOFI_BIT);
-    CSRS(mip, MIP_LCOFIP);
-    csr_write(CSR_SIE, saved_sie | LCOFI_BIT);
-
-    /* DYN-01: hideleg 1→0，vsip.LCOFIP 变为 0 */
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    TEST_ASSERT("vsip.LCOFIP=1 when hideleg[13]=1",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) != 0);
-
-    hideleg_write(saved_hideleg & ~LCOFI_BIT);
-    TEST_ASSERT("vsip.LCOFIP=0 after hideleg[13] cleared",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) == 0);
-
-    /* DYN-02: hideleg 0→1，vsip.LCOFIP 变为可见 */
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    TEST_ASSERT("vsip.LCOFIP=1 after hideleg[13] re-set",
-                (csr_read(CSR_VSIP) & LCOFI_BIT) != 0);
-
-    /* DYN-03: vsie.LCOFIE 反复切换 */
-    for (int i = 0; i < 4; i++) {
-        bool delegated = (i % 2 == 0);
-
-        if (delegated)
-            hideleg_write(hideleg_read() | LCOFI_BIT);
-        else
-            hideleg_write(hideleg_read() & ~LCOFI_BIT);
-
-        uintptr_t vsie_lcofie = csr_read(CSR_VSIE) & LCOFI_BIT;
-
-        if (delegated) {
-            TEST_ASSERT("vsie.LCOFIE visible after toggle",
-                        vsie_lcofie != 0);
-        } else {
-            TEST_ASSERT("vsie.LCOFIE hidden after toggle",
-                        vsie_lcofie == 0);
-        }
-    }
-
-    /* DYN-04: sip.LCOFIP 不受 hideleg 切换影响 */
-    hideleg_write(saved_hideleg | LCOFI_BIT);
-    uintptr_t sip_before = csr_read(CSR_SIP) & LCOFI_BIT;
-    hideleg_write(saved_hideleg & ~LCOFI_BIT);
-    uintptr_t sip_after = csr_read(CSR_SIP) & LCOFI_BIT;
-    TEST_ASSERT("sip.LCOFIP unchanged after hideleg toggle",
-                sip_before == sip_after);
-
-    /* 恢复 */
-    CSRC(mip, MIP_LCOFIP);
-    csr_write(CSR_SIE, saved_sie);
-    csr_write(CSR_MIDELEG, saved_mideleg);
-    hideleg_write(saved_hideleg);
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -660,3 +314,16 @@ bool test_shlcofideleg_dynamic_toggle(void) {
 | Group 4：VS-mode 端到端 | 6 | V=1 下 csrr sip/sie 实际行为 |
 | Group 5：动态切换一致性 | 4 | hideleg 切换后即时一致性 |
 | **合计** | **25** | |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:vsip_vsie_lcofi` (R1：hideleg[13] 可写) | LCFIDLG-WR-01, LCFIDLG-WR-02 | 不可写时判定未实现 Shlcofideleg，后续用例 SKIP |
+| `norm:vsip_vsie_lcofi` (R2：hideleg[13]=0 时只读零) | LCFIDLG-RO-01 ~ LCFIDLG-RO-06, LCFIDLG-VS-02, LCFIDLG-VS-04, LCFIDLG-VS-06, LCFIDLG-DYN-01 | |
+| `norm:vsip_vsie_lcofi` (R3：hideleg[13]=1 时别名) | LCFIDLG-ALIAS-01 ~ LCFIDLG-ALIAS-07, LCFIDLG-VS-01, LCFIDLG-VS-03, LCFIDLG-VS-05, LCFIDLG-DYN-02 ~ LCFIDLG-DYN-04 | |
+| `norm:vsip_vsie_sz_acc_op` | LCFIDLG-VS-01 ~ LCFIDLG-VS-06 | V=1 时 csrr sip/sie 实际访问 vsip/vsie |
+| `norm:vsip_vsie_sei` / `norm:vsip_vsie_sti` / `norm:vsip_vsie_ssi` | — | 不覆盖：仅作同族委托模式的结构参考，归基础 H 扩展测试 |
+| Sscofpmf 溢出产生 LCOFI | — | 不覆盖：归 Sscofpmf 独立测试计划，本方案用 M-mode 注入 mip.LCOFIP 替代 |

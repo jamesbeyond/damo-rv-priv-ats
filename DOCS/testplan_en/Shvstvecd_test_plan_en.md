@@ -10,17 +10,21 @@ This document describes the test plan for the Shvstvecd (Direct Trap Vectoring f
 
 ### Specification Sources
 
-- `SPEC/shvstvecd.adoc` — Shvstvecd Extension for Direct Trap Vectoring, Version 1.0
-- `SPEC/hypervisor.adoc` lines 1300–1312 (`vstvec` register definition) — Provides `vstvec` field layout and the behavior of substituting for `stvec` when V=1
-- `SPEC/supervisor.adoc` lines 318–365 (`stvec` register and MODE field encoding) — Provides BASE/MODE field layout and Direct/Vectored behavior definitions (vstvec format is identical to stvec)
+This plan is based on the RISC-V Privileged Architecture specification (the Shvstvecd extension chapter and the Hypervisor/Supervisor extension chapters related to vstvec/stvec):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/shvstvecd.adoc` — Shvstvecd Extension for Direct Trap Vectoring, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `vstvec` register definition (lines 1300–1312): field layout and the behavior of substituting for `stvec` when V=1
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — `stvec` register and MODE field encoding (lines 318–365): BASE/MODE field layout and Direct/Vectored behavior definitions (vstvec format is identical to stvec)
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/shvstvecd.adoc` | Full Shvstvecd specification (10 lines total) |
-| `SPEC/hypervisor.adoc:1300-1312` | `vstvec` register specification, defined as VSXLEN-bit RW, substitutes for `stvec` when V=1 |
-| `SPEC/supervisor.adoc:318-365` | `stvec` register specification, defines BASE/MODE fields + Direct/Vectored behavior (vstvec format is identical) |
+| `shvstvecd.adoc` | Full Shvstvecd specification (10 lines total) |
+| `hypervisor.adoc:1300-1312` | `vstvec` register specification, defined as VSXLEN-bit RW, substitutes for `stvec` when V=1 |
+| `supervisor.adoc:318-365` | `stvec` register specification, defines BASE/MODE fields + Direct/Vectored behavior (vstvec format is identical) |
 | `common/encoding.h:289` | `CSR_VSTVEC = 0x205` |
 | `common/csr_accessors.c:216,414` | Existing `_CSR_READ_CASE(0x205)` / `_CSR_WRITE_CASE(0x205)` generic CSR read/write entry points |
 | `common/hyp/hyp_priv.h:21` | `run_in_vs_mode(fn, arg)` — Execute test function in VS-mode (V=1) |
@@ -40,9 +44,10 @@ This document describes the test plan for the Shvstvecd (Direct Trap Vectoring f
 | `norm:vstvec_sz_acc_op` | The `vstvec` register is a VSXLEN-bit read/write register that is VS-mode's version of supervisor register `stvec`. When V=1, `vstvec` substitutes for the usual `stvec`. When V=0, `vstvec` does not directly affect the behavior of the machine. |
 | `norm:stvec_op` | The BASE field in `stvec` is a field that can hold any valid virtual or physical address, subject to the following alignment constraints: the address must be 4-byte aligned, and MODE settings other than Direct might impose additional alignment constraints on the value in the BASE field. |
 | `norm:stvec_sz_base` | The CSR contains only bits XLEN-1 through 2 of the address BASE. When used as an address, the lower two bits are filled with zeroes to obtain an XLEN-bit address that is always aligned on a 4-byte boundary. |
+| `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. |
 
 > [!IMPORTANT]
-> The Shvstvecd specification itself has only two strong constraints (Direct mode must be holdable, BASE must be capable of holding 4-byte aligned addresses). Group 3's trap jump tests provide end-to-end verification that "BASE setting actually takes effect and Direct mode behavior is correct", with normative basis from `SPEC/supervisor.adoc:355-364` (stvec MODE encoding definition, vstvec format is identical) — since Shvstvecd strongly constrains Direct mode to be available, it naturally requires that mode's behavior to conform to the supervisor specification. Group 4 verifies that when V=1, accessing via the `stvec` instruction name actually accesses `vstvec`, with normative basis from `SPEC/hypervisor.adoc:1305-1307`.
+> The Shvstvecd specification itself has only two strong constraints (Direct mode must be holdable, BASE must be capable of holding 4-byte aligned addresses). Group 3's trap jump tests provide end-to-end verification that "BASE setting actually takes effect and Direct mode behavior is correct", with normative basis from `supervisor.adoc:355-364` (stvec MODE encoding definition, vstvec format is identical) — since Shvstvecd strongly constrains Direct mode to be available, it naturally requires that mode's behavior to conform to the supervisor specification. Group 4 verifies that when V=1, accessing via the `stvec` instruction name actually accesses `vstvec`, with normative basis from `hypervisor.adoc:1305-1307`.
 
 ### Out of Scope
 
@@ -73,8 +78,10 @@ Group 3 requires a custom trap entry usable in VS-mode, similar to sstvecd but r
 - **Within identity-mapped range**: Ensures trap entry address is valid in VS-mode (covered by G-stage identity mapping)
 - **Minimal handler path**: Records hit PC to global variable `g_shvstvecd_trap_pc`, records `vscause` to `g_shvstvecd_trap_cause`, then increments `vsepc += 4` and returns via `sret` (when V=1, `sepc/scause/sret` actually operate on `vsepc/vscause`)
 
+Reference implementation flow: use `sscratch` (actually operates `vsscratch` when V=1) to save temporary registers; record the entry start address as the hit PC into `g_shvstvecd_trap_pc`; read `scause` (actually reads `vscause` when V=1) and record it into `g_shvstvecd_trap_cause`; advance `sepc` (actually writes `vsepc` when V=1) to skip the triggering instruction (must advance by the actual instruction length, compatible with compressed instructions); finally return via `sret`.
+
 > [!NOTE]
-> During actual implementation, refer to `sstvecd_strap.S` from the `sstvecd` test plan. In VS-mode, instructions like `scause/sepc/sscratch/sret` automatically map to VS CSRs like `vscause/vsepc/vsscratch` when V=1.
+> In VS-mode, instructions like `scause/sepc/sscratch/sret` automatically map to VS CSRs like `vscause/vsepc/vsscratch` when V=1; the trap entry implementation can follow the similar design in the Sstvecd plan.
 
 ### 3. Trap Delegation to VS-mode
 
@@ -122,14 +129,14 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 ## Test Groups
 
 > [!IMPORTANT]
-> Total of 5 test groups, 16 test cases. Groups 1 & 2 run in M-mode directly operating `vstvec` (CSR 0x205); Group 3 operates `vstvec` indirectly through the `stvec` instruction name within VS-mode (V=1) and verifies trap behavior; Group 4 verifies V=1 pass-through semantics; Group 5 probes Vectored mode support (non-normative). Each group provides: normative basis, test responsibilities, test case table (ID/name/description/expected result); each group provides 1 key C code example.
+> Total of 5 test groups, 16 test cases. Groups 1 & 2 run in M-mode directly operating `vstvec` (CSR 0x205); Group 3 operates `vstvec` indirectly through the `stvec` instruction name within VS-mode (V=1) and verifies trap behavior; Group 4 verifies V=1 pass-through semantics; Group 5 probes Vectored mode support (non-normative). Each group provides: normative basis, test scope, test case table (ID/name/description/expected result).
 
 ---
 
 ### Group 1: `vstvec.MODE` Writability
 
 **Normative Basis**:
-- `norm:shvstvecd_vstvec_mode_direct` (`SPEC/shvstvecd.adoc:4-6`): `vstvec.MODE` must be capable of holding the value 0 (Direct)
+- `norm:shvstvecd_vstvec_mode_direct` (`shvstvecd.adoc:4-6`): `vstvec.MODE` must be capable of holding the value 0 (Direct)
 
 **Test Responsibilities**: Verify that `vstvec.MODE` can be stably written and hold the Direct value (0); probe whether Vectored (1) is implemented.
 
@@ -143,9 +150,8 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 ### Group 2: `vstvec.BASE` Holding Capability in Direct Mode
 
 **Normative Basis**:
-- `norm:shvstvecd_vstvec_base_aligned_address` (`SPEC/shvstvecd.adoc:8-10`): When `vstvec.MODE`=Direct, `vstvec.BASE` must be capable of holding any valid four-byte-aligned address
-[id:g4xguh]
-- `norm:stvec_sz_base` (`SPEC/supervisor.adoc:335-338`): CSR only stores BASE bits [XLEN-1:2], lower 2 bits are forced to 0 on write
+- `norm:shvstvecd_vstvec_base_aligned_address` (`shvstvecd.adoc:8-10`): When `vstvec.MODE`=Direct, `vstvec.BASE` must be capable of holding any valid four-byte-aligned address
+- `norm:stvec_sz_base` (`supervisor.adoc:335-338`): CSR only stores BASE bits [XLEN-1:2], lower 2 bits are forced to 0 on write
 
 **Test Responsibilities**: Verify that under MODE=Direct, the BASE field can hold various 4-byte aligned addresses (including those crossing 1 GiB / 512 GiB boundaries, near VSXLEN upper bound); verify that BASE and MODE writes are independent.
 
@@ -170,9 +176,9 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 ### Group 3: VS-mode Trap Jumps to BASE under `MODE=Direct`
 
 **Normative Basis**:
-- `SPEC/supervisor.adoc:355-364`: When MODE=Direct, all traps (synchronous exceptions + asynchronous interrupts) set `pc` to BASE (vstvec format is identical to stvec)
-- `SPEC/hypervisor.adoc:1305-1307`: When V=1, `vstvec` substitutes for `stvec`
-- `norm:H_trap_vs_csrwrites` (`SPEC/hypervisor.adoc:2549-2554`): When trap enters VS-mode, writes `vsepc`, `vscause`, `vstval`, jump target is the address specified by `vstvec`
+- `supervisor.adoc:355-364`: When MODE=Direct, all traps (synchronous exceptions + asynchronous interrupts) set `pc` to BASE (vstvec format is identical to stvec)
+- `hypervisor.adoc:1305-1307`: When V=1, `vstvec` substitutes for `stvec`
+- `norm:H_trap_vs_csrwrites` (`hypervisor.adoc:2549-2554`): When trap enters VS-mode, writes `vsepc`, `vscause`, `vstval`, jump target is the address specified by `vstvec`
 - Shvstvecd strongly constrains Direct to be available (`norm:shvstvecd_vstvec_mode_direct`), therefore Direct behavior correctness is an implicit commitment of Shvstvecd
 
 **Test Responsibilities**: Verify that when `vstvec.MODE=Direct`, synchronous exceptions and asynchronous interrupts triggered in VS-mode both jump to BASE (rather than BASE+4×cause).
@@ -195,7 +201,7 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 ### Group 4: V=1 Pass-through Verification (`stvec` Access Actually Operates `vstvec`)
 
 **Normative Basis**:
-- `norm:vstvec_sz_acc_op` (`SPEC/hypervisor.adoc:1302-1308`): When V=1, `vstvec` substitutes for the usual `stvec`, so instructions that normally read or modify `stvec` actually access `vstvec` instead
+- `norm:vstvec_sz_acc_op` (`hypervisor.adoc:1302-1308`): When V=1, `vstvec` substitutes for the usual `stvec`, so instructions that normally read or modify `stvec` actually access `vstvec` instead
 
 **Test Responsibilities**: Verify that values written via `stvec` instruction name in VS-mode (V=1) can be read back via `vstvec` (CSR 0x205) from HS/M-mode; and vice versa.
 
@@ -211,7 +217,7 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 
 **Normative Basis**:
 - Shvstvecd specification **does not require** implementation of Vectored mode (MODE=1), only requires Direct (MODE=0) to be holdable
-- `SPEC/supervisor.adoc:355-364`: When stvec MODE=1 (Vectored), interrupts jump to `BASE + 4×cause`
+- `supervisor.adoc:355-364`: When stvec MODE=1 (Vectored), interrupts jump to `BASE + 4×cause`
 
 **Test Responsibilities**: Probe whether vstvec.MODE supports Vectored (information gathering only); if supported, verify interrupt jump behavior differs from Direct.
 
@@ -258,7 +264,7 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 - `HYP_TEST_END()`: Test end macro, includes hyp_reset_state + result recording
 - `TEST_REGISTER` / `TEST_BEGIN` / `TEST_ASSERT` / `TEST_END`: Test case registration and assertion macros
 
-### Global Variables (Provided by `shvstvecd/tests/shvstvecd_strap.S`)
+### Global Variables (Provided by VS-mode trap entry)
 
 | Variable | Type | Description |
 |----------|------|-------------|
@@ -288,3 +294,18 @@ The SPEC does not declare `vstvec` as a WARL register (`hypervisor.adoc:1302-130
 | VSTVEC-INT-01 fails (no hit) | `hideleg` did not delegate VSSIP, or `hvip` did not inject, or `vsstatus.SIE` was not enabled |
 | VSTVEC-TRANS-01/02 fails | stvec did not correctly map to vstvec when V=1, H extension implementation is abnormal |
 | VSTVEC-TRANS-03 fails | VS-mode writing stvec incorrectly modified HS-mode stvec |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shvstvecd_vstvec_mode_direct` | VSTVEC-MODE-01, VSTVEC-MODE-02, VSTVEC-DIR-01 ~ VSTVEC-DIR-03 | Core constraint: MODE can hold Direct(0), including end-to-end jump verification |
+| `norm:shvstvecd_vstvec_base_aligned_address` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08 | Core constraint: BASE can hold any valid 4-byte aligned address when MODE=Direct |
+| `norm:vstvec_sz_acc_op` | VSTVEC-TRANS-01 ~ VSTVEC-TRANS-03 | stvec instruction actually accesses vstvec when V=1 |
+| `norm:stvec_op` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08, VSTVEC-DIR-01 ~ VSTVEC-DIR-03 | BASE alignment constraint and Direct behavior baseline (vstvec format identical to stvec) |
+| `norm:stvec_sz_base` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08 | CSR only stores BASE[XLEN-1:2]; lower 2 bits are forced to 0 on write |
+| `norm:H_trap_vs_csrwrites` | VSTVEC-DIR-01 ~ VSTVEC-DIR-03, VSTVEC-INT-01 | After trap enters VS-mode, jump target is the address specified by vstvec |
+| Vectored mode behavior | VSTVEC-VEC-01, VSTVEC-VEC-02 | Non-normative: only probes whether Vectored is implemented, does not verify correctness |
+| MODE write of reserved values (≥2) behavior | — | Not covered: SPEC does not declare vstvec as WARL, behavior is undefined, see Design Key Point 6 |

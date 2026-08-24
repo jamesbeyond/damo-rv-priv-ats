@@ -9,7 +9,11 @@
 
 This test plan covers the interrupt-related functionality of the RISC-V Hypervisor (H) extension, including virtual interrupt injection (hvip/hip/hie), guest external interrupts (hgeip/hgeie), M-level interrupt register enhancements (mideleg/mip/mie), and hideleg interrupt delegation with VS interrupt number translation. CSR register field behavior and exception/trap behavior are covered by the sibling subsets respectively.
 
-This test plan is written based on specification points (norm tags) in `SPEC/hypervisor.adoc`.
+This test plan is written based on specification points (norm tags) in the official RISC-V SPEC:
+
+- Local paths: `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` (hvip/hip/hie/hgeip/hgeie/hideleg, etc.), `SPEC/riscv-isa-manual/src/priv/machine.adoc` (mideleg/mip/mie enhancements)
+- Official repository: https://github.com/riscv/riscv-isa-manual (files at the above paths within the repository)
+- If any platform violates the SPEC, the corresponding test cases remain FAIL and are recorded in the `bugs/` directory
 
 ### SPEC Chapters Covered by This Document
 - Hypervisor and Virtual Supervisor CSRs (hvip, hip, hie, hgeip, hgeie, hideleg interrupt delegation behavior)
@@ -171,3 +175,39 @@ This section lists all specification points (norm IDs) referenced in Groups 1-4 
 | DELEG-12 | Interrupt number translation verification VSSI→SSI | hideleg[2]=1 delegates VSSIP to VS-mode | vscause records cause=1 (not 2) |
 | DELEG-13 | Interrupt number translation verification VSTI→STI | hideleg[6]=1 delegates VSTIP to VS-mode | vscause records cause=5 (not 6) |
 | DELEG-14 | Interrupt number translation verification VSEI→SEI | hideleg[10]=1 delegates VSEIP to VS-mode | vscause records cause=9 (not 10) |
+
+---
+
+## Appendix A: Specification Point Coverage Matrix
+
+The table below indicates which test cases cover each specification point listed in the "Covered Specification Points" section.
+
+| Norm ID | Covered Test IDs |
+|---------|------------------|
+| `norm:hvip_sz_op` | HINT-01~03, HINT-09, HINT-16 |
+| `norm:hvip_acc` | HINT-01~03, HINT-16 |
+| `norm:hip_hie_sz_acc` | HINT-04~08, HINT-14, HINT-19, HINT-20 |
+| `norm:hip_op` | HINT-04~06, HINT-14, HINT-17, HINT-19 |
+| `norm:hie_op` | HINT-07, HINT-08, HINT-20 |
+| `norm:sie_hip_hie_mutex` | HINT-08 |
+| `norm:hip_vssip_vssie_op` | HINT-01, HINT-04, HINT-09, HINT-19 |
+| `norm:hip_vstip_vstie_acc_op` | HINT-02, HINT-06, HINT-17, HINT-21 |
+| `norm:hip_vseip_vseie_op` | HINT-03, HINT-05, HINT-22 |
+| `norm:hip_acc` | HINT-05, HINT-06, HINT-19 |
+| `norm:hie_acc` | HINT-07, HINT-20 |
+| `norm:hsint_priority` | HINT-12, HINT-13, HINT-18 |
+| `norm:hideleg_hs` | HINT-10, HINT-11, HINT-15, DELEG-11 |
+| `norm:H_cause` | HINT-10, HINT-21, HINT-22 |
+| `norm:hgeip_sz_acc_op` | HGEI-01, HGEI-04 |
+| `norm:hgeie_sz_acc_op` | HGEI-02, HGEI-03 |
+| `norm:hgeip_hgeie_fields` | HGEI-02, HGEI-04 |
+| `norm:geilen` | HGEI-02, HGEI-04, HGEI-05 |
+| `norm:hgeie_op` | HGEI-04, HGEI-05 |
+| `norm:mideleg_acc_h` | MIDLG-01, MIDLG-02 |
+| `norm:mideleg_hroz` | MIDLG-03 |
+| `norm:mip_mie_vs` | MIDLG-07 |
+| `norm:mip_mie_alias` | MIDLG-04, MIDLG-05, MIDLG-06 |
+| `norm:hideleg_op` | DELEG-08~11 |
+| `norm:hideleg_trans` | DELEG-08~10, DELEG-12~14 |
+
+Notes on uncovered/untestable specification points: none. Every specification point declared in this document has corresponding test cases; HGEI-04/05 are conditional cases (depending on the GEILEN probing result), and MIDLG-02 is a conditional case (verifying mideleg bit 12 only when GEILEN>0).

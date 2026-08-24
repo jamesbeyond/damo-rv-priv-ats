@@ -24,6 +24,26 @@
 extern uintptr_t mcounteren_read(void);
 extern void mcounteren_set(uintptr_t mask);
 extern void mcounteren_clear(uintptr_t mask);
+#else
+/* Without Hypervisor support, hyp_csr.c is not linked. Provide local
+ * static inline helpers for the standard M-mode mcounteren CSR so that
+ * S-mode stimecmp access can still be enabled/disabled via mcounteren.TM. */
+static inline uintptr_t mcounteren_read(void)
+{
+    uintptr_t v;
+    asm volatile("csrr %0, " CSR_STR(CSR_MCOUNTEREN) : "=r"(v) :: "memory");
+    return v;
+}
+
+static inline void mcounteren_set(uintptr_t mask)
+{
+    asm volatile("csrs " CSR_STR(CSR_MCOUNTEREN) ", %0" :: "r"(mask) : "memory");
+}
+
+static inline void mcounteren_clear(uintptr_t mask)
+{
+    asm volatile("csrc " CSR_STR(CSR_MCOUNTEREN) ", %0" :: "r"(mask) : "memory");
+}
 #endif
 
 /* ===================================================================

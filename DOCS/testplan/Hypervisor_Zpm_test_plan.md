@@ -9,9 +9,20 @@
 
 ## 概述
 
+### 本文档覆盖的 SPEC 章节
+
+本方案依据 RISC-V 官方规范（riscv-isa-manual），本地 SPEC 路径如下：
+
+- `SPEC/riscv-isa-manual/src/priv/zpm.adoc`：Pointer Masking 扩展族（Ssnpm/Smnpm/Smmpm/Sspm/Supm）定义、ignore 变换、PMLEN/WARL 语义
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`：henvcfg.PMM、hstatus.HUPMM、MPRV/HLV/HSV 行为、两阶段地址翻译（pm-two-stage）
+- `SPEC/riscv-isa-manual/src/priv/supervisor.adoc`：senvcfg.PMM
+- `SPEC/riscv-isa-manual/src/priv/machine.adoc`：menvcfg.PMM、mseccfg.PMM
+
+官方仓库：https://github.com/riscv/riscv-isa-manual （对应仓库内上述路径文件）
+
 ### H 扩展与 Zpm 扩展族的交集分析
 
-Zpm 是一族扩展（`SPEC/zpm.adoc` sec:pm-exts），与 H 扩展的交集按子扩展分别分析如下：
+Zpm 是一族扩展（`zpm.adoc` sec:pm-exts），与 H 扩展的交集按子扩展分别分析如下：
 
 #### H × Ssnpm（核心交集，交集最大）
 
@@ -72,7 +83,7 @@ Smmpm 定义（`norm:smmpm_definition`）：`mseccfg.PMM` 仅控制 M-mode 自�
 
 ---
 
-## 规范依据
+## 覆盖的规范点
 
 | 规范 ID | 来源 | 描述（英文） | 描述（中文） |
 |---------|------|-------------|-------------|
@@ -101,16 +112,21 @@ Smmpm 定义（`norm:smmpm_definition`）：`mseccfg.PMM` 仅控制 M-mode 自�
 | `norm:H_scsrs_nomatch` | `hypervisor.adoc` | Some standard supervisor CSRs (senvcfg, ...) have no matching VS CSR. These CSRs continue to have their usual function and accessibility even when V=1, with VS/VU-mode substituting for HS/U-mode. | `senvcfg` 无对应 VS CSR，V=1 时保持原有功能与可访问性（VS/VU 替代 HS/U）。 |
 | `norm:mstatus_mprv_hlsv` | `hypervisor.adoc` | MPRV does not affect HLV/HLVX/HSV. Their explicit loads/stores always act as though V=1 and the nominal privilege mode were hstatus.SPVP, overriding MPRV. | MPRV 不影响 HLV/HSV；其访问始终按 V=1、特权级=SPVP 执行。 |
 | `norm:mstatus_mprv_hypervisor` | `hypervisor.adoc` | When MPRV=1, explicit memory accesses are translated and protected as though the current virtualization mode were set to MPV and the nominal privilege mode were set to MPP. | MPRV=1 时显式访问按 V=MPV、特权级=MPP 翻译与保护。 |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | `hypervisor.adoc` | in VS-mode or VU-mode, attempts to access an implemented non-high-half hypervisor CSR or VS CSR when the same access (read/write) would be allowed in HS-mode, assuming mstatus.TVM=0. | VS/VU-mode 访问非 high-half hypervisor CSR 或 VS CSR（该访问在 HS-mode 下被允许且 mstatus.TVM=0 时）引发 virtual-instruction 异常。 |
+| `norm:pm_config_next_higher` | `zpm.adoc` | A privilege mode's pointer masking setting is configured by bits in configuration registers of the next-higher privilege mode. | 某特权模式的 PM 设置由更高一级特权模式的配置寄存器位配置（故 VS 级 PM 由 HS-mode 经 henvcfg.PMM 配置）。 |
 | ([[pm-two-stage]]) | `hypervisor.adoc` | GPAs are 2-bit wider than the corresponding VA translation modes. With vsatp[mode]=Bare in VS/VU mode, those 2 bits may be subject to pointer masking depending on hgatp[mode] and senvcfg/henvcfg[pmm]. If vsatp[mode]!=Bare, this issue does not apply. Hypervisors should execute HFENCE.GVMA(rs1=x0) when henvcfg.PMM changes from/to a value where (XLEN-PMLEN) < GPA width of hgatp.MODE. | GPA 比 VA 模式宽 2 bit；vsatp=Bare 时这 2 bit 可能被 PM 屏蔽；PMM 跨越特定边界变更时需 HFENCE.GVMA 同步。 |
+| `norm:pm_rv64_only` | `zpm.adoc` | Pointer masking is only applicable to RV64. | PM 仅适用于 RV64（不在本计划范围，保留于未覆盖说明）。 |
+| `norm:pm_debug_trigger` | `zpm.adoc` | Pointer masking applies to address matching of debug triggers as specified. | Debug trigger 地址匹配的 PM 行为（不在本计划范围，保留于未覆盖说明）。 |
+| `norm:pm_cpu_only` | `zpm.adoc` | Pointer masking applies only to CPU accesses. | PM 仅作用于 CPU 访问（设备侧不在本计划范围，保留于未覆盖说明）。 |
 
 ---
 
 ## 测试分组
 
 > [!IMPORTANT]
-> 共 8 个测试组。VS/VU-mode 测试使用 `common/hyp/hyp_priv.h` 的 `run_in_vs_mode()`/`run_in_vu_mode()`；两阶段场景使用 `common/hyp/two_stage.c` 的 `two_stage_run_in_vs()`；HLV/HSV 使用 `common/hyp/hyp_ldst.h` 的 `hlv_d()`/`hsv_d()`。PM 配置与 tagged 地址构造复用 `common/pm/pm_cfg.h` 与 `common/pm/pm_addr.h`。
+> 共 8 个测试组。VS/VU-mode 测试通过框架的 VS/VU 模式执行机制运行；两阶段场景通过框架的两阶段翻译执行机制运行；HLV/HSV 通过框架封装的 HLV/HSV 指令执行。PM 配置与 tagged 地址构造复用框架已有的 PM 辅助能力。
 >
-> 所有用例执行前需探测扩展实现情况（`detect_ssnpm()`/`detect_smnpm()`/`detect_smmpm()` + H 扩展可用性），未实现则 TEST_SKIP，不得为通过测试而降低 SPEC 要求。
+> 所有用例执行前需探测扩展实现情况（Ssnpm/Smnpm/Smmpm + H 扩展可用性），未实现则 TEST_SKIP，不得为通过测试而降低 SPEC 要求。
 
 ---
 
@@ -165,34 +181,6 @@ Smmpm 定义（`norm:smmpm_definition`）：`mseccfg.PMM` 仅控制 M-mode 自�
 | HZPM-VS-09 | GPA 路径 zero-extend 变换 | vsatp=Bare + hgatp=Sv39x4，henvcfg.PMM=PMLEN7，VS-mode load tagged GPA | 按 PA 规则 zero-extend（非 sign-extend），访问正确 SPA |
 | HZPM-VS-10 | GPA 路径 PM 禁用 | vsatp=Bare + hgatp=Sv39x4，henvcfg.PMM=DISABLED，VS-mode load tagged GPA | guest-page-fault（cause 20/21/23，tagged GPA 超出 hgatp 映射） |
 
-```c
-/* HZPM-VS-01 示例：PMLEN7 tagged load in VS-mode (VA path) */
-TEST_REGISTER(test_hzpm_vs_pmlen7_load);
-bool test_hzpm_vs_pmlen7_load(void) {
-    TEST_BEGIN("HZPM-VS-01: PMLEN7 tagged load in VS-mode");
-    if (!detect_ssnpm()) TEST_SKIP("Ssnpm not implemented");
-
-    /* HS-mode configures VS-mode PM via henvcfg.PMM */
-    write_csr(henvcfg, (read_csr(henvcfg) & ~HENVCFG_PMM_MASK)
-                       | (PMM_PMLEN7 << HENVCFG_PMM_OFF));
-    if (((read_csr(henvcfg) & HENVCFG_PMM_MASK) >> HENVCFG_PMM_OFF)
-        != PMM_PMLEN7)
-        TEST_SKIP("PMLEN=7 not supported for VS-mode");
-
-    /* Setup VS-stage Sv39 identity mapping (single-stage, hgatp=Bare) */
-    /* ... pt_init(&ctx, SATP_MODE_SV39); pt_setup_identity_mapping(...); ... */
-
-    uintptr_t base = (uintptr_t)&test_data_vs;
-    uintptr_t tagged = pm_tag_address(base, pm_max_tag(7), 7);
-
-    uintptr_t result = run_in_vs_mode(vsmode_tagged_load, tagged);
-    TEST_ASSERT("correct value via tagged VA", result == TEST_PATTERN_VS);
-
-    write_csr(henvcfg, read_csr(henvcfg) & ~HENVCFG_PMM_MASK);
-    TEST_END();
-}
-```
-
 > [!IMPORTANT]
 > HZPM-VS-09/10 是 H 扩展特有的变换路径：`vsatp.MODE=Bare` 时 VS-mode 有效地址是 GPA，按 `norm:pm_ignore_pa` 必须 **zero-extend**（与 VA 的 sign-extend 语义不同）。若实现错误地对 GPA 做 sign-extend，tag 高位为 1 时将访问错误的物理地址。构造用例时需保证 zero-extend 后的 GPA 落在 hgatp 映射范围内。
 
@@ -243,35 +231,6 @@ bool test_hzpm_vs_pmlen7_load(void) {
 | HZPM-HLV-08 | U-mode SPVP=0 时 senvcfg.PMM 无效 | HU=1，SPVP=0，HUPMM=DISABLED，senvcfg.PMM=PMLEN7，U-mode hlv_d(tagged_gva) | fault——U-mode 下仅 HUPMM 控制 HLV/HSV 的 PM |
 | HZPM-HLV-09 | HSV.D tagged store | SPVP=1，henvcfg.PMM=PMLEN7，HS-mode hsv_d(tagged_gva, val) | store 成功，guest 侧 untagged 读回正确 |
 | HZPM-HLV-10 | MPRV 不改变 HLV 的 PM 选择 | M-mode，MPRV=1 且 MPP=M，SPVP=1，henvcfg.PMM=PMLEN7，hlv_d(tagged_gva) | 仍按 SPVP=1（VS）应用 henvcfg.PMM，成功 |
-
-```c
-/* HZPM-HLV-04 示例：HS-mode 下 HUPMM 不生效（关键非对称性） */
-TEST_REGISTER(test_hzpm_hlv_hupmm_ineffective_in_hs);
-bool test_hzpm_hlv_hupmm_ineffective_in_hs(void) {
-    TEST_BEGIN("HZPM-HLV-04: HUPMM ineffective for HLV in HS-mode");
-    if (!detect_ssnpm()) TEST_SKIP("Ssnpm not implemented");
-
-    /* SPVP=0 (access as VU), senvcfg.PMM off, HUPMM on */
-    write_csr(hstatus, (read_csr(hstatus) & ~HSTATUS_SPVP)
-                       | HSTATUS_HUPMM_PMLEN7);
-    write_csr(senvcfg, read_csr(senvcfg) & ~SENVCFG_PMM_MASK);
-
-    /* Setup guest mapping for the untagged address only ... */
-    uintptr_t tagged = pm_tag_address(guest_data_gva, pm_max_tag(7), 7);
-
-    /* Expect fault: in HS-mode, HLV-as-VU uses senvcfg.PMM (=off),
-     * so the tagged address is NOT transformed and has no mapping. */
-    trap_expect_begin();
-    (void)hlv_d(tagged);
-    trap_expect_end();
-    TEST_ASSERT("fault expected (load/guest-page-fault)",
-                trap_get_cause() == CAUSE_LOAD_PAGE_FAULT ||
-                trap_get_cause() == CAUSE_LOAD_GUEST_PAGE_FAULT);
-
-    write_csr(hstatus, read_csr(hstatus) & ~HSTATUS_HUPMM_MASK);
-    TEST_END();
-}
-```
 
 > [!WARNING]
 > HZPM-HLV-04 与 HZPM-HLV-08 验证 SPEC 的非对称规则：`hstatus.HUPMM` **仅**在 U-mode 执行 HLV/HSV 时生效；HS/M-mode 下按 VU 访问时使用 `senvcfg.PMM`。SPEC 注释要求 hypervisor 在 U-mode 调用 HLV/HSV 前将 guest 写入 `senvcfg.PMM` 的值复制到 `hstatus.HUPMM`。若实现混淆这两个字段的选择条件，将导致 PM 被错误启用或禁用。
@@ -383,18 +342,49 @@ bool test_hzpm_hlv_hupmm_ineffective_in_hs(void) {
 
 ---
 
-## 依赖的框架组件
+## 附录 A：规范点覆盖矩阵
 
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| PM 控制 API | `common/pm/pm_cfg.h` + `pm_cfg.c` | `pm_set_umode()`/`detect_ssnpm()` 等（senvcfg/menvcfg/mseccfg） |
-| Tagged Address 工具 | `common/pm/pm_addr.h` | `pm_tag_address()`/`pm_transform_va()`/`pm_transform_pa()` |
-| VS/VU-mode 执行 | `common/hyp/hyp_priv.h` + `hyp_priv.c` | `run_in_vs_mode()`/`run_in_vu_mode()` |
-| 两阶段翻译 | `common/hyp/two_stage.c` + `two_stage_helpers.h` | `two_stage_run_in_vs()`、hgatp/vsatp 配置 |
-| HLV/HSV 指令 | `common/hyp/hyp_ldst.h` + `hyp_ldst.c` | `hlv_d()`/`hsv_d()` 等 |
-| VS trap 处理 | `common/hyp/hyp_vs_trap.h` | VS-mode trap 预期与捕获 |
-| 页表构造 | `common/vm/satp.c` | `pt_init()`/`pt_setup_identity_mapping()` |
-| CSR 定义 | `common/encoding.h` | `HENVCFG_PMM_MASK`/`HSTATUS_HUPMM_MASK`/`PMM_PMLEN7` 等（需补充 HUPMM 相关定义） |
+下表标明"覆盖的规范点"章节中每条规范点被哪些测试用例覆盖。
 
-> [!NOTE]
-> 实现时需检查 `common/encoding.h` 是否已定义 `hstatus.HUPMM`（bits [49:48]）与 `henvcfg.PMM`（bits [33:32]）的掩码/偏移宏；若缺失需按现有命名规范补充。`pm_cfg.h` 目前仅封装 senvcfg/menvcfg/mseccfg 三级 API，henvcfg.PMM 与 hstatus.HUPMM 的读写可先用 `read_csr`/`write_csr` 直接操作，或按 `pm_cfg` 风格扩展 `pm_set_vsmode()`/`pm_set_hupmm()` 辅助函数。
+| Norm ID | 覆盖的测试 ID |
+|---------|---------------|
+| `norm:ssnpm_definition` | HZPM-CAP-01、HZPM-CAP-02、HZPM-CAP-09（Ssnpm 探测与存在性前提） |
+| `norm:smnpm_definition` | HZPM-HS-01~06（H × Smnpm 交集前提） |
+| `norm:smmpm_definition` | HZPM-MPRV-01~05（H × Smmpm 交集前提） |
+| `norm:sspm_definition` / `norm:supm_definition` | 不覆盖：纯 profile 描述扩展，无硬件行为 |
+| `norm:henvcfg_pmm_op` | HZPM-CAP-01、HZPM-CAP-03、HZPM-CAP-05、HZPM-CAP-07、HZPM-CAP-09、HZPM-CAP-10、HZPM-VS-01~10 |
+| sec:hstatus HUPMM 段（非官方） | HZPM-CAP-02、HZPM-CAP-04、HZPM-CAP-06、HZPM-CAP-08、HZPM-HLV-07、HZPM-HLV-08 |
+| `norm:senvcfg_pmm_Ssnpm` | HZPM-VU-01~04、HZPM-VU-06、HZPM-HLV-03~05、HZPM-HLV-08 |
+| `norm:menvcfg_pmm_op` | HZPM-HS-01~06、HZPM-MPRV-04 |
+| `norm:mseccfg_pmm_presence_op` | HZPM-MPRV-01~03、HZPM-MPRV-05 |
+| `norm:pm_ignore_va` | HZPM-VS-01~08、HZPM-VU-01~04、HZPM-VU-06、HZPM-HS-01、HZPM-2STG-02、HZPM-TRAP-01 |
+| `norm:pm_ignore_pa` | HZPM-VS-09、HZPM-VS-10、HZPM-VU-07、HZPM-HS-02、HZPM-2STG-01、HZPM-TRAP-02 |
+| `norm:pm_apply_explicit` | HZPM-VS-01~04、HZPM-VU-01~03、HZPM-HS-01、HZPM-HS-02、HZPM-HS-06 |
+| `norm:pm_not_apply_implicit` | HZPM-2STG-05、HZPM-TRAP-06 |
+| `norm:pm_per_mode_control` | HZPM-VS-08、HZPM-VU-06、HZPM-HS-03~05 |
+| `norm:pm_mode_only_dependency` | HZPM-VS-05、HZPM-VS-08、HZPM-HS-03 |
+| `norm:pm_mprv_spvp` | HZPM-HLV-01~10、HZPM-MPRV-01~05 |
+| `norm:pm_mxr_exception` | HZPM-TRAP-05 |
+| `norm:pm_csr_hw_apply` | HZPM-TRAP-01、HZPM-TRAP-02 |
+| `norm:pm_no_trap_vector_mask` | HZPM-TRAP-03、HZPM-TRAP-04 |
+| `norm:pm_no_csr_sw` | HZPM-TRAP-04 |
+| `norm:pmlen_supported_values` | HZPM-CAP-03、HZPM-CAP-04 |
+| `norm:pmlen_illegal_warl` | HZPM-CAP-05、HZPM-CAP-06 |
+| `norm:H_scsrs_nomatch` | HZPM-VU-05 |
+| `norm:mstatus_mprv_hlsv` | HZPM-HLV-01~10 |
+| `norm:mstatus_mprv_hypervisor` | HZPM-MPRV-01~05 |
+| `norm:H_virtinst_vu_vs_nonhigh_allowedhs_tvm0` | HZPM-CAP-10 |
+| `norm:pm_config_next_higher` | HZPM-CAP-10 |
+| [[pm-two-stage]]（非官方） | HZPM-2STG-01~04 |
+| `norm:pm_rv64_only` | 不覆盖：不在本计划范围（见未覆盖说明） |
+| `norm:pm_debug_trigger` | 不覆盖：不在本计划范围（见未覆盖说明） |
+| `norm:pm_cpu_only`（设备侧） | 不覆盖：不在本计划范围（见未覆盖说明） |
+
+未被覆盖/不可测规范点说明：
+
+| Norm ID | 不覆盖原因 |
+|---------|------------|
+| `norm:sspm_definition` / `norm:supm_definition` | 纯 profile 描述扩展，不引入硬件行为，无可测交集 |
+| `norm:pm_rv64_only` | RV32 场景不在本文档范围（PM 仅适用于 RV64） |
+| `norm:pm_debug_trigger` | 涉及 Debug 扩展，超出本文档范围 |
+| `norm:pm_cpu_only`（设备侧） | 当前框架无设备模型，不可测 |

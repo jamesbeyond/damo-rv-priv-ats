@@ -86,7 +86,8 @@ COMMON_OBJS = \
     $(COMMON_DIR)/csr_accessors.o \
     $(COMMON_DIR)/uart.o \
     $(COMMON_DIR)/test_framework.o \
-    $(COMMON_DIR)/string.o
+    $(COMMON_DIR)/string.o \
+    $(COMMON_DIR)/compiler_rt.o
 
 # VM support (conditional, set ENABLE_VM=1 in extension Makefile)
 ifdef ENABLE_VM

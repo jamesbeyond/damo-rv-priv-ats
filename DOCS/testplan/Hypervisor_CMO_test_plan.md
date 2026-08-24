@@ -4,16 +4,21 @@
 
 本测试计划覆盖 RISC-V Hypervisor (H) 扩展与 CMO (Cache Management Operations) 扩展的交叉功能点。
 
-依据规范：
-- `SPEC/hypervisor.adoc`：henvcfg CBIE/CBCFE/CBZE 字段定义
-- `SPEC/riscv-isa-manual/src/unpriv/cmo.adoc`：CMO 指令在 V=1 时的行为、htinst/mtinst 标准转换
-
 CMO 扩展包含三个子扩展：
 - **Zicbom**：Cache-Block Management 指令（cbo.inval, cbo.clean, cbo.flush）
 - **Zicboz**：Cache-Block Zero 指令（cbo.zero）
 - **Zicbop**：Cache-Block Prefetch 指令（prefetch.r, prefetch.w, prefetch.i）
 
 ### 本文档覆盖的 SPEC 章节
+
+本方案依据 RISC-V 官方规范，本地 SPEC 路径如下：
+
+- `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`：henvcfg CBIE/CBCFE/CBZE 字段定义
+- `SPEC/riscv-isa-manual/src/unpriv/cmo.adoc`：CMO 指令在 V=1 时的行为、htinst/mtinst 标准转换
+
+官方仓库：https://github.com/riscv/riscv-isa-manual （对应仓库内上述路径文件）
+
+覆盖范围：
 - henvcfg CBIE/CBCFE/CBZE 字段对 VS/VU-mode CBO 指令的控制
 - cbo.inval 在 V=1 时的 flush 覆盖语义（HS-mode CBIE=01 时强制 flush）
 - CBO 指令的 htinst/mtinst 标准转换格式
@@ -43,6 +48,9 @@ CMO 扩展包含三个子扩展：
 | `norm:cbp_unperm_noexcep` | If access not permitted, a cache-block prefetch instruction does not raise any exceptions. | prefetch 在任何模式下访问不允许时不引发异常。 |
 | `norm:fault_excep_csr` | When a page-fault, guest-page-fault, or access-fault exception is taken, the relevant *tval CSR is written with the faulting effective address (i.e. the value of rs1). | 异常时 *tval 写入 rs1 值。 |
 | `norm:cbxe_unaffected` | The CBIE/CBCFE/CBZE fields in each envcfg register do not affect the read and write behavior of the same fields in the other envcfg registers. | 各 envcfg 的 CMO 字段互不影响。 |
+| `norm:H_trap_xtinst_val` | The values that may be automatically written to the trap instruction register for each standard exception cause are specified. For exceptions that prevent the fetching of an instruction, only zero or a pseudoinstruction value may be written. | trap 指令寄存器（htinst/mtinst）可自动写入零或标准转换值（实现可选写零替代标准转换）。 |
+| `norm:H_virtinst_xtval` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. | virtual-instruction 异常的 mtval/stval 写入规则与 illegal-instruction 相同。 |
+| `prefetch_no_virtinst` | The CBIE/CBCFE/CBZE fields of envcfg registers apply only to CBO instructions; cache-block prefetch instructions are not controlled by them and do not raise illegal-instruction or virtual-instruction exceptions in VS/VU-mode. | prefetch 指令不受 envcfg CBO 字段控制，在 VS/VU-mode 下不引发 illegal-instruction 或 virtual-instruction。 |
 
 ---
 
@@ -122,7 +130,7 @@ CMO 扩展包含三个子扩展：
 
 **规范依据**：
 - `norm:h_trans_cache`：CBO 指令的 htinst/mtinst 标准转换格式为 {operation[11:0], 0x0, funct3, 0x0, opcode}
-- Hypervisor SPEC：htinst 可写入零替代标准转换
+- `norm:H_trap_xtinst_val`：htinst/mtinst 可写入零替代标准转换
 
 **标准转换格式**：
 ```
@@ -187,7 +195,7 @@ CMO 扩展包含三个子扩展：
 ## Group 6. CMO virtual-instruction 异常 stval 行为
 
 **规范依据**：
-- Hypervisor SPEC：virtual-instruction exception 的 stval 写入规则与 illegal-instruction 相同
+- `norm:H_virtinst_xtval`：virtual-instruction 异常的 stval 写入规则与 illegal-instruction 相同
 - `norm:fault_excep_csr`：异常时 *tval 写入故障地址
 
 **测试职责**：验证 CMO 指令触发 virtual-instruction 异常时 stval 的写入行为。
@@ -206,7 +214,7 @@ CMO 扩展包含三个子扩展：
 
 **规范依据**：
 - `norm:cbp_unperm_noexcep`：prefetch 不引发任何异常
-- CMO SPEC：prefetch 不引发 illegal-instruction 或 virtual-instruction
+- `prefetch_no_virtinst`（非 SPEC 官方 Normative Rule）：prefetch 不受 envcfg CBO 字段控制，不引发 illegal-instruction 或 virtual-instruction
 
 **测试职责**：验证 prefetch 指令在 VS/VU-mode 下不受 henvcfg CMO 字段控制，不触发 virtual-instruction。
 
@@ -220,3 +228,30 @@ CMO 扩展包含三个子扩展：
 | HPREFETCH-06 | VU-mode prefetch.i 不触发 virtual-instruction | 同上配置，VU-mode 执行 prefetch.i | 正常执行，无异常 |
 | HPREFETCH-07 | VS-mode prefetch G-stage 无权限不触发异常 | G-stage 页表无权限，VS-mode 执行 prefetch.r | 不触发任何异常 |
 | HPREFETCH-08 | VS-mode prefetch 不检查 A/D 位 | VS-stage 页表 A=0 D=0，VS-mode 执行 prefetch.w | 不触发异常，A/D 位不被设置 |
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+下表标明"覆盖的规范点"章节中每条规范点被哪些测试用例覆盖。
+
+| Norm ID | 覆盖的测试 ID |
+|---------|---------------|
+| `norm:henvcfg_cbie` | HCBIE-01~10 |
+| `norm:cbo-inval_h-mode_veq1_op` | HCBIE-01~08 |
+| `norm:cbo-inval_h-mode_op0` | HCBIE-11、HCBIE-12 |
+| `norm:cbo-inval_h-mode_op1` | HCBIE-02、HCBIE-07、HCBIE-08 |
+| `norm:cbo-inval_h-mode_op2` | HCBIE-03、HCBIE-06 |
+| `norm:henvcfg_cbcfe` | HCBCFE-01~09 |
+| `norm:henvcfg_cbze` | HCBZE-01~06 |
+| `norm:cbxe_unaffected` | HCBIE-13、HCBCFE-10、HCBZE-07 |
+| `norm:h_trans_cache` | HCXINST-01~11 |
+| `norm:H_trap_xtinst_val` | HCXINST-01~11 |
+| `norm:cbm_unperm_fault` | HCGSTAGE-01~03、HCGSTAGE-08、HCGSTAGE-09、HCGSTAGE-12 |
+| `norm:cbz_unperm_fault` | HCGSTAGE-04、HCGSTAGE-10 |
+| `norm:cbp_unperm_noexcep` | HCGSTAGE-11、HPREFETCH-07、HPREFETCH-08 |
+| `norm:fault_excep_csr` | HCGSTAGE-05~07、HVINST-01~05 |
+| `norm:H_virtinst_xtval` | HVINST-01~05 |
+| `prefetch_no_virtinst`（非官方） | HPREFETCH-01~06 |
+
+未被覆盖/不可测规范点说明：无。本文档覆盖的规范点均有对应用例；HCBIE-10、HCBCFE-09、HCBZE-06 为条件用例（仅在 Zicbom/Zicboz 未实现时验证只读零）。

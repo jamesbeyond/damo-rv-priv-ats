@@ -17,30 +17,34 @@
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/sha.adoc` — Sha Augmented Hypervisor Extension 定义
-- `SPEC/hypervisor.adoc` — H 扩展规范（vsatp/vstvec/vstval/hgatp/hcounteren 等寄存器定义）
-- `SPEC/smstateen.adoc` — Smstateen/Ssstateen 扩展规范（sstateen/hstateen CSR 定义与行为）
-- `SPEC/shcounterenw.adoc` — Shcounterenw 规范
-- `SPEC/shvstvala.adoc` — Shvstvala 规范
-- `SPEC/shtvala.adoc` — Shtvala 规范
-- `SPEC/shvstvecd.adoc` — Shvstvecd 规范
-- `SPEC/shvsatpa.adoc` — Shvsatpa 规范
-- `SPEC/shgatpa.adoc` — Shgatpa 规范
-- `SPEC/supervisor.adoc` — satp/stvec/stval 等基线寄存器定义
+本方案依据 RISC-V Privileged Architecture 规范（Hypervisor 扩展及其 Sh* 子扩展章节、Smstateen 扩展章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/sha.adoc` — Sha Augmented Hypervisor Extension 定义
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — H 扩展规范（vsatp/vstvec/vstval/hgatp/hcounteren 等寄存器定义）
+  - `SPEC/riscv-isa-manual/src/priv/smstateen.adoc` — Smstateen/Ssstateen 扩展规范（sstateen/hstateen CSR 定义与行为）
+  - `SPEC/riscv-isa-manual/src/priv/shcounterenw.adoc` — Shcounterenw 规范
+  - `SPEC/riscv-isa-manual/src/priv/shvstvala.adoc` — Shvstvala 规范
+  - `SPEC/riscv-isa-manual/src/priv/shtvala.adoc` — Shtvala 规范
+  - `SPEC/riscv-isa-manual/src/priv/shvstvecd.adoc` — Shvstvecd 规范
+  - `SPEC/riscv-isa-manual/src/priv/shvsatpa.adoc` — Shvsatpa 规范
+  - `SPEC/riscv-isa-manual/src/priv/shgatpa.adoc` — Shgatpa 规范
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — satp/stvec/stval 等基线寄存器定义
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/sha.adoc` | Sha 组合扩展定义（列出 8 个子扩展依赖） |
-| `SPEC/smstateen.adoc:46-183` | Ssstateen 规范：sstateen0-3/hstateen0-3 CSR 定义与层次控制 |
-| `SPEC/hypervisor.adoc:986-1089` | hgatp 寄存器规范 |
-| `SPEC/hypervisor.adoc:1382-1425` | vsatp 寄存器规范 |
-| `SPEC/hypervisor.adoc:1300-1312` | vstvec 寄存器规范 |
-| `SPEC/hypervisor.adoc:1364-1380` | vstval 寄存器规范 |
-| `SPEC/hypervisor.adoc:846-877` | hcounteren 寄存器规范 |
+| `sha.adoc` | Sha 组合扩展定义（列出 8 个子扩展依赖） |
+| `smstateen.adoc:46-183` | Ssstateen 规范：sstateen0-3/hstateen0-3 CSR 定义与层次控制 |
+| `hypervisor.adoc:986-1089` | hgatp 寄存器规范 |
+| `hypervisor.adoc:1382-1425` | vsatp 寄存器规范 |
+| `hypervisor.adoc:1300-1312` | vstvec 寄存器规范 |
+| `hypervisor.adoc:1364-1380` | vstval 寄存器规范 |
+| `hypervisor.adoc:846-877` | hcounteren 寄存器规范 |
 | `common/encoding.h` | CSR 地址定义 |
 | `common/hyp/hyp_defs.h` | MAKE_HGATP 等宏定义 |
 | `common/hyp/hyp_priv.h` | run_in_vs_mode / run_in_vu_mode |
@@ -72,6 +76,15 @@
 | `norm:hstateen_bit_63_writable` | Bit 63 of each `hstateen` CSR is always writable (not read-only). | 每个 `hstateen` CSR 的位 63 始终可写（非只读）。 |
 | `norm:mstateen_zero_initialization` | On reset, all writable `mstateen` bits are initialized by the hardware to zeros. | 复位时，所有可写的 `mstateen` 位由硬件初始化为零。 |
 | `norm:hstateen_sstateen_zero_initialization` | If machine-level software changes these values, it is responsible for initializing the corresponding writable bits of the `hstateen` and `sstateen` CSRs to zeros too. | 如果机器级软件更改这些值，它负责将 `hstateen` 和 `sstateen` CSR 的相应可写位也初始化为零。 |
+| `norm:sstateen_rv64_csrs` | If supervisor mode is implemented, another four CSRs are defined at supervisor level: `sstateen0`, `sstateen1`, `sstateen2`, and `sstateen3`. | 若实现了 supervisor 模式，在 supervisor 级定义 sstateen0-3 四个 CSR。 |
+| `norm:hstateen_rv64_csrs` | And if the hypervisor extension is implemented, another set of CSRs is added: `hstateen0`, `hstateen1`, `hstateen2`, and `hstateen3`. | 若实现了 hypervisor 扩展，额外增加 hstateen0-3 一组 CSR。 |
+| `norm:stateen_warl_access` | Each standard-defined bit of a `stateen` CSR is WARL and may be read-only zero or one, subject to the following conditions. | `stateen` CSR 的每个标准定义位为 WARL，可能是只读零或只读一，受后续条件约束。 |
+| `norm:stateen_reserved_roz` | Likewise, all reserved bits not yet given a defined meaning are also read-only zeros. | 所有尚未赋予定义含义的保留位同样为只读零。 |
+| `norm:mstateen_lower_priv_roz` | For every bit in an `mstateen` CSR that is zero (whether read-only zero or set to zero), the same bit appears as read-only zero in the matching `hstateen` and `sstateen` CSRs. | `mstateen` 中为零的每一位（无论只读零还是被置零），在匹配的 `hstateen` 和 `sstateen` 中表现为只读零。 |
+| `norm:sstateen_vsmode_access_roz` | For every bit in an `hstateen` CSR that is zero (whether read-only zero or set to zero), the same bit appears as read-only zero in `sstateen` when accessed in VS-mode. | `hstateen` 中为零的每一位，在 VS-mode 访问 `sstateen` 时对应位表现为只读零。 |
+| `norm:mstateen_bit_63_op` | For each `mstateen` CSR, bit 63 is defined to control access to the matching `sstateen` and `hstateen` CSRs. | 每个 `mstateen` CSR 的 bit 63 控制对匹配的 `sstateen` 和 `hstateen` CSR 的访问。 |
+| `norm:hstateen_bit_63_op` | Likewise, bit 63 of each `hstateen` correspondingly controls access to the matching `sstateen` CSR. | 同样，每个 `hstateen` 的 bit 63 相应控制对匹配的 `sstateen` CSR 的访问。 |
+| `HSyncExcPrio` | Synchronous exception priority table: when multiple synchronous exceptions could be taken, the one listed earlier (e.g. instruction guest-page fault over VS-stage page fault) takes priority. | hypervisor.adoc 中 `[[HSyncExcPrio]]` 同步异常优先级表：G-stage fault 优先于 VS-stage fault。 |
 
 > [!IMPORTANT]
 > Sha 作为组合扩展，其各子扩展均有独立的详细测试方案（见上述参考文件）。本测试计划的定位是：(1) 验证所有子扩展**同时存在**且功能正常（集成级存在性测试）；(2) 验证 Ssstateen 扩展在 H 扩展上下文中的功能（此扩展暂无独立测试方案）；(3) 验证子扩展间的**交互行为**（如 hstateen 禁止时对 vstvec/vstval/vsatp 访问的影响）。
@@ -142,14 +155,14 @@ Ssstateen 要求 sstateen0-3 和 hstateen0-3 均存在。关键行为：
 ## 测试分组
 
 > [!IMPORTANT]
-> 共 6 个测试组、28 个测试用例。Group 1 验证所有子扩展的存在性（烟雾测试）；Group 2 验证 Ssstateen CSR 的基本可访问性与 WARL 行为；Group 3 验证 hstateen 对 VS/VU 模式的访问控制；Group 4 验证 hstateen bit 63 对 sstateen 的门控行为；Group 5 验证 hstateen 与其他 Sh* 子扩展 CSR 的交互；Group 6 验证两阶段翻译中的异常优先级。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）；每组提供 1 个关键 C 代码示例。
+> 共 6 个测试组、28 个测试用例。Group 1 验证所有子扩展的存在性（烟雾测试）；Group 2 验证 Ssstateen CSR 的基本可访问性与 WARL 行为；Group 3 验证 hstateen 对 VS/VU 模式的访问控制；Group 4 验证 hstateen bit 63 对 sstateen 的门控行为；Group 5 验证 hstateen 与其他 Sh* 子扩展 CSR 的交互；Group 6 验证两阶段翻译中的异常优先级。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）。
 
 ---
 
 ### Group 1：子扩展存在性验证（集成烟雾测试）
 
 **规范依据**：
-- `SPEC/sha.adoc:4-14`：Sha 依赖 H + Ssstateen + Shcounterenw + Shvstvala + Shtvala + Shvstvecd + Shvsatpa + Shgatpa
+- `sha.adoc:4-14`：Sha 依赖 H + Ssstateen + Shcounterenw + Shvstvala + Shtvala + Shvstvecd + Shvsatpa + Shgatpa
 
 **测试职责**：快速验证每个子扩展的核心特征在平台上可用，确认 Sha 组合扩展的完整性。每个子扩展做一个最小化的"能力存在"断言。
 
@@ -167,49 +180,17 @@ Ssstateen 要求 sstateen0-3 和 hstateen0-3 均存在。关键行为：
 > [!NOTE]
 > Shvstvala 和 Shtvala 的存在性验证需要触发 trap，放在 Group 5 的交互测试中覆盖（涉及 hstateen 交互），此处不重复设置 trap 环境。
 
-#### 关键代码示例：SHA-EXIST-02（Ssstateen hstateen0 存在性）
-
-```c
-/* tests/test_exist.c — SHA-EXIST-02 */
-
-#include "test_framework.h"
-#include "hyp/hyp_test.h"
-
-#define CSR_HSTATEEN0  0x60C
-
-TEST_REGISTER(test_sha_exist_ssstateen_hstateen0);
-bool test_sha_exist_ssstateen_hstateen0(void) {
-    TEST_BEGIN("SHA-EXIST-02: Ssstateen hstateen0 CSR accessible");
-
-    uintptr_t saved;
-    asm volatile ("csrr %0, 0x60C" : "=r"(saved));
-
-    /* 写入 bit 63 (始终可写) */
-    uintptr_t write_val = (1UL << 63);
-    asm volatile ("csrw 0x60C, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x60C" : "=r"(readback));
-
-    TEST_ASSERT("hstateen0 bit 63 writable (norm:hstateen_bit_63_writable)",
-                (readback >> 63) == 1);
-
-    asm volatile ("csrw 0x60C, %0" :: "r"(saved));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 2：Ssstateen CSR 基本可访问性与 WARL 行为
 
 **规范依据**：
-- `norm:sstateen_rv64_csrs`（`SPEC/smstateen.adoc:56-59`）：sstateen0-3 存在
-- `norm:hstateen_rv64_csrs`（`SPEC/smstateen.adoc:61-63`）：hstateen0-3 存在
-- `norm:stateen_warl_access`（`SPEC/smstateen.adoc:134-136`）：stateen 各位为 WARL
-- `norm:stateen_reserved_roz`（`SPEC/smstateen.adoc:139-140`）：保留位为只读零
-- `norm:mstateen_zero_initialization`（`SPEC/smstateen.adoc:153`）：复位时 mstateen 可写位为零
-- `norm:hstateen_bit_63_writable`（`SPEC/smstateen.adoc:182-183`）：hstateen bit 63 始终可写
+- `norm:sstateen_rv64_csrs`（`smstateen.adoc:56-59`）：sstateen0-3 存在
+- `norm:hstateen_rv64_csrs`（`smstateen.adoc:61-63`）：hstateen0-3 存在
+- `norm:stateen_warl_access`（`smstateen.adoc:134-136`）：stateen 各位为 WARL
+- `norm:stateen_reserved_roz`（`smstateen.adoc:139-140`）：保留位为只读零
+- `norm:mstateen_zero_initialization`（`smstateen.adoc:153`）：复位时 mstateen 可写位为零
+- `norm:hstateen_bit_63_writable`（`smstateen.adoc:182-183`）：hstateen bit 63 始终可写
 
 **测试职责**：验证 sstateen0-3 和 hstateen0-3 共 8 个 CSR 全部可访问；验证 hstateen bit 63 可写；验证保留位为只读零行为。
 
@@ -224,49 +205,14 @@ bool test_sha_exist_ssstateen_hstateen0(void) {
 > [!NOTE]
 > `norm:stateen_warl_access` 规定 stateen 各位为 WARL。已定义位（如 bit 63、bit 0 C 位等）按功能可写或只读零；未定义/保留位为只读零。SHA-STATEEN-05 通过全 1 写入来探测哪些位被实现。
 
-#### 关键代码示例：SHA-STATEEN-03（hstateen0 bit 63 翻转验证）
-
-```c
-/* tests/test_stateen.c — SHA-STATEEN-03 */
-
-#include "test_framework.h"
-#include "hyp/hyp_test.h"
-
-#define CSR_HSTATEEN0  0x60C
-#define BIT63          (1UL << 63)
-
-TEST_REGISTER(test_sha_stateen_hstateen0_bit63);
-bool test_sha_stateen_hstateen0_bit63(void) {
-    TEST_BEGIN("SHA-STATEEN-03: hstateen0 bit 63 writable (toggle)");
-
-    uintptr_t saved;
-    asm volatile ("csrr %0, 0x60C" : "=r"(saved));
-
-    /* 写 1 */
-    asm volatile ("csrs 0x60C, %0" :: "r"(BIT63));
-    uintptr_t rb1;
-    asm volatile ("csrr %0, 0x60C" : "=r"(rb1));
-    TEST_ASSERT("hstateen0 bit 63 set to 1", (rb1 & BIT63) != 0);
-
-    /* 写 0 */
-    asm volatile ("csrc 0x60C, %0" :: "r"(BIT63));
-    uintptr_t rb0;
-    asm volatile ("csrr %0, 0x60C" : "=r"(rb0));
-    TEST_ASSERT("hstateen0 bit 63 cleared to 0", (rb0 & BIT63) == 0);
-
-    asm volatile ("csrw 0x60C, %0" :: "r"(saved));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 3：hstateen 对 VS/VU 模式的访问控制
 
 **规范依据**：
-- `norm:hstateen_encoding`（`SPEC/smstateen.adoc:129-132`）：hstateen 控制 VS/VU 模式对状态的访问
-- `norm:stateen_illegal_state_access`（`SPEC/smstateen.adoc:89-95`）：stateen 禁止时访问触发 illegal-instruction 或 virtual-instruction 异常
-- `norm:sstateen_vsmode_access_roz`（`SPEC/smstateen.adoc:144-146`）：hstateen 位为 0 时，VS-mode 访问对应 sstateen 位表现为只读零
+- `norm:hstateen_encoding`（`smstateen.adoc:129-132`）：hstateen 控制 VS/VU 模式对状态的访问
+- `norm:stateen_illegal_state_access`（`smstateen.adoc:89-95`）：stateen 禁止时访问触发 illegal-instruction 或 virtual-instruction 异常
+- `norm:sstateen_vsmode_access_roz`（`smstateen.adoc:144-146`）：hstateen 位为 0 时，VS-mode 访问对应 sstateen 位表现为只读零
 
 **测试职责**：验证 hstateen0 bit 63=0 时，VS-mode 访问 sstateen0 触发 virtual-instruction exception；bit 63=1 时 VS-mode 可正常访问 sstateen0。
 
@@ -281,65 +227,14 @@ bool test_sha_stateen_hstateen0_bit63(void) {
 > [!NOTE]
 > `norm:stateen_illegal_state_access` 指出：在 VS/VU 模式下，如果 hstateen 禁止了对某状态的访问，且满足 virtual-instruction exception 的条件（V=1 且 hstateen 位为 0 而 mstateen 位为 1），则触发 virtual-instruction exception（cause=22）而非 illegal-instruction。
 
-#### 关键代码示例：SHA-HCTL-01（hstateen0 门控 VS 访问 sstateen0）
-
-```c
-/* tests/test_hctl.c — SHA-HCTL-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-#include "hyp/hyp_trap.h"
-
-#define CSR_HSTATEEN0  0x60C
-#define CSR_SSTATEEN0  0x10C
-#define BIT63          (1UL << 63)
-#define CAUSE_VIRTUAL_INSTRUCTION  22
-
-extern hyp_trap_record_t g_hs_trap_record;
-
-static uintptr_t vsmode_read_sstateen0(uintptr_t arg) {
-    (void)arg;
-    uintptr_t val;
-    /* V=1: csrr sstateen0；如果 hstateen0.bit63=0，触发 virtual-inst */
-    asm volatile ("csrr %0, 0x10C" : "=r"(val));
-    return val;
-}
-
-TEST_REGISTER(test_sha_hctl_bit63_zero_vsinst);
-bool test_sha_hctl_bit63_zero_vsinst(void) {
-    TEST_BEGIN("SHA-HCTL-01: hstateen0 bit63=0, VS access sstateen0 traps");
-
-    uintptr_t saved_hstateen0;
-    asm volatile ("csrr %0, 0x60C" : "=r"(saved_hstateen0));
-
-    /* 确保 mstateen0 bit63=1（允许 HS 级使用） */
-    asm volatile ("csrs 0x30C, %0" :: "r"(BIT63));
-
-    /* 设 hstateen0 bit63=0 → VS 不可访问 sstateen0 */
-    asm volatile ("csrc 0x60C, %0" :: "r"(BIT63));
-
-    g_hs_trap_record.cause = 0;
-    run_in_vs_mode(vsmode_read_sstateen0, 0);
-
-    /* 应触发 virtual-instruction exception，trap 到 HS-mode */
-    TEST_ASSERT("trap cause == virtual-instruction (22)",
-                g_hs_trap_record.cause == CAUSE_VIRTUAL_INSTRUCTION);
-
-    asm volatile ("csrw 0x60C, %0" :: "r"(saved_hstateen0));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：hstateen bit 63 对 sstateen 的层次门控
 
 **规范依据**：
-- `norm:mstateen_bit_63_op`（`SPEC/smstateen.adoc:162-164`）：mstateen0 bit 63 控制对 sstateen0 和 hstateen0 的访问
-- `norm:hstateen_bit_63_op`（`SPEC/smstateen.adoc:165-166`）：hstateen0 bit 63 控制对 VS-mode 看到的 sstateen0 的访问
-- `norm:mstateen_lower_priv_roz`（`SPEC/smstateen.adoc:141-143`）：mstateen 位为 0 时，对应 hstateen 和 sstateen 位表现为只读零
+- `norm:mstateen_bit_63_op`（`smstateen.adoc:162-164`）：mstateen0 bit 63 控制对 sstateen0 和 hstateen0 的访问
+- `norm:hstateen_bit_63_op`（`smstateen.adoc:165-166`）：hstateen0 bit 63 控制对 VS-mode 看到的 sstateen0 的访问
+- `norm:mstateen_lower_priv_roz`（`smstateen.adoc:141-143`）：mstateen 位为 0 时，对应 hstateen 和 sstateen 位表现为只读零
 
 **测试职责**：验证 mstateen0 → hstateen0 → sstateen0(VS) 的层次门控链路。
 
@@ -352,56 +247,13 @@ bool test_sha_hctl_bit63_zero_vsinst(void) {
 > [!NOTE]
 > SHA-HIER-03 验证的是 mstateen 对 HS-mode 的门控。当 mstateen0 bit63=0 时，HS-mode 尝试访问 hstateen0 将触发 illegal-instruction exception。这是 Smstateen/Ssstateen 的层次安全特性。
 
-#### 关键代码示例：SHA-HIER-01（层次门控正向验证）
-
-```c
-/* tests/test_hierarchy.c — SHA-HIER-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_test.h"
-
-#define CSR_MSTATEEN0  0x30C
-#define CSR_HSTATEEN0  0x60C
-#define BIT63          (1UL << 63)
-
-TEST_REGISTER(test_sha_hierarchy_mstateen_enables_hstateen);
-bool test_sha_hierarchy_mstateen_enables_hstateen(void) {
-    TEST_BEGIN("SHA-HIER-01: mstateen0 bit63=1 enables hstateen0 bit63 write");
-
-    uintptr_t saved_mstateen0, saved_hstateen0;
-    asm volatile ("csrr %0, 0x30C" : "=r"(saved_mstateen0));
-    asm volatile ("csrr %0, 0x60C" : "=r"(saved_hstateen0));
-
-    /* 设 mstateen0 bit63=1（允许 HS 级使用 hstateen0） */
-    asm volatile ("csrs 0x30C, %0" :: "r"(BIT63));
-
-    /* 写 hstateen0 bit63=1 */
-    asm volatile ("csrs 0x60C, %0" :: "r"(BIT63));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x60C" : "=r"(readback));
-    TEST_ASSERT("hstateen0 bit63 == 1 when mstateen0 bit63 == 1",
-                (readback & BIT63) != 0);
-
-    /* 写 hstateen0 bit63=0 */
-    asm volatile ("csrc 0x60C, %0" :: "r"(BIT63));
-    asm volatile ("csrr %0, 0x60C" : "=r"(readback));
-    TEST_ASSERT("hstateen0 bit63 == 0 after clear",
-                (readback & BIT63) == 0);
-
-    asm volatile ("csrw 0x60C, %0" :: "r"(saved_hstateen0));
-    asm volatile ("csrw 0x30C, %0" :: "r"(saved_mstateen0));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：Ssstateen 与其他 Sh* 子扩展 CSR 的交互
 
 **规范依据**：
-- `norm:stateen_op`（`SPEC/smstateen.adoc:86-88`）：stateen 控制低特权级对状态的访问
-- `norm:stateen_illegal_state_access`（`SPEC/smstateen.adoc:89-95`）：违反时触发异常
+- `norm:stateen_op`（`smstateen.adoc:86-88`）：stateen 控制低特权级对状态的访问
+- `norm:stateen_illegal_state_access`（`smstateen.adoc:89-95`）：违反时触发异常
 - 各子扩展 norm（参见各子扩展规范）
 
 **测试职责**：验证当 hstateen 相关位禁止特定状态访问时，VS-mode 对相关 CSR（如果受 stateen 控制）的访问行为正确；同时验证 Shvstvala 和 Shtvala 的存在性（通过触发 trap 验证 vstval/htval 被正确写入）。
@@ -417,71 +269,13 @@ bool test_sha_hierarchy_mstateen_enables_hstateen(void) {
 > [!NOTE]
 > SHA-CROSS-01/02 同时验证了 Shvstvala/Shtvala 的存在性（Group 1 中跳过了这两个需要 trap 环境的验证）。SHA-CROSS-03 验证 Shvsatpa 和 Shgatpa 的模式映射一致性在同一平台上同时成立。SHA-CROSS-04 验证 Shvstvecd（Direct trap 跳转）与 Shvstvala（vstval 写入）的端到端协同。
 
-#### 关键代码示例：SHA-CROSS-03（vsatp + hgatp 模式协同验证）
-
-```c
-/* tests/test_cross.c — SHA-CROSS-03 */
-
-#include "test_framework.h"
-#include "hyp/hyp_defs.h"
-#include "hyp/hyp_test.h"
-
-#define SATP_MODE_SHIFT  60
-#define SATP_MODE_MASK   (0xFUL << SATP_MODE_SHIFT)
-#define MODE_SV39        8UL
-
-TEST_REGISTER(test_sha_cross_vsatp_hgatp_coherent);
-bool test_sha_cross_vsatp_hgatp_coherent(void) {
-    TEST_BEGIN("SHA-CROSS-03: vsatp and hgatp both support modes per satp");
-
-    /* 探测 satp 是否支持 Sv39 */
-    uintptr_t saved_satp;
-    asm volatile ("csrr %0, satp" : "=r"(saved_satp));
-    asm volatile ("csrw satp, %0" :: "r"(0UL)); /* Bare baseline */
-    asm volatile ("csrw satp, %0" :: "r"(MODE_SV39 << SATP_MODE_SHIFT));
-    uintptr_t satp_rb;
-    asm volatile ("csrr %0, satp" : "=r"(satp_rb));
-    bool satp_sv39 = (((satp_rb & SATP_MODE_MASK) >> SATP_MODE_SHIFT) == MODE_SV39);
-    asm volatile ("csrw satp, %0" :: "r"(saved_satp));
-
-    if (!satp_sv39) {
-        TEST_SKIP("satp does not support Sv39");
-    }
-
-    /* 验证 vsatp 支持 Sv39 (Shvsatpa) */
-    uintptr_t saved_vsatp;
-    asm volatile ("csrr %0, 0x280" : "=r"(saved_vsatp));
-    asm volatile ("csrw 0x280, %0" :: "r"(0UL));
-    asm volatile ("csrw 0x280, %0" :: "r"(MODE_SV39 << SATP_MODE_SHIFT));
-    uintptr_t vsatp_rb;
-    asm volatile ("csrr %0, 0x280" : "=r"(vsatp_rb));
-    uintptr_t vsatp_mode = (vsatp_rb & SATP_MODE_MASK) >> SATP_MODE_SHIFT;
-    TEST_ASSERT("vsatp supports Sv39 (Shvsatpa)", vsatp_mode == MODE_SV39);
-    asm volatile ("csrw 0x280, %0" :: "r"(saved_vsatp));
-
-    /* 验证 hgatp 支持 Sv39x4 (Shgatpa) */
-    uintptr_t saved_hgatp;
-    asm volatile ("csrr %0, 0x680" : "=r"(saved_hgatp));
-    asm volatile ("csrw 0x680, %0" :: "r"(0UL));
-    uintptr_t hgatp_val = MAKE_HGATP(HGATP_MODE_SV39X4, 0, 0);
-    asm volatile ("csrw 0x680, %0" :: "r"(hgatp_val));
-    uintptr_t hgatp_rb;
-    asm volatile ("csrr %0, 0x680" : "=r"(hgatp_rb));
-    uintptr_t hgatp_mode = HGATP_GET_MODE(hgatp_rb);
-    TEST_ASSERT("hgatp supports Sv39x4 (Shgatpa)", hgatp_mode == HGATP_MODE_SV39X4);
-    asm volatile ("csrw 0x680, %0" :: "r"(saved_hgatp));
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 6：异常优先级验证
 
 **规范依据**：
-- `norm:HSyncExcPrio`（`SPEC/hypervisor.adoc:2201-2230`）：同步异常优先级表，G-stage fault 优先于 VS-stage fault
-- `SPEC/hypervisor.adoc:2043-2051`：两阶段翻译中 G-stage 检查先于 VS-stage 完成
+- `HSyncExcPrio`：G-stage fault 优先于 VS-stage fault
+- `hypervisor.adoc:2043-2051`：两阶段翻译中 G-stage 检查先于 VS-stage 完成
 
 **测试职责**：验证 Hypervisor 扩展规范中定义的异常优先级关系在两阶段翻译场景下被正确遵守。
 
@@ -489,59 +283,6 @@ bool test_sha_cross_vsatp_hgatp_coherent(void) {
 |---------|----------|----------|----------|
 | SHA-PRIO-01 | G-stage fault 优先于 VS-stage fault | 构造场景：VS-stage PTE walk 路径上，VS 根表 PTE 本身 VS-invalid（会导致 VS page fault）但该 PTE 所在 GPA 在 G-stage 也未映射（会导致 G-stage fault）；VS-mode 访问目标地址 | 实际触发 G-stage guest-page-fault（cause=20/21/23）而非 VS page fault（cause=12/13/15），htval==PTE GPA>>2 |
 | SHA-PRIO-02 | 指令 fetch fault 优先于 illegal-instruction | 构造场景：某 GPA 在 G-stage 缺 X 权限；该地址放置了一条非法指令编码；VS-mode 跳转执行 | 实际触发 inst guest-page-fault（cause=20）而非 illegal-instruction（cause=2），htval==GPA>>2 |
-
-#### 关键代码示例：SHA-PRIO-01
-
-```c
-/* tests/test_priority.c — SHA-PRIO-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_test.h"
-#include "hyp/two_stage.h"
-#include "hyp/gstage_pt.h"
-
-#define TEST_GVA           0x50000000UL
-#define VS_ROOT_PT_GPA     0x81000000UL  /* VS 根表放在此 GPA */
-
-extern volatile uintptr_t g_trap_cause;
-extern volatile uintptr_t g_trap_htval;
-
-TEST_REGISTER(test_sha_prio_gstage_over_vsstage);
-bool test_sha_prio_gstage_over_vsstage(void) {
-    TEST_BEGIN("SHA-PRIO-01: G-stage fault takes priority over VS-stage fault");
-
-    two_stage_t ts;
-    two_stage_init(&ts, SV39, SV39X4);
-
-    /*
-     * 构造：VS 根表放在 VS_ROOT_PT_GPA
-     * 1) VS 根表 PTE[idx] 设为 invalid（V=0）→ 若 VS-stage 独立处理会触发 VS page fault
-     * 2) VS_ROOT_PT_GPA 在 G-stage 也未映射 → G-stage fault
-     * 规范要求 G-stage fault 优先
-     */
-    two_stage_set_vs_root_at(&ts, VS_ROOT_PT_GPA);
-    two_stage_invalidate_vs_pte(&ts, TEST_GVA);  /* VS PTE V=0 */
-    two_stage_unmap_gs(&ts, VS_ROOT_PT_GPA);      /* G-stage 不映射根表 GPA */
-    two_stage_activate(&ts);
-
-    /* 委托 GPF 到 HS-mode（不委托到 VS）*/
-    delegate_gpf_to_hs();
-
-    g_trap_cause = 0;
-    g_trap_htval = 0;
-    run_in_vs_mode_load(TEST_GVA);
-
-    /* 期望：G-stage fault (cause 21 for load) 而非 VS page fault (cause 13) */
-    TEST_ASSERT_EQ("cause == load guest-page-fault (21)",
-                   g_trap_cause, 21UL);
-    TEST_ASSERT("htval == VS root PT GPA >> 2",
-                g_trap_htval == (VS_ROOT_PT_GPA >> 2));
-    TEST_ASSERT("htval != 0 (Shtvala guarantee)",
-                g_trap_htval != 0);
-
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -605,16 +346,6 @@ bool test_sha_prio_gstage_over_vsstage(void) {
 
 ## 测试执行说明
 
-### 子目录与构建集成（实施阶段参考，本计划不产出）
-
-> [!IMPORTANT]
-> 本计划阶段**仅产出 `DOCS/testplan/sha_test_plan.md`**，不创建 `sha/` 子目录、不修改顶层 `Makefile`、不写 C 测试代码。后续实施阶段按本文档创建：
-> - `sha/main.c`（参考已有扩展如 `svadu/main.c`）
-> - `sha/Makefile`（`SPIKE_ISA_EXT = _sha`，需同时启用所有子扩展）
-> - `sha/kernel.ld`
-> - `sha/tests/test_exist.c`、`test_stateen.c`、`test_hctl.c`、`test_hierarchy.c`、`test_cross.c`
-> 并把 `sha` 加入顶层 `Makefile` 的 `EXTENSIONS` 列表。
-
 ### 运行环境
 
 - Group 1：M-mode 直接操作各 CSR，快速存在性验证
@@ -622,7 +353,7 @@ bool test_sha_prio_gstage_over_vsstage(void) {
 - Group 3：M-mode 配置 hstateen 后通过 `run_in_vs_mode` 进入 VS-mode 验证门控行为
 - Group 4：M-mode 验证 mstateen → hstateen 层次关系
 - Group 5：综合环境（M-mode + VS-mode + G-stage 映射），验证跨子扩展交互
-- 需通过 `SPIKE_ISA_EXT = _sha` 或等效方式启用所有子扩展
+- 需在构建配置中启用所有子扩展（如 `_sha` 或等效 ISA 配置）
 - 单核环境，无需 IPI
 - Group 5 的 trap 相关测试需要 G-stage 恒等映射
 
@@ -655,3 +386,34 @@ bool test_sha_prio_gstage_over_vsstage(void) {
 | SHA-CROSS-02 失败（htval=0） | Shtvala 未满足，htval 在 guest page fault 时未被写入 |
 | SHA-CROSS-03 失败 | Shvsatpa 或 Shgatpa 模式映射在同一平台不一致 |
 | SHA-CROSS-04 失败 | Shvstvecd 的 Direct 跳转或 Shvstvala 的 vstval 写入协同异常 |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:shvstvecd_vstvec_mode_direct` | SHA-EXIST-05, SHA-CROSS-04 | 完整 BASE/MODE 能力归 Shvstvecd 独立方案 |
+| `norm:shvstvecd_vstvec_base_aligned_address` | SHA-CROSS-04 | 集成级验证：Direct trap 跳转到 BASE |
+| `norm:shcounterenw_hpmcounter_hcounteren` | SHA-EXIST-04 | 完整可写性验证归 Shcounterenw 独立方案 |
+| `norm:shvstvala_vstval_written` | SHA-CROSS-01, SHA-CROSS-04, SHA-CROSS-05 | 完整场景覆盖归 Shvstvala 独立方案 |
+| `norm:shtvala_htval_faulting_gpa` | SHA-CROSS-02, SHA-CROSS-05, SHA-PRIO-01 | 完整场景覆盖归 Shtvala 独立方案 |
+| `norm:shvsatpa_satp_vsatp_modes` | SHA-EXIST-06, SHA-CROSS-03 | 完整模式一致性归 Shvsatpa 独立方案 |
+| `norm:shgatpa_satp_hgatp_mode_support` | SHA-EXIST-08, SHA-CROSS-03 | 完整模式映射归 Shgatpa 独立方案 |
+| `norm:shgatpa_hgatp_bare_mode` | SHA-EXIST-07 | |
+| `norm:sstateen_user_access_control` | SHA-HCTL-01 ~ SHA-HCTL-05 | 间接覆盖：经 hstateen 门控 VS 访问验证；U/VU 级 sstateen 门控未设独立用例 |
+| `norm:hstateen_encoding` | SHA-EXIST-02, SHA-HCTL-01 ~ SHA-HCTL-05 | |
+| `norm:stateen_op` | SHA-HCTL-01 ~ SHA-HCTL-05, SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:stateen_illegal_state_access` | SHA-HCTL-01, SHA-HCTL-03, SHA-HCTL-05, SHA-HIER-03 | |
+| `norm:hstateen_bit_63_writable` | SHA-EXIST-02, SHA-STATEEN-03, SHA-STATEEN-04 | |
+| `norm:mstateen_zero_initialization` | — | 不覆盖：复位初始状态在测试运行期不可重现，属平台复位行为 |
+| `norm:hstateen_sstateen_zero_initialization` | — | 不覆盖：同上，属机器级软件职责声明，非硬件可观测行为 |
+| `norm:sstateen_rv64_csrs` | SHA-EXIST-03, SHA-STATEEN-02 | |
+| `norm:hstateen_rv64_csrs` | SHA-EXIST-02, SHA-STATEEN-01 | |
+| `norm:stateen_warl_access` | SHA-STATEEN-03 ~ SHA-STATEEN-05 | |
+| `norm:stateen_reserved_roz` | SHA-STATEEN-05 | |
+| `norm:sstateen_vsmode_access_roz` | SHA-HCTL-04 | |
+| `norm:mstateen_bit_63_op` | SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:hstateen_bit_63_op` | SHA-HCTL-01 ~ SHA-HCTL-04, SHA-HIER-01 ~ SHA-HIER-03 | |
+| `norm:mstateen_lower_priv_roz` | SHA-HIER-02, SHA-HIER-03 | |
+| `HSyncExcPrio` | SHA-PRIO-01, SHA-PRIO-02 | 源自 hypervisor.adoc `[[HSyncExcPrio]]` 优先级表 |

@@ -1,12 +1,8 @@
 **[中文](../testplan/Shtvala_test_plan.md) | English**
 
-# Shtvala Test Plan
+# Shtvala Extension Test Plan
 
-## Overview
-
-This test plan verifies the **Shtvala extension** behavior: when a guest-page-fault (GPF) trap is taken into HS-mode, the `htval` register **must** be written with the faulting guest physical address (GPA >> 2), and **must not** be zero. This tightens the baseline H-extension rule that allowed implementations to write either zero or the GPA.
-
-The test suite covers explicit G-stage accesses, implicit VS-stage translation faults, cross-page/misaligned accesses, HLV/HLVX/HSV instruction paths, G-stage MODE variants with high-bit overflow, non-GPF trap clearing behavior, htval/stval consistency for GPA reconstruction, and hstatus.GVA linkage.
+This document describes the test plan for the Shtvala (Trap Value Reporting for Hypervisor, Version 1.0) extension. On top of the H-extension baseline, Shtvala **only constrains the write behavior of the `htval` CSR**: it **tightens** the weakened H-extension wording that allowed implementations to write "either zero or GPA>>2" into **a mandatory requirement to write the faulting guest physical address (GPA) shifted right by 2 bits**. The behavior of registers such as `mtval2`, `stval`, `vsatp`, and `hgatp` is **out of Shtvala scope** and is covered by the H-extension baseline test plans.
 
 ---
 
@@ -14,13 +10,28 @@ The test suite covers explicit G-stage accesses, implicit VS-stage translation f
 
 ### Specification Sources
 
-- `SPEC/shtvala.adoc` — Shtvala extension definition
-- `SPEC/hypervisor.adoc` — H-extension baseline (htval/mtval2/hstatus/hgatp/vsatp semantics)
+This plan is based on the RISC-V Privileged Architecture specification (the Shtvala extension chapter and the Hypervisor extension chapters related to htval/two-stage translation):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/shtvala.adoc` — Shtvala Extension for Trap Value Reporting, Version 1.0 (6 lines total, single normative rule)
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0:
+    - Hypervisor Trap Value (`htval`) Register (L904-967)
+    - Two-Stage Address Translation (L1869-1899)
+    - Guest Physical Address Translation (L1901-1976)
+    - Guest-Page Faults (L2041-2067)
+    - hstatus related fields (L321-326)
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | File Path | Description |
 |-----------|-------------|
+| `shtvala.adoc` | Full Shtvala v1.0 specification (6 lines) |
+| `hypervisor.adoc` | H extension specification (including htval/Sv*x4/GPF descriptions) |
+| `common/trap.c:31` | `trap_record.htval` field, uniformly stores GPA>>2 |
+| `common/trap.c:189` | HS-mode trap handler reads `htval` (CSR 0x643) and writes it into `trap_record.htval` |
+| `common/trap.c:502` | `trap_get_htval()` function declaration, returns htval (GPA>>2) of the most recent trap |
+| `common/hyp/hyp_test.h:21-25` | `HYP_TEST_END()` macro, resets hypervisor state |
 | `common/hyp/hyp_test.h:28-37` | `EXPECT_GUEST_PAGE_FAULT(cause, stmt)` macro |
 | `common/hyp/hyp_test.h:39-42` | `CHECK_HTVAL(msg, expected_gpa_shifted)` macro, asserts htval == expected GPA>>2 |
 | `common/hyp/hyp_test.h:44-46` | `CHECK_HTINST(msg, expected)` macro |
@@ -34,7 +45,7 @@ The test suite covers explicit G-stage accesses, implicit VS-stage translation f
 | `DOCS/testplan/hyp_2_stage_translation_test_plan.md` | Two-stage translation baseline (including implicit access scenarios) |
 | `DOCS/testplan/hyp_gstage_translation_test_plan.md` | G-stage translation baseline |
 
-### Covered Specification Points
+### Covered Specification Points (Norm ID Level Anchoring)
 
 | Norm ID | Original Text |
 |---------|---------------|
@@ -50,6 +61,11 @@ The test suite covers explicit G-stage accesses, implicit VS-stage translation f
 | `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. |
 | `norm:hgatp_mode_sv57x4` | For Sv57x4, partitioning is identical to Sv57, except with 2 more bits at the high end in VPN[4]. Address bits 63:59 must all be zeros, or else a guest-page-fault exception occurs. |
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. |
+| `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. |
+| `norm:hlsv_mode` | The hypervisor virtual-machine load and store instructions are valid only in M-mode or HS-mode, or in U-mode when `hstatus`.HU=1. |
+| `norm:hlsv_trans` | As usual for VS-mode and VU-mode, two-stage address translation is applied, and the HS-level `sstatus`.SUM is ignored. |
+| `norm:htinst_val` | `htinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. |
+| `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value (the faulting guest physical address) is written to `mtval2` or `htval`. |
 
 > [!IMPORTANT]
 > The core of the Shtvala specification is a **single tightening rule**: changing the H-extension original text from "either zero or the guest physical address" to "must be the guest physical address". All test cases revolve around "trigger GPF → verify htval must equal GPA>>2 and != 0", and leverage adjacent norms from the H-extension to achieve complete coverage in scenarios where Shtvala does not directly constrain but interacts with htval behavior (such as Sv*x4 high-bit overflow, cross-page accesses, non-GPF trap clearing, etc.).
@@ -57,7 +73,7 @@ The test suite covers explicit G-stage accesses, implicit VS-stage translation f
 ### Out of Scope
 
 - **`mtval2` behavior**: The Shtvala SPEC original text does not cover `mtval2`. `mtval2` is constrained by the H-extension baseline `norm:mtval2_trapval` series (including medeleg=0 non-delegation, `mstatus.MPRV+MPV` triggering M-mode two-stage access), and belongs to the H-extension baseline test plan. However, the GPF path for HLV/HLVX/HSV instructions in Group 5 (trap to M-mode, writing mtval2) is included in this plan as symmetric coverage of Shtvala constraints.
-- **Strong constraint on whether `stval` writes GVA**: Belongs to the Sstvala extension (`SPEC/sstvala.adoc`)
+- **Strong constraint on whether `stval` writes GVA**: Belongs to the Sstvala extension (`sstvala.adoc`)
 - **`htinst` encoding**: Belongs to the H-extension baseline (`norm:htinst_val`)
 - **Sv*x4 G-stage translation path correctness**: Belongs to `hyp_gstage_translation_test_plan.md`
 - **VS-stage translation path correctness**: Belongs to `hyp_2_stage_translation_test_plan.md`
@@ -131,8 +147,8 @@ Prerequisites for all GPF test cases:
 ### Group 1: htval Register Attributes (Basic RW and WARL)
 
 **Specification Basis**:
-- `norm:htval_sz_acc_op` (`SPEC/hypervisor.adoc:906-910`): htval is an HSXLEN-bit RW register
-- `norm:htval_val` (`SPEC/hypervisor.adoc:956-959`): htval is WARL, must hold 0
+- `norm:htval_sz_acc_op` (`hypervisor.adoc:906-910`): htval is an HSXLEN-bit RW register
+- `norm:htval_val` (`hypervisor.adoc:956-959`): htval is WARL, must hold 0
 
 **Test Responsibility**: Verify that the htval register is readable and writable in M-mode/HS-mode, WARL behavior is legal, and VS/VU-mode access triggers illegal-instruction. This is the prerequisite for subsequent Shtvala assertions.
 
@@ -152,10 +168,10 @@ Prerequisites for all GPF test cases:
 ### Group 2: Explicit G-stage Access GPF (Shtvala Core: htval Must Be Non-zero)
 
 **Specification Basis**:
-- `norm:shtvala_htval_faulting_gpa` (`SPEC/shtvala.adoc:4-6`): htval must write faulting GPA
-- `norm:htval_trapval` (`SPEC/hypervisor.adoc:916-921`): On GPF, htval writes GPA>>2
-- `norm:H_guest_page_fault` (`SPEC/hypervisor.adoc:2043-2051`): GPF general rule
-- `norm:mtval2_htval_virtaddr` (`SPEC/hypervisor.adoc:2063-2067`): When not implicit, GPA corresponds to stval
+- `norm:shtvala_htval_faulting_gpa` (`shtvala.adoc:4-6`): htval must write faulting GPA
+- `norm:htval_trapval` (`hypervisor.adoc:916-921`): On GPF, htval writes GPA>>2
+- `norm:H_guest_page_fault` (`hypervisor.adoc:2043-2051`): GPF general rule
+- `norm:mtval2_htval_virtaddr` (`hypervisor.adoc:2063-2067`): When not implicit, GPA corresponds to stval
 
 **Test Responsibility**: When VS-mode explicit access triggers G-stage GPF (cause 20/21/23), verify `htval == faulting GPA >> 2` and `htval != 0`. This is the core distinction between Shtvala and baseline H-extension.
 
@@ -179,8 +195,8 @@ Prerequisites for all GPF test cases:
 ### Group 3: Implicit VS-stage Translation GPF (htval = PTE's Own GPA)
 
 **Specification Basis**:
-- `norm:shtvala_htval_faulting_gpa` (`SPEC/shtvala.adoc:4-6`)
-- `norm:htval_trapval` (`SPEC/hypervisor.adoc:922-929`): "a guest physical address written to `htval` is that of the implicit memory access that faulted—for example, the address of a VS-level page table entry that could not be read"
+- `norm:shtvala_htval_faulting_gpa` (`shtvala.adoc:4-6`)
+- `norm:htval_trapval` (`hypervisor.adoc:922-929`): "a guest physical address written to `htval` is that of the implicit memory access that faulted—for example, the address of a VS-level page table entry that could not be read"
 
 **Test Responsibility**: Verify that when implicit PTE read during VS-stage translation triggers G-stage GPF, `htval` equals the **PTE's own** GPA (not the GPA after VS-stage translation of the original GVA, since that value is unknown when VS-stage translation fails).
 
@@ -207,9 +223,9 @@ Prerequisites for all GPF test cases:
 ### Group 4: Cross-page / Misaligned Access (htval = faulting portion)
 
 **Specification Basis**:
-- `norm:htval_trapval` (`SPEC/hypervisor.adoc:931-936`): "for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `htval` corresponds to the faulting portion of the access"
-- `norm:H_straddle` (`SPEC/hypervisor.adoc:2053-2061`): Cross-page access stval writes page-boundary GVA
-- `norm:mtval2_htval_virtaddr` (`SPEC/hypervisor.adoc:2063-2067`): When not implicit, GPA corresponds to exact GVA in stval
+- `norm:htval_trapval` (`hypervisor.adoc:931-936`): "for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `htval` corresponds to the faulting portion of the access"
+- `norm:H_straddle` (`hypervisor.adoc:2053-2061`): Cross-page access stval writes page-boundary GVA
+- `norm:mtval2_htval_virtaddr` (`hypervisor.adoc:2063-2067`): When not implicit, GPA corresponds to exact GVA in stval
 
 **Test Responsibility**: When load/store/instruction fetch access straddles a page boundary, with the first half succeeding and the second half triggering G-stage GPF, verify `htval` equals the **faulting portion's** GPA (i.e., the GPA starting from the byte after the page boundary), not the original access start address.
 
@@ -232,11 +248,11 @@ Prerequisites for all GPF test cases:
 ### Group 5: G-stage GPF Triggered by HLV / HLVX / HSV Instructions (mtval2 = GPA >> 2)
 
 **Specification Basis**:
-- `norm:shtvala_htval_faulting_gpa` (`SPEC/shtvala.adoc:4-6`): htval / mtval2 must write faulting GPA
-- `norm:htval_trapval` / `norm:mtval2_trapval` (`SPEC/hypervisor.adoc:916-921`): On GPF, write GPA>>2
-- `norm:hlsv_trans` (`SPEC/hypervisor.adoc:1492`): HLV/HLVX/HSV always perform two-stage translation
-- `norm:hlsv_mode` (`SPEC/hypervisor.adoc:1488`): HLV/HLVX/HSV are valid only in M-mode, HS-mode, or U-mode (hstatus.HU=1)
-- `SPEC/hypervisor.adoc:1505-1507` (NOTE): HLVX exception type is the same as load (cause=21), **not** instruction fetch exception (cause=20)
+- `norm:shtvala_htval_faulting_gpa` (`shtvala.adoc:4-6`): htval / mtval2 must write faulting GPA
+- `norm:htval_trapval` / `norm:mtval2_trapval` (`hypervisor.adoc:916-921`): On GPF, write GPA>>2
+- `norm:hlsv_trans` (`hypervisor.adoc:1492`): HLV/HLVX/HSV always perform two-stage translation
+- `norm:hlsv_mode` (`hypervisor.adoc:1488`): HLV/HLVX/HSV are valid only in M-mode, HS-mode, or U-mode (hstatus.HU=1)
+- `hypervisor.adoc:1505-1507` (NOTE): HLVX exception type is the same as load (cause=21), **not** instruction fetch exception (cause=20)
 
 **Test Responsibility**: Verify that when executing HLV/HLVX/HSV instructions in HS-mode (V=0) performing two-stage translation, if G-stage mapping miss causes GPF, mtval2 correctly writes GPA >> 2. HLV/HSV executed at V=0 trap GPF to M-mode, so verification targets are `mcause` and `mtval2` (semantically symmetric to `htval`).
 
@@ -264,10 +280,10 @@ Prerequisites for all GPF test cases:
 ### Group 6: G-stage MODE Coverage and GPA High-bit Overflow
 
 **Specification Basis**:
-- `norm:hgatp_mode_x4` (`SPEC/hypervisor.adoc:1914-1924`): Sv*x4 input GPA has 2 more bits than Sv*
-- `norm:hgatp_mode_sv39x4` (`SPEC/hypervisor.adoc:1943-1947`): bits 63:41 must be 0, otherwise GPF
-- `norm:hgatp_mode_sv48x4` (`SPEC/hypervisor.adoc:1953-1959`): bits 63:50 must be 0, otherwise GPF
-- `norm:hgatp_mode_sv57x4` (`SPEC/hypervisor.adoc:1965-1971`): bits 63:59 must be 0, otherwise GPF
+- `norm:hgatp_mode_x4` (`hypervisor.adoc:1914-1924`): Sv*x4 input GPA has 2 more bits than Sv*
+- `norm:hgatp_mode_sv39x4` (`hypervisor.adoc:1943-1947`): bits 63:41 must be 0, otherwise GPF
+- `norm:hgatp_mode_sv48x4` (`hypervisor.adoc:1953-1959`): bits 63:50 must be 0, otherwise GPF
+- `norm:hgatp_mode_sv57x4` (`hypervisor.adoc:1965-1971`): bits 63:59 must be 0, otherwise GPF
 - `norm:shtvala_htval_faulting_gpa`: Linkage — even in overflow scenarios, htval must write GPA
 
 **Test Responsibility**: Verify that under three G-stage MODEs (Sv39x4/Sv48x4/Sv57x4), regardless of whether GPF is caused by legal-range GPA or high-bit overflow GPA, htval must write complete faulting GPA>>2.
@@ -288,7 +304,7 @@ Prerequisites for all GPF test cases:
 ### Group 7: Non-GPF Trap Does Not Pollute htval (Must Write 0)
 
 **Specification Basis**:
-- `norm:htval_trapval` (`SPEC/hypervisor.adoc:919`): "For other traps, `htval` is set to zero"
+- `norm:htval_trapval` (`hypervisor.adoc:919`): "For other traps, `htval` is set to zero"
 
 **Test Responsibility**: Shtvala strengthens that htval must be non-zero on GPF; conversely, non-GPF traps entering HS-mode must **actively** clear htval (to prevent reading residual values from previous GPF).
 
@@ -308,8 +324,8 @@ Prerequisites for all GPF test cases:
 ### Group 8: htval / stval Consistency + Low 2 Bits Recovery via stval
 
 **Specification Basis**:
-- `norm:mtval2_htval_virtaddr` (`SPEC/hypervisor.adoc:2063-2067`): When not implicit, GPA must correspond to stval
-- `norm:htval_trapval` NOTE paragraph (`SPEC/hypervisor.adoc:948-953`): "the least-significant two bits are ordinarily the same as the least-significant two bits of the faulting virtual address in `stval`. For faults due to implicit memory accesses for VS-stage address translation, the least-significant two bits are instead zeros"
+- `norm:mtval2_htval_virtaddr` (`hypervisor.adoc:2063-2067`): When not implicit, GPA must correspond to stval
+- `norm:htval_trapval` NOTE paragraph (`hypervisor.adoc:948-953`): "the least-significant two bits are ordinarily the same as the least-significant two bits of the faulting virtual address in `stval`. For faults due to implicit memory accesses for VS-stage address translation, the least-significant two bits are instead zeros"
 
 **Test Responsibility**: Since htval stores GPA>>2, complete GPA reconstruction requires:
 - **Explicit access**: `(htval << 2) | (stval & 0x3) == faulting GPA`
@@ -330,7 +346,7 @@ Prerequisites for all GPF test cases:
 ### Group 9: hstatus.GVA Linkage
 
 **Specification Basis**:
-- `norm:hstatus_gva_op` (`SPEC/hypervisor.adoc:321-326`): On entering HS-mode, if GVA is written to stval, then hstatus.GVA=1; otherwise GVA=0
+- `norm:hstatus_gva_op` (`hypervisor.adoc:321-326`): On entering HS-mode, if GVA is written to stval, then hstatus.GVA=1; otherwise GVA=0
 
 **Test Responsibility**: Shtvala does not directly govern hstatus.GVA, but on GPF, stval writing GVA and htval writing GPA are a pair of linked information. Verify both states are consistent: GPF → GVA=1 and htval≠0; non-GPF → GVA=0 and htval=0.
 
@@ -420,3 +436,27 @@ Prerequisites for all GPF test cases:
 | WARL subset | Allows minimal subset (even just 0) | Must hold all faulting GPAs within implementation width |
 | htval on non-GPF trap | Write 0 (baseline already requires) | Same (Shtvala does not tighten) |
 | `mtval2` behavior | Constrained by `mtval2_trapval` series | **Not constrained by Shtvala** (out-of-scope) |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shtvala_htval_faulting_gpa` | HTVAL-LGP-01 ~ HTVAL-LGP-03, HTVAL-SGP-01 ~ HTVAL-SGP-02, HTVAL-IGP-01, HTVAL-AMO-01, HTVAL-IMP-01 ~ HTVAL-IMP-07, HTVAL-STR-01 ~ HTVAL-STR-03, HTVAL-HLV-01a ~ HTVAL-HLV-04, HTVAL-MOD-01 ~ HTVAL-MOD-04 | Core constraint: htval must write the GPA and be non-zero in all GPF scenarios |
+| `norm:htval_sz_acc_op` | HTVAL-REG-01 ~ HTVAL-REG-04 | Basic register read/write attributes |
+| `norm:htval_trapval` | Each GPF case in Groups 2-6 (same as the core constraint row); HTVAL-CLR-01 ~ HTVAL-CLR-04 (write zero for non-GPF); HTVAL-CON-01 ~ HTVAL-CON-03 (low 2 bits NOTE paragraph) | H-extension baseline write-value rules |
+| `norm:htval_val` | HTVAL-REG-01 ~ HTVAL-REG-04 | WARL: must hold zero; implementation subset must accommodate all faulting GPAs |
+| `norm:H_guest_page_fault` | HTVAL-LGP-01 ~ HTVAL-LGP-03, HTVAL-SGP-01 ~ HTVAL-SGP-02, HTVAL-IGP-01 | General rules for GPF delegation and write values |
+| `norm:H_straddle` | HTVAL-STR-01 ~ HTVAL-STR-03 | Cross-page access writes page-boundary GVA to stval |
+| `norm:mtval2_htval_virtaddr` | HTVAL-CON-01 ~ HTVAL-CON-03, HTVAL-LGP-01 ~ HTVAL-LGP-03 | In non-implicit scenarios, GPA corresponds to the exact GVA in stval |
+| `norm:hgatp_mode_x4` | HTVAL-MOD-01 ~ HTVAL-MOD-04 | Prerequisite for Sv*x4 GPA width extension |
+| `norm:hgatp_mode_sv39x4` | HTVAL-MOD-02 | bits 63:41 overflow triggers GPF |
+| `norm:hgatp_mode_sv48x4` | HTVAL-MOD-03 | bits 63:50 overflow triggers GPF |
+| `norm:hgatp_mode_sv57x4` | HTVAL-MOD-04 | bits 63:59 overflow triggers GPF |
+| `norm:hstatus_gva_op` | HTVAL-GVA-01, HTVAL-GVA-02 | Linkage between GVA and stval writes |
+| `norm:mtval2_trapval` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | mtval2 is written when the HLV/HLVX/HSV path traps to M-mode (symmetric coverage) |
+| `norm:hlsv_mode` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | Prerequisite for HLV/HLVX/HSV valid modes |
+| `norm:hlsv_trans` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | Two-stage translation is always applied |
+| `norm:htinst_val` | HTVAL-IMP-05 | htinst linkage verification (WARL value-holding range) |
+| `norm:H_trap_xtinst_guestpage` | HTVAL-IMP-05 | htinst must write a pseudoinstruction when the GPF is implicit and htval is non-zero |

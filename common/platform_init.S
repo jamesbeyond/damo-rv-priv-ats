@@ -44,6 +44,12 @@ _platform_hw_init:
      * Called from C because platform_config.h is no longer in ASFLAGS. */
     call    platform_clear_maee
 
+    /* Release RAS block from SoC reset if the platform defines the
+     * E908A RAS reset control register (E908A_RAS_RESET_ADDR).  The
+     * function is a no-op on platforms without this macro.  This must
+     * happen before any RERI MMIO access, otherwise the CPU bus hangs. */
+    call    platform_release_ras_reset
+
     LOAD    ra, 0(sp)
     addi    sp, sp, REGSIZE
     ret

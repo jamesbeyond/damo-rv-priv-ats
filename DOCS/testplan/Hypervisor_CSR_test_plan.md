@@ -9,7 +9,12 @@
 
 本测试计划覆盖 RISC-V Hypervisor (H) 扩展中 Hypervisor CSR 与 Virtual Supervisor CSR 的寄存器行为，包括 CSR 替代机制、字段 WARL/WLRL 约束、环境配置与时间偏移等功能点。中断递送/委托机制、异常与 trap 行为分别由兄弟子集覆盖。
 
-本测试计划依据 `SPEC/hypervisor.adoc` 中的规范点（norm 标记）编写。
+本测试计划依据 RISC-V 官方 SPEC 中的规范点（norm 标记）编写：
+
+- 本地路径：`SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`（H/VS CSR 主体、vstimecmp/STCE/VSTIP 相关）
+- 官方仓库：https://github.com/riscv/riscv-isa-manual （对应仓库内上述路径文件）
+- `henvcfg` 的 STCE/PBMTE/ADUE/CBZE/CBIE/CBCFE/PMM/LPE/SSE/DTE 等字段规范点收录于 `hypervisor.adoc` 的 normative rule defs（引用 Sstc/Svpbmt/Svadu/Zicbom/Zicboz/Ssnpm/Zicfilp/Zicfiss/Ssdbltrp 等扩展的条件语义）
+- 任一平台违反 SPEC 时用例保持 FAIL 并记录至 `bugs/` 目录
 
 ### 本文档覆盖的 SPEC 章节
 - Hypervisor and Virtual Supervisor CSRs（hstatus, hedeleg, hideleg, henvcfg, htimedelta CSR 行为）
@@ -392,3 +397,82 @@
 | DELEG-01 | hedeleg 可写 bit 验证 | 逐 bit 写 hedeleg，读回验证可写/只读属性 | bits 1-8,12,13,15,18 可写；bits 9-11,16,19-23 只读零 |
 | DELEG-02 | hedeleg bit 0 可写性依赖 IALIGN | 写 hedeleg bit 0 并读回 | IALIGN=32 时可写，否则只读零 |
 | DELEG-03 | hideleg 可写 bit 验证 | 写 hideleg bits 0-15，读回验证 | bits 10/6/2 可写，bits 12/9/5/1 只读零 |
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+下表标明"覆盖的规范点"章节中每条规范点被哪些测试用例覆盖。
+
+| Norm ID | 覆盖的测试 ID |
+|---------|---------------|
+| `norm:H_mtval_nrz` | VCSR-18 |
+| `norm:hedeleg_acc` | DELEG-01、DELEG-02 |
+| `norm:hedeleg_sz_acc` | DELEG-01 |
+| `norm:henvcfg_adue_op` | HENV-06、HENV-07、HENV-29 |
+| `norm:henvcfg_cbcfe` | HENV-12、HENV-13、HENV-26 |
+| `norm:henvcfg_cbie` | HENV-14、HENV-15、HENV-20、HENV-21、HENV-25 |
+| `norm:henvcfg_cbze` | HENV-10、HENV-11、HENV-27 |
+| `norm:henvcfg_dte_op` | HENV-16、HENV-17、HENV-28 |
+| `norm:henvcfg_fiom_op` | HENV-02、HENV-03 |
+| `norm:henvcfg_fiom_order` | HENV-02、HENV-03 |
+| `norm:henvcfg_lpe_op` | HENV-23 |
+| `norm:henvcfg_pbmte_op` | HENV-04、HENV-05、HENV-18 |
+| `norm:henvcfg_pmm_op` | HENV-22、HENV-24 |
+| `norm:henvcfg_sse_op` | HENV-23 |
+| `norm:henvcfg_stce` | HENV-08、HENV-09、HENV-19、VSTC-04 |
+| `norm:henvcfg_sz_acc_op` | HENV-01 |
+| `norm:hideleg_acc` | DELEG-03 |
+| `norm:hideleg_sz_acc` | DELEG-03 |
+| `norm:hip_vstip_clear` | VSTC-03 |
+| `norm:hip_vstip_enable` | VSTC-05、VSTC-06 |
+| `norm:hip_vstip_op` | VSTC-02、VSTC-07 |
+| `norm:H_scsrs_nomatch` | VCSR-16、VCSR-17 |
+| `norm:H_vscsrs_acc_m_hs` | VCSR-06、VCSR-07 |
+| `norm:H_vscsrs_acc_u` | VCSR-05 |
+| `norm:H_vscsrs_acc_vs` | VCSR-04 |
+| `norm:H_vscsrs_sub` | VCSR-01、VCSR-02、VCSR-09~15、VSST-02、VSCR-07 |
+| `norm:H_vscsrs_v0` | VCSR-08、VSST-11、VSCR-06 |
+| `norm:H_vscsrs_v1` | VCSR-03 |
+| `norm:hstatus_gva_op` | HSTAT-20~23 |
+| `norm:hstatus_hu_op` | HSTAT-11、HSTAT-12 |
+| `norm:hstatus_spv_op` | HSTAT-13、HSTAT-14 |
+| `norm:hstatus_spv_sret` | HSTAT-15 |
+| `norm:hstatus_spvp_op` | HSTAT-16~19 |
+| `norm:hstatus_sz_acc_op` | HSTAT-01 |
+| `norm:hstatus_vgein_op` | HSTAT-26 |
+| `norm:hstatus_vsbe_op` | HSTAT-24 |
+| `norm:hstatus_vsxl_32` | HSTAT-25（条件：仅 HSXLEN=32 实现，RV64 平台不触发该分支） |
+| `norm:hstatus_vsxl_64` | HSTAT-25 |
+| `norm:hstatus_vsxl_op` | HSTAT-25 |
+| `norm:hstatus_vtsr_op` | HSTAT-02、HSTAT-03 |
+| `norm:hstatus_vtvm_op` | HSTAT-07~10 |
+| `norm:hstatus_vtw_op` | HSTAT-04~06 |
+| `norm:htimedelta_sz_acc_op` | HTDLT-01~05 |
+| `norm:time_htimedelta_req` | HTDLT-01（htimedelta 存在性由成功访问隐式验证） |
+| `norm:vscause_sz_acc_op` | VSCR-03、VSCR-05、VSCR-07 |
+| `norm:vscause_wlrl` | VSCR-03 |
+| `norm:vsepc_warl` | VSCR-02 |
+| `norm:vsip_vsie_lcofi` | VSIE-21、VSIE-22 |
+| `norm:vsip_vsie_sei` | VSIE-02、VSIE-03、VSIE-08、VSIE-11、VSIE-14、VSIE-20 |
+| `norm:vsip_vsie_ssi` | VSIE-06、VSIE-07、VSIE-10、VSIE-13、VSIE-16、VSIE-18、VSIE-19 |
+| `norm:vsip_vsie_sti` | VSIE-04、VSIE-05、VSIE-09、VSIE-12、VSIE-15 |
+| `norm:vsip_vsie_sz_acc_op` | VSIE-01、VSIE-17 |
+| `norm:vspec_sz_acc_op` | VSCR-02、VSCR-05、VSCR-07 |
+| `norm:vsscratch_sz_acc_op` | VSCR-01、VSCR-07 |
+| `norm:vsstatus_fs_op` | VSST-03~06 |
+| `norm:vsstatus_sd_xs_op` | VSST-10 |
+| `norm:vsstatus_sz_acc_op` | VSST-01、VSST-02 |
+| `norm:vsstatus_ube` | VSST-01（UBE WARL/只读副本行为随基本读写验证） |
+| `norm:vsstatus_uxl_change` | VSST-12（条件：VSXLEN 32→64 切换场景，RV64 平台不触发该分支） |
+| `norm:vsstatus_uxl_op` | VSST-12 |
+| `norm:vsstatus_v0` | VSST-11 |
+| `norm:vsstatus_vs_op` | VSST-07~09 |
+| `norm:vstimecmp_acc` | VSTC-01（条件：仅 RV32 分体访问场景，RV64 平台不触发该分支） |
+| `norm:vstimecmp_sz` | VSTC-01 |
+| `norm:vstval_sz_acc_op` | VSCR-04、VSCR-05、VSCR-07 |
+| `norm:vstval_warl` | VSCR-04 |
+| `norm:vsxl_ro` | HSTAT-25 |
+| `norm:vtw_virtinstr` | HSTAT-04（实现允许的始终触发 virtual-instruction 行为在 HSTAT-04 预期内接受） |
+
+未被覆盖/不可测规范点说明：本文档声明的规范点均有对应用例。其中 `norm:hstatus_vsxl_32`、`norm:vsstatus_uxl_change`、`norm:vstimecmp_acc` 为条件规范点（分别依赖 HSXLEN=32、VSXLEN 32→64 切换、RV32 分体访问场景），RV64 平台不触发对应分支，仅在对应基本读写用例中做 WARL 读回验证；HENV-18/19、HENV-24~29 为条件用例（依赖对应扩展未实现时的只读零语义）；VSIE-21/22 为条件用例（依赖 Shlcofideleg 探测结果）。

@@ -71,7 +71,7 @@ Svpbmt,49,46,0,3
 Svvptc,15,13,0,2
 Svrsw60t59b,0,0,0,0
 Sdext,104,21,0,83
-Sdtrig,118,84,0,34
+Sdtrig,118,85,0,33
 Sm_CSR,224,172,7,45
 Sm_Exceptions,100,88,1,11
 Sm_Interrupts,0,0,0,0
@@ -98,8 +98,8 @@ Zicntr,32,30,0,2
 Zicond,39,38,0,1
 Zicsr,54,52,0,2
 Zifencei,20,19,0,1
-Zihintntl,55,52,0,3
-Zihintpause,17,16,0,1
+Zihintntl,55,49,0,6
+Zihintpause,17,13,0,4
 Zihpm,34,26,0,8
 Zimop,32,30,0,2
 Ziccamoa,32,26,0,6

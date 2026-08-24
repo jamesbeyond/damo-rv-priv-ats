@@ -8,19 +8,23 @@
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/shvstvecd.adoc` — Shvstvecd Extension for Direct Trap Vectoring, Version 1.0
-- `SPEC/hypervisor.adoc` 第 1300–1312 行（`vstvec` 寄存器定义） — 提供 `vstvec` 字段布局与 V=1 时替代 `stvec` 的行为
-- `SPEC/supervisor.adoc` 第 318–365 行（`stvec` 寄存器与 MODE 字段编码） — 提供 BASE/MODE 字段布局与 Direct/Vectored 行为定义（vstvec 格式与 stvec 相同）
+本方案依据 RISC-V Privileged Architecture 规范（Shvstvecd 扩展章节与 Hypervisor/Supervisor 扩展 vstvec/stvec 相关章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/shvstvecd.adoc` — Shvstvecd Extension for Direct Trap Vectoring, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `vstvec` 寄存器定义（第 1300–1312 行）：字段布局与 V=1 时替代 `stvec` 的行为
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — `stvec` 寄存器与 MODE 字段编码（第 318–365 行）：BASE/MODE 字段布局与 Direct/Vectored 行为定义（vstvec 格式与 stvec 相同）
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/shvstvecd.adoc` | Shvstvecd 规范全文（共 10 行） |
-| `SPEC/hypervisor.adoc:1300-1312` | `vstvec` 寄存器规范，定义为 VSXLEN-bit RW、V=1 时替代 `stvec` |
-| `SPEC/supervisor.adoc:318-365` | `stvec` 寄存器规范，定义 BASE/MODE 字段 + Direct/Vectored 行为（vstvec 格式相同） |
+| `shvstvecd.adoc` | Shvstvecd 规范全文（共 10 行） |
+| `hypervisor.adoc:1300-1312` | `vstvec` 寄存器规范，定义为 VSXLEN-bit RW、V=1 时替代 `stvec` |
+| `supervisor.adoc:318-365` | `stvec` 寄存器规范，定义 BASE/MODE 字段 + Direct/Vectored 行为（vstvec 格式相同） |
 | `common/encoding.h:289` | `CSR_VSTVEC = 0x205` |
 | `common/csr_accessors.c:216,414` | 已存在 `_CSR_READ_CASE(0x205)` / `_CSR_WRITE_CASE(0x205)` 通用 CSR 读写入口 |
 | `common/hyp/hyp_priv.h:21` | `run_in_vs_mode(fn, arg)` — 在 VS-mode (V=1) 执行测试函数 |
@@ -40,9 +44,10 @@
 | `norm:vstvec_sz_acc_op` | The `vstvec` register is a VSXLEN-bit read/write register that is VS-mode's version of supervisor register `stvec`. When V=1, `vstvec` substitutes for the usual `stvec`. When V=0, `vstvec` does not directly affect the behavior of the machine. | `vstvec` 是 VSXLEN 位读写寄存器，VS 模式版本的 `stvec`。V=1 时替代 `stvec`；V=0 时不直接影响机器行为。 |
 | `norm:stvec_op` | The BASE field in `stvec` is a field that can hold any valid virtual or physical address, subject to the following alignment constraints: the address must be 4-byte aligned, and MODE settings other than Direct might impose additional alignment constraints on the value in the BASE field. | BASE 字段可保存任何有效虚拟或物理地址，但必须 4 字节对齐，非 Direct 模式可能施加更严格的对齐约束。 |
 | `norm:stvec_sz_base` | The CSR contains only bits XLEN-1 through 2 of the address BASE. When used as an address, the lower two bits are filled with zeroes to obtain an XLEN-bit address that is always aligned on a 4-byte boundary. | CSR 仅保存 BASE 地址的 [XLEN-1:2] 位。用作地址时低两位填零，获得始终 4 字节对齐的 XLEN 位地址。 |
+| `norm:H_trap_vs_csrwrites` | When a trap is taken into VS-mode, `vsstatus`.SPP is set accordingly. Register `hstatus` and the HS-level `sstatus` are not modified, and V remains 1. A trap into VS-mode also writes SPIE and SIE in `vsstatus` and writes CSRs `vsepc`, `vscause`, and `vstval`. | 陷阱进入 VS 模式时写入 vsstatus/vsepc/vscause/vstval，并按 vstvec 指定地址跳转。 |
 
 > [!IMPORTANT]
-> Shvstvecd 规范本身只有两条强约束（Direct 可保持、BASE 4 字节对齐持有能力）。Group 3 的 trap 跳转测试是对"BASE 设置确实生效、Direct 模式行为正确"的端到端验证，规范依据来自 `SPEC/supervisor.adoc:355-364`（stvec MODE 编码定义，vstvec 格式相同）—— Shvstvecd 强约束 Direct 模式可用，自然要求该模式行为符合 supervisor 规范。Group 4 验证 V=1 时通过 `stvec` 指令名实际访问的是 `vstvec`，规范依据来自 `SPEC/hypervisor.adoc:1305-1307`。
+> Shvstvecd 规范本身只有两条强约束（Direct 可保持、BASE 4 字节对齐持有能力）。Group 3 的 trap 跳转测试是对"BASE 设置确实生效、Direct 模式行为正确"的端到端验证，规范依据来自 `supervisor.adoc:355-364`（stvec MODE 编码定义，vstvec 格式相同）—— Shvstvecd 强约束 Direct 模式可用，自然要求该模式行为符合 supervisor 规范。Group 4 验证 V=1 时通过 `stvec` 指令名实际访问的是 `vstvec`，规范依据来自 `hypervisor.adoc:1305-1307`。
 
 ### 不在测试范围内
 
@@ -73,32 +78,10 @@ Group 3 需要一个 VS-mode 可用的自定义 trap entry，与 sstvecd 类似�
 - **位于恒等映射范围内**：确保 VS-mode 下 trap entry 地址有效（G-stage 恒等映射覆盖）
 - **最小化处理路径**：记录命中 PC 到全局变量 `g_shvstvecd_trap_pc`、记录 `vscause` 到 `g_shvstvecd_trap_cause`，然后 `vsepc += 4` 后 `sret` 返回（V=1 时 `sepc/scause/sret` 实际操作 `vsepc/vscause`）
 
-参考实现思路（伪代码）：
-
-```asm
-.section .text
-.globl  shvstvecd_trap_entry
-.align  2                          /* 4 byte aligned, 满足 BASE 对齐 */
-shvstvecd_trap_entry:
-    csrrw   t0, sscratch, t0       /* V=1 时实际操作 vsscratch */
-    /* 记录命中 PC：entry 起点地址 */
-    la      t1, shvstvecd_trap_entry
-    la      t0, g_shvstvecd_trap_pc
-    sd      t1, 0(t0)
-    /* 记录 scause (V=1 时实际读 vscause) */
-    csrr    t1, scause
-    la      t0, g_shvstvecd_trap_cause
-    sd      t1, 0(t0)
-    /* sepc += 4，跳过触发 trap 的指令 (V=1 时实际操作 vsepc) */
-    csrr    t1, sepc
-    addi    t1, t1, 4
-    csrw    sepc, t1
-    csrrw   t0, sscratch, t0       /* 还原 t0 */
-    sret
-```
+参考实现流程：借助 `sscratch`（V=1 时实际操作 `vsscratch`）保存临时寄存器；将 entry 起点地址作为命中 PC 记录到 `g_shvstvecd_trap_pc`；读取 `scause`（V=1 时实际读 `vscause`）记录到 `g_shvstvecd_trap_cause`；将 `sepc`（V=1 时实际写 `vsepc`）推进跳过触发指令（需按实际指令长度推进，兼容压缩指令）；最后经 `sret` 返回。
 
 > [!NOTE]
-> 实际实施阶段，可参考 `sstvecd` 测试方案中的 `sstvecd_strap.S`。VS-mode 中 `scause/sepc/sscratch/sret` 等指令在 V=1 时自动映射到 `vscause/vsepc/vsscratch` 等 VS CSR。
+> VS-mode 中 `scause/sepc/sscratch/sret` 等指令在 V=1 时自动映射到 `vscause/vsepc/vsscratch` 等 VS CSR，trap entry 的实现可参照 Sstvecd 方案的同类设计。
 
 ### 3. VS-mode 的 trap 委托
 
@@ -146,14 +129,14 @@ SPEC 没有将 `vstvec` 声明为 WARL 寄存器（`hypervisor.adoc:1302-1308` �
 ## 测试分组
 
 > [!IMPORTANT]
-> 共 5 个测试组、16 个测试用例。Group 1 & 2 运行于 M-mode 直接操作 `vstvec`（CSR 0x205）；Group 3 在 VS-mode (V=1) 内通过 `stvec` 指令名间接操作 `vstvec` 并验证 trap 行为；Group 4 验证 V=1 透传语义；Group 5 探测 Vectored 模式支持（非 normative）。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）；每组提供 1 个关键 C 代码示例。
+> 共 5 个测试组、16 个测试用例。Group 1 & 2 运行于 M-mode 直接操作 `vstvec`（CSR 0x205）；Group 3 在 VS-mode (V=1) 内通过 `stvec` 指令名间接操作 `vstvec` 并验证 trap 行为；Group 4 验证 V=1 透传语义；Group 5 探测 Vectored 模式支持（非 normative）。每组提供：规范依据、测试职责、测试用例表（ID/名称/描述/预期结果）。
 
 ---
 
 ### Group 1：`vstvec.MODE` 可写性
 
 **规范依据**：
-- `norm:shvstvecd_vstvec_mode_direct`（`SPEC/shvstvecd.adoc:4-6`）：`vstvec.MODE` 必须能保持值 0（Direct）
+- `norm:shvstvecd_vstvec_mode_direct`（`shvstvecd.adoc:4-6`）：`vstvec.MODE` 必须能保持值 0（Direct）
 
 **测试职责**：验证 `vstvec.MODE` 能稳定写入并保持 Direct 值（0）；探测 Vectored（1）是否被实现。
 
@@ -162,45 +145,13 @@ SPEC 没有将 `vstvec` 声明为 WARL 寄存器（`hypervisor.adoc:1302-1308` �
 | VSTVEC-MODE-01 | MODE 写 0（Direct）回读 | M-mode `csrw 0x205, 0`（BASE=0, MODE=0），回读 `vstvec[1:0]` | `vstvec[1:0] == 0`（Direct 必然可保持） |
 | VSTVEC-MODE-02 | MODE 0→1→0 切换 | 先写 MODE=0、回读确认；再写 MODE=1、回读记录；最后写 MODE=0、回读确认 | 第 1、3 次回读 `MODE==0`；第 2 次回读 ∈ {0, 1}（实现自由） |
 
-#### 关键代码示例：VSTVEC-MODE-01
-
-```c
-/* tests/test_mode.c — VSTVEC-MODE-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_csr.h"
-
-#define VSTVEC_MODE_MASK   0x3UL
-#define VSTVEC_MODE_DIRECT 0x0UL
-
-TEST_REGISTER(test_shvstvecd_mode_direct_writable);
-bool test_shvstvecd_mode_direct_writable(void) {
-    TEST_BEGIN("VSTVEC-MODE-01: vstvec.MODE writable to 0 (Direct)");
-
-    uintptr_t saved_vstvec;
-    asm volatile ("csrr %0, 0x205" : "=r"(saved_vstvec));
-
-    /* 写入 BASE=0, MODE=0 */
-    asm volatile ("csrw 0x205, %0" :: "r"((uintptr_t)0));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x205" : "=r"(readback));
-    TEST_ASSERT("vstvec.MODE reads back as 0 (Direct)",
-                (readback & VSTVEC_MODE_MASK) == VSTVEC_MODE_DIRECT);
-
-    /* 还原 vstvec */
-    asm volatile ("csrw 0x205, %0" :: "r"(saved_vstvec));
-    TEST_END();
-}
-```
-
 ---
 
 ### Group 2：`vstvec.BASE` 在 Direct 模式下的持有能力
 
 **规范依据**：
-- `norm:shvstvecd_vstvec_base_aligned_address`（`SPEC/shvstvecd.adoc:8-10`）：当 `vstvec.MODE`=Direct 时，`vstvec.BASE` 必须能保持任意有效的 4 字节对齐地址
-- `norm:stvec_sz_base`（`SPEC/supervisor.adoc:335-338`）：CSR 仅存 BASE 的 [XLEN-1:2]，低 2 bit 写入时被强制为 0
+- `norm:shvstvecd_vstvec_base_aligned_address`（`shvstvecd.adoc:8-10`）：当 `vstvec.MODE`=Direct 时，`vstvec.BASE` 必须能保持任意有效的 4 字节对齐地址
+- `norm:stvec_sz_base`（`supervisor.adoc:335-338`）：CSR 仅存 BASE 的 [XLEN-1:2]，低 2 bit 写入时被强制为 0
 
 **测试职责**：验证在 MODE=Direct 下，BASE 字段能保持各类 4 字节对齐地址（含跨 1 GiB / 512 GiB 边界、近 VSXLEN 上界）；验证 BASE 与 MODE 写入相互独立。
 
@@ -220,48 +171,14 @@ bool test_shvstvecd_mode_direct_writable(void) {
 > [!NOTE]
 > **VSTVEC-BASE-07 的扫描范围**：按"`PLATFORM_MEM_BASE` 之上、不与 trap entry 冲突"的原则选取若干 k 值（如 k=12, 16, 20, 24, 28, 32, 36, 38），不必穷举到 63 位。
 
-#### 关键代码示例：VSTVEC-BASE-06（多次改写不影响 MODE）
-
-```c
-/* tests/test_base.c — VSTVEC-BASE-06 */
-
-#include "test_framework.h"
-
-TEST_REGISTER(test_shvstvecd_base_06_independent_of_mode);
-bool test_shvstvecd_base_06_independent_of_mode(void) {
-    TEST_BEGIN("VSTVEC-BASE-06: BASE rewrites do not disturb MODE=Direct");
-
-    VSTVEC_SAVE();
-
-    /* Pin MODE=Direct and rewrite BASE several times. */
-    static const uintptr_t bases[] = {
-        0x1000UL, 0x2000UL, 0x4000UL, 0x8000UL,
-    };
-    const unsigned n = sizeof(bases) / sizeof(bases[0]);
-
-    for (unsigned i = 0; i < n; i++) {
-        uintptr_t target = bases[i] | VSTVEC_MODE_DIRECT;
-        vstvec_write_raw(target);
-        uintptr_t rb = vstvec_read_raw();
-        TEST_ASSERT("BASE preserved across rewrite",
-                    (rb & VSTVEC_BASE_MASK) == bases[i]);
-        TEST_ASSERT("MODE remains Direct (=0)",
-                    (rb & VSTVEC_MODE_MASK) == VSTVEC_MODE_DIRECT);
-    }
-
-    VSTVEC_RESTORE();
-    TEST_END();
-}
-```
-
 ---
 
 ### Group 3：`MODE=Direct` 下 VS-mode trap 跳转到 BASE
 
 **规范依据**：
-- `SPEC/supervisor.adoc:355-364`：MODE=Direct 时，所有 trap（同步异常 + 异步中断）都把 `pc` 设为 BASE（vstvec 格式与 stvec 相同）
-- `SPEC/hypervisor.adoc:1305-1307`：V=1 时 `vstvec` 替代 `stvec`
-- `norm:H_trap_vs_csrwrites`（`SPEC/hypervisor.adoc:2549-2554`）：trap 进入 VS-mode 时写 `vsepc`、`vscause`、`vstval`，跳转目标为 `vstvec` 指定的地址
+- `supervisor.adoc:355-364`：MODE=Direct 时，所有 trap（同步异常 + 异步中断）都把 `pc` 设为 BASE（vstvec 格式与 stvec 相同）
+- `hypervisor.adoc:1305-1307`：V=1 时 `vstvec` 替代 `stvec`
+- `norm:H_trap_vs_csrwrites`（`hypervisor.adoc:2549-2554`）：trap 进入 VS-mode 时写 `vsepc`、`vscause`、`vstval`，跳转目标为 `vstvec` 指定的地址
 - Shvstvecd 强约束 Direct 必然可用（`norm:shvstvecd_vstvec_mode_direct`），因此 Direct 行为正确性是 Shvstvecd 的隐含承诺
 
 **测试职责**：验证当 `vstvec.MODE=Direct` 时，在 VS-mode 中触发的同步异常与异步中断都跳转到 BASE（而不是 BASE+4×cause）。
@@ -279,112 +196,12 @@ bool test_shvstvecd_base_06_independent_of_mode(void) {
 > [!NOTE]
 > **VSTVEC-INT-01 的中断源**：使用 `hvip_set_vssi(true)` 从 HS/M-mode 注入 VSSIP pending，然后进入 VS-mode 并使能 `vsie.SSIE` + `vsstatus.SIE`。这是 H 扩展中触发 VS-level 中断最简洁的方式，无需外部中断控制器。
 
-#### 关键代码示例：VSTVEC-DIR-01（VU-mode ecall 命中 BASE）
-
-```c
-/* tests/test_direct.c — VSTVEC-DIR-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-extern void shvstvecd_trap_entry(void);          /* 见"设计要点 2"：本地 4 byte 对齐 entry */
-extern volatile uintptr_t g_shvstvecd_trap_pc;
-extern volatile uintptr_t g_shvstvecd_trap_cause;
-
-static uintptr_t vsmode_setup_and_trigger_ecall(uintptr_t arg) {
-    uintptr_t entry = arg;
-    /* V=1 时 csrw stvec 实际写 vstvec；MODE=0 (Direct) */
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    /* 切换到 VU-mode 并触发 ecall (cause=8)；
-     * ecall 被 hedeleg 委托到 VS-mode，命中 vstvec.BASE */
-    asm volatile ("ecall");  /* 在 VU-mode 中执行；此处简化为 VS-mode 内 ecall 示意 */
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvecd_direct_ecall);
-bool test_shvstvecd_direct_ecall(void) {
-    TEST_BEGIN("VSTVEC-DIR-01: Direct mode, VU ecall lands at vstvec.BASE");
-
-    /* 委托 ecall-from-VU (cause=8) 到 VS-mode */
-    hyp_delegate_to_vs(1UL << 8, 0);
-
-    uintptr_t entry = (uintptr_t)&shvstvecd_trap_entry;
-    TEST_ASSERT("entry is 4-byte aligned", (entry & 0x3UL) == 0);
-
-    g_shvstvecd_trap_pc    = 0;
-    g_shvstvecd_trap_cause = 0;
-
-    /* 在 VS-mode 中设置 vstvec 并触发 trap */
-    run_in_vs_mode(vsmode_setup_and_trigger_ecall, entry);
-
-    /* Direct 模式：trap 命中地址必须 == BASE */
-    TEST_ASSERT("trap PC equals vstvec.BASE", g_shvstvecd_trap_pc == entry);
-    TEST_ASSERT("vscause == 8 (ecall from VU-mode)",
-                g_shvstvecd_trap_cause == 8);
-
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
-#### 关键代码示例：VSTVEC-INT-01（VSSIP 命中 BASE 而非 BASE+offset）
-
-```c
-/* tests/test_direct.c — VSTVEC-INT-01 */
-
-static uintptr_t vsmode_enable_vssi_and_wait(uintptr_t arg) {
-    uintptr_t entry = arg;
-    /* V=1 时 csrw stvec 实际写 vstvec；MODE=0 (Direct) */
-    asm volatile ("csrw stvec, %0" :: "r"(entry));
-    /* 使能 SSIE（V=1 时实际操作 vsie.SSIE） */
-    asm volatile ("csrs sie, %0" :: "r"(1UL << 1));
-    /* 使能 SIE（V=1 时实际操作 vsstatus.SIE）— 中断立即触发 */
-    asm volatile ("csrs sstatus, %0" :: "r"(1UL << 1));
-    /* VSSIP 在使能瞬间即触发，handler 会处理并返回 */
-    asm volatile ("nop");
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvecd_direct_vssip);
-bool test_shvstvecd_direct_vssip(void) {
-    TEST_BEGIN("VSTVEC-INT-01: Direct mode, VSSIP lands at BASE (not BASE+offset)");
-
-    /* 委托 VSSIP 到 VS-mode */
-    hyp_delegate_to_vs(0, 1UL << 2);
-
-    uintptr_t entry = (uintptr_t)&shvstvecd_trap_entry;
-    g_shvstvecd_trap_pc    = 0;
-    g_shvstvecd_trap_cause = 0;
-
-    /* 注入 VSSIP pending */
-    hvip_set_vssi(true);
-
-    /* 进入 VS-mode，设置 vstvec 并使能中断 */
-    run_in_vs_mode(vsmode_enable_vssi_and_wait, entry);
-
-    /* Direct 模式：中断也应跳到 BASE，而非 BASE + 4*cause */
-    TEST_ASSERT("trap PC equals BASE (Direct, not Vectored)",
-                g_shvstvecd_trap_pc == entry);
-    /* vscause 高位（interrupt bit）= 1，低位 = 1 (SSI) */
-    TEST_ASSERT("vscause is interrupt-1 (VSSI)",
-                (g_shvstvecd_trap_cause >> (sizeof(uintptr_t)*8 - 1)) == 1 &&
-                (g_shvstvecd_trap_cause & ~(1UL << (sizeof(uintptr_t)*8 - 1))) == 1);
-
-    /* 清理 */
-    hvip_set_vssi(false);
-    hyp_undelegate();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：V=1 透传验证（`stvec` 访问实际操作 `vstvec`）
 
 **规范依据**：
-- `norm:vstvec_sz_acc_op`（`SPEC/hypervisor.adoc:1302-1308`）：When V=1, `vstvec` substitutes for the usual `stvec`, so instructions that normally read or modify `stvec` actually access `vstvec` instead
+- `norm:vstvec_sz_acc_op`（`hypervisor.adoc:1302-1308`）：When V=1, `vstvec` substitutes for the usual `stvec`, so instructions that normally read or modify `stvec` actually access `vstvec` instead
 
 **测试职责**：验证在 VS-mode (V=1) 通过 `stvec` 指令名写入的值能从 HS/M-mode 通过 `vstvec`（CSR 0x205）读回；反向亦然。
 
@@ -394,49 +211,13 @@ bool test_shvstvecd_direct_vssip(void) {
 | VSTVEC-TRANS-02 | M-mode 写 vstvec → VS-mode 读 stvec | M-mode 写 `vstvec = 0xBEEF0004`，进入 VS-mode 后读 `stvec` | VS-mode 读回 == `0xBEEF0004` |
 | VSTVEC-TRANS-03 | VS-mode 写 stvec 不影响 HS-mode 的 stvec | VS-mode 写 `stvec = 0x12340000`，返回 HS-mode 后读真实 `stvec`（CSR 0x105 in V=0） | HS-mode 的 `stvec` 保持原值（未被 VS-mode 操作修改） |
 
-#### 关键代码示例：VSTVEC-TRANS-01
-
-```c
-/* tests/test_transparent.c — VSTVEC-TRANS-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_priv.h"
-#include "hyp/hyp_csr.h"
-#include "hyp/hyp_test.h"
-
-static uintptr_t vsmode_write_stvec(uintptr_t arg) {
-    /* V=1：csrw stvec 实际写 vstvec */
-    asm volatile ("csrw stvec, %0" :: "r"(arg));
-    return 0;
-}
-
-TEST_REGISTER(test_shvstvecd_transparent_vs_write);
-bool test_shvstvecd_transparent_vs_write(void) {
-    TEST_BEGIN("VSTVEC-TRANS-01: VS writes stvec, M reads vstvec");
-
-    uintptr_t saved_vstvec;
-    asm volatile ("csrr %0, 0x205" : "=r"(saved_vstvec));
-
-    uintptr_t test_val = 0xDEAD0000UL;  /* 4-byte aligned, MODE=0 */
-    run_in_vs_mode(vsmode_write_stvec, test_val);
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x205" : "=r"(readback));
-    TEST_ASSERT("vstvec == value written by VS-mode via stvec",
-                readback == test_val);
-
-    asm volatile ("csrw 0x205, %0" :: "r"(saved_vstvec));
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：Vectored 模式探测（非 normative，完善性验证）
 
 **规范依据**：
 - Shvstvecd 规范**不要求**实现 Vectored 模式（MODE=1），仅要求 Direct（MODE=0）可持有
-- `SPEC/supervisor.adoc:355-364`：stvec MODE=1（Vectored）时，中断跳转到 `BASE + 4×cause`
+- `supervisor.adoc:355-364`：stvec MODE=1（Vectored）时，中断跳转到 `BASE + 4×cause`
 
 **测试职责**：探测 vstvec.MODE 是否支持 Vectored（仅作信息收集）；若支持，验证中断跳转行为与 Direct 的差异。
 
@@ -447,41 +228,6 @@ bool test_shvstvecd_transparent_vs_write(void) {
 |---------|----------|----------|----------|
 | VSTVEC-VEC-01 | Vectored 模式可写性探测 | M-mode 写 `vstvec = BASE | 1`（MODE=Vectored），回读检查 MODE 字段 | 若回读 `MODE == 1`，记录"Vectored supported"；若回读 `MODE == 0`，记录"Vectored not supported, TEST_SKIP VEC-02" |
 | VSTVEC-VEC-02 | Vectored 中断跳转到 BASE+4×cause | 前提：VEC-01 确认 Vectored 可用。VS-mode 设 `vstvec = entry | 1`；注入 VSSIP（cause=1） | `g_shvstvecd_trap_pc == BASE + 4*1`（Vectored 模式中断偏移） |
-
-#### 关键代码示例：VSTVEC-VEC-01
-
-```c
-/* tests/test_vectored.c — VSTVEC-VEC-01 */
-
-#include "test_framework.h"
-#include "hyp/hyp_test.h"
-
-TEST_REGISTER(test_shvstvecd_vectored_probe);
-bool test_shvstvecd_vectored_probe(void) {
-    TEST_BEGIN("VSTVEC-VEC-01: probe vstvec Vectored mode support");
-
-    uintptr_t saved;
-    asm volatile ("csrr %0, 0x205" : "=r"(saved));
-
-    /* 写 MODE=1 (Vectored) + BASE=0x80001000 */
-    uintptr_t write_val = 0x80001000UL | 1UL;
-    asm volatile ("csrw 0x205, %0" :: "r"(write_val));
-
-    uintptr_t readback;
-    asm volatile ("csrr %0, 0x205" : "=r"(readback));
-    unsigned int mode = readback & 0x3;
-
-    if (mode == 1) {
-        TEST_NOTE("vstvec Vectored mode (MODE=1) is SUPPORTED on this platform");
-    } else {
-        TEST_NOTE("vstvec Vectored mode (MODE=1) is NOT supported (readback MODE=%u)", mode);
-    }
-
-    /* 无论是否支持，此测试都 PASS（仅探测） */
-    asm volatile ("csrw 0x205, %0" :: "r"(saved));
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -518,7 +264,7 @@ bool test_shvstvecd_vectored_probe(void) {
 - `HYP_TEST_END()`：测试结束宏，含 hyp_reset_state + 结果记录
 - `TEST_REGISTER` / `TEST_BEGIN` / `TEST_ASSERT` / `TEST_END`：测试用例注册与断言宏
 
-### 全局变量（`shvstvecd/tests/shvstvecd_strap.S` 提供）
+### 全局变量（由 VS-mode trap entry 提供）
 
 | 变量 | 类型 | 说明 |
 |------|------|------|
@@ -548,3 +294,18 @@ bool test_shvstvecd_vectored_probe(void) {
 | VSTVEC-INT-01 失败（无命中） | `hideleg` 未委托 VSSIP，或 `hvip` 未注入，或 `vsstatus.SIE` 未使能 |
 | VSTVEC-TRANS-01/02 失败 | V=1 时 stvec 未正确映射到 vstvec，H 扩展实现异常 |
 | VSTVEC-TRANS-03 失败 | VS-mode 写 stvec 错误地修改了 HS-mode 的 stvec |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:shvstvecd_vstvec_mode_direct` | VSTVEC-MODE-01, VSTVEC-MODE-02, VSTVEC-DIR-01 ~ VSTVEC-DIR-03 | 核心约束：MODE 可持有 Direct(0)，含端到端跳转验证 |
+| `norm:shvstvecd_vstvec_base_aligned_address` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08 | 核心约束：MODE=Direct 时 BASE 可持有任意 4 字节对齐地址 |
+| `norm:vstvec_sz_acc_op` | VSTVEC-TRANS-01 ~ VSTVEC-TRANS-03 | V=1 时 stvec 指令实际访问 vstvec |
+| `norm:stvec_op` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08, VSTVEC-DIR-01 ~ VSTVEC-DIR-03 | BASE 对齐约束与 Direct 行为基线（vstvec 格式同 stvec） |
+| `norm:stvec_sz_base` | VSTVEC-BASE-01 ~ VSTVEC-BASE-08 | CSR 仅存 BASE[XLEN-1:2]，低 2 位写被强制为 0 |
+| `norm:H_trap_vs_csrwrites` | VSTVEC-DIR-01 ~ VSTVEC-DIR-03, VSTVEC-INT-01 | trap 进入 VS-mode 后跳转目标为 vstvec 指定地址 |
+| Vectored 模式行为 | VSTVEC-VEC-01, VSTVEC-VEC-02 | 非 normative：仅探测 Vectored 是否实现，不验证正确性 |
+| MODE 写保留值（≥2）行为 | — | 不覆盖：SPEC 未将 vstvec 声明为 WARL，行为未定义，见设计要点 6 |

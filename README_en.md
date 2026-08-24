@@ -67,29 +67,42 @@ Standard structure of each extension directory:
 ## Quick Start
 
 ```bash
-# Build a specific extension (default: QEMU RV64)
-make pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# Build a specific extension (e.g. pmp, on default platfrom: QEMU and default toolchain: riscv64-unknown-elf-gcc)
+cd pmp && make clean && make 
 
 # Build for a different platform
-make pmp CONFIG=sail-rv64-max CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+make clean && make CONFIG=sail-rv64-max
 
-# Build all extensions
+# Build all extensions (at top level)
 make all CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 
-# Run on simulators
-make qemu-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-make sail-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-make spike-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# Build and Run on simulators (Require Simulator Executable in PATH) 
+make clean && make qemu
+make clean && make spike
+make clean && make sail
+make clean && make whisper
 
 # Build for RV32
-make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+make pmp XLEN=32
 ```
 
 Run specific tests using `TEST_FILTER`:
 
 ```bash
-make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"' CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 ```
+
+---
+
+## UART Silent Mode
+
+Enable it dynamically at build time via `EXTRA_CFLAGS`:
+
+```bash
+cd <test_dir>; make clean; make <target> EXTRA_CFLAGS='-DUART_SILENT_MODE'
+```
+
+Note: command-line variable changes do not trigger rebuilds of already-compiled objects, so always run `make clean` before toggling this switch.
 
 ---
 
@@ -274,11 +287,11 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **Machine-mode (Sm\*)** | `Sm_CSR` | M-Mode CSR | |
 | | `Sm_Interrupts` | M-Mode interrupt handling | |
 | | `Sm_Exceptions` | M-Mode exception handling | |
-| | `Smstateen` | State enable | ✓ |
+| | `Smstateen` | State enable | |
 | | `Smrnmi` | Resumable NMI | |
 | | `Smcdeleg` | Counter delegation | |
-| | `Smcntrpmf` | Cycle/Instret privilege mode filtering | ✓ |
-| | `Smcsrind` | Indirect CSR access | ✓ |
+| | `Smcntrpmf` | Cycle/Instret privilege mode filtering | |
+| | `Smcsrind` | Indirect CSR access | |
 | | `Smctr` | Control Transfer Records | |
 | | `Smdbltrp` | Double trap | |
 | **Supervisor (Ss\*)** | `Ss_CSR` | S-Mode CSR | |
@@ -304,17 +317,17 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `clic` | CLIC | |
 | | `aia_clic` | AIA + CLIC | |
 | | `aclint` | ACLINT | |
-| **CFI (Control Flow Integrity)** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
-| | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
+| **CFI (Control Flow Integrity)** | `cfi.Zicfilp` | CFI Landing Pad | |
+| | `cfi.Zicfiss` | CFI Shadow Stack | |
 | **CMO (Cache Management)** | `cmo.base` | CMO base | |
-| | `cmo.Zicbom` | Cache Block Management | ✓ |
-| | `cmo.Zicbop` | Cache Block Prefetch | ✓ |
-| | `cmo.Zicboz` | Cache Block Zero | ✓ |
-| **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | ✓ |
-| | `zpm.Smnpm` | Next-level Pointer Masking | ✓ |
-| | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
+| | `cmo.Zicbom` | Cache Block Management | |
+| | `cmo.Zicbop` | Cache Block Prefetch | |
+| | `cmo.Zicboz` | Cache Block Zero | |
+| **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | |
+| | `zpm.Smnpm` | Next-level Pointer Masking | |
+| | `zpm.Ssnpm` | S-mode Pointer Masking | |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
-| | `qos.Ssqosid` | QoS Ssqosid | ✓ |
+| | `qos.Ssqosid` | QoS Ssqosid | |
 | **Unpriv Extensions (Zi\*)** | `Zicsr` | CSR instructions | |
 | | `Zifencei` | Instruction-fetch fence | |
 | | `Zicond` | Integer conditional operations | |
@@ -337,7 +350,7 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | **Other** | `sbi` | SBI interface | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
-| | `Zkr` | Entropy source (Key Seed) | ✓ |
+| | `Zkr` | Entropy source (Key Seed) | |
 
 ---
 

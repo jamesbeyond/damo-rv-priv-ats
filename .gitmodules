@@ -37,3 +37,6 @@
 [submodule "SPEC/riscv-ssqosid"]
 	path = SPEC/riscv-ssqosid
 	url = https://github.com/riscv/riscv-ssqosid.git
+[submodule "SPEC/riscv-smmtt"]
+	path = SPEC/riscv-smmtt
+	url = https://github.com/riscv/riscv-smmtt.git

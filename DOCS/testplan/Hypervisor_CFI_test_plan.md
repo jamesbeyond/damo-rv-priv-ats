@@ -9,9 +9,16 @@
 
 在 Hypervisor 环境下，CFI 的使能、状态保存与恢复、异常委托、页表交互等均受 H 扩展影响。本测试计划聚焦于 H 扩展分别与 Zicfilp 和 Zicfiss 两个子扩展的交集行为。
 
-本测试计划依据 `SPEC/hypervisor.adoc` 和 `SPEC/cfi.adoc` 中的规范点（norm 标记）编写。
+本测试计划依据 `hypervisor.adoc` 和 `cfi.adoc` 中的规范点（norm 标记）编写。
 
 ### 本文档覆盖的 SPEC 章节
+
+本方案依据 RISC-V Privileged Architecture 规范（Hypervisor 扩展与 CFI 扩展章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`
+  - `SPEC/riscv-isa-manual/src/priv/cfi.adoc`
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （引用 priv 章节中 Hypervisor 扩展与 Control Flow Integrity 部分）
 
 **来自 cfi.adoc：**
 - Landing-Pad-Enabled (LPE) State（xLPE 确定表，VS-mode 由 henvcfg.LPE 控制）
@@ -49,12 +56,14 @@
 | `norm:Zicfilp_pelp_trap` | cfi.adoc | When a trap is taken into privilege mode x, the xpelp is set to ELP and ELP is set to NO_LP_EXPECTED. | 陷阱进入特权模式 x 时，xpelp 设为 ELP，ELP 设为 NO_LP_EXPECTED。 |
 | `norm:Zicfilp_pelp_trap_return` | cfi.adoc | When executing an xret instruction, if the new privilege mode is y, then ELP is set to the value of xpelp if yLPE is 1; otherwise, it is set to NO_LP_EXPECTED; xpelp is set to NO_LP_EXPECTED. | 执行 xret 时，若新特权模式为 y，则 yLPE=1 时 ELP←xpelp，否则 ELP←NO_LP_EXPECTED；xpelp←NO_LP_EXPECTED。 |
 | `norm:Zicfilp_forward_traps` | cfi.adoc | A trap may need to be delivered upon completion of jalr/c.jalr/c.jr but before the target instruction was decoded. The ELP prior to the trap must be preserved. | 陷阱可能需要在 jalr/c.jalr/c.jr 完成后但目标指令解码前交付。陷阱前的 ELP 必须被保存。 |
+| `norm:Zicfilp_forward_trap_async_interrupt` | cfi.adoc | Asynchronous interrupts. | 异步中断可在间接跳转完成后、目标指令解码前交付陷阱（Zicfilp_forward_traps 的子条款）。 |
+| `norm:Zicfilp_forward_trap_async_exception` | cfi.adoc | Synchronous exceptions with priority higher than that of a software-check exception with xtval set to "landing pad fault (code=2)". | 优先级高于 software-check 异常的同步异常可先于 LP 检查交付（Zicfilp_forward_traps 的子条款）。 |
 | `norm:lpad_sw_exception` | cfi.adoc | The software-check exception due to the instruction not being an lpad instruction when ELP is LP_EXPECTED leads to a trap. | ELP 为 LP_EXPECTED 时目标指令非 LPAD 导致的 software-check 异常引发陷阱。 |
 | `norm:Zicfilp_exception_priority` | cfi.adoc | The software-check exception caused by Zicfilp has higher priority than an illegal-instruction exception but lower priority than instruction access-fault. | Zicfilp 的 software-check 异常优先级高于非法指令异常但低于指令访问故障。 |
 | `norm:zicfiss_ssp_csr` | cfi.adoc | Attempts to access the ssp CSR may result in either an illegal-instruction exception or a virtual-instruction exception, contingent upon the state of the envcfg sse fields. | 访问 ssp CSR 可能引发非法指令异常或虚拟指令异常，取决于 envcfg sse 字段状态。 |
 | `norm:zicfiss_m_menvcfg_sse` | cfi.adoc | If the privilege mode is less than M and menvcfg.sse is 0, an illegal-instruction exception is raised. | 特权级低于 M 且 menvcfg.sse=0 时引发非法指令异常。 |
 | `norm:zicfiss_vs_henvcfg_sse` | cfi.adoc | Otherwise, if in VS-mode and henvcfg.sse is 0, a virtual-instruction exception is raised. | VS 模式且 henvcfg.sse=0 时引发虚拟指令异常。 |
-| `norm:zicfiss_vu_henvcfg_senvcfg_sse` | cfi.adoc | Otherwise, if in VU-mode and either henvcfg.sse or senvcfg.sse is 0, a virtual-instruction exception is raised. | VU 模式且 henvcfg.sse 或 senvcfg.sse 为 0 时引发虚拟指令异常。 |
+| `norm:zicfiss_vu_senvcfg_sse` | cfi.adoc | Otherwise, if in VU-mode and senvcfg.sse is 0, a virtual-instruction exception is raised. | VU 模式且 senvcfg.sse=0 时引发虚拟指令异常（VU 模式下 henvcfg.sse=0 使 senvcfg.SSE 只读零，由 norm:henvcfg_sse_op 覆盖）。 |
 | `norm:zicfiss_sse_access` | cfi.adoc | Otherwise, the access is allowed. | 其他情况下访问被允许。 |
 | `norm:ss_page_enc` | cfi.adoc | The encoding R=0, W=1, and X=0, is defined to represent an SS page. | 编码 R=0、W=1、X=0 表示 Shadow Stack 页。 |
 | `norm:ssmp_henvcfg_sse` | cfi.adoc | When V=1 and henvcfg.sse=0, this encoding remains reserved at VS and VU levels. | V=1 且 henvcfg.sse=0 时，该编码在 VS 和 VU 级别保持保留。 |
@@ -75,6 +84,8 @@
 | `norm:H_trap_m_csrwrites` | hypervisor.adoc | When a trap is taken into M-mode, V gets set to 0, MPV and MPP in mstatus are set accordingly. | 陷阱进入 M 模式时 V 设为 0，MPV 和 MPP 相应设置。 |
 | `norm:sret_v1` | hypervisor.adoc | When executed in VS-mode (V=1), SRET sets the privilege mode accordingly, in vsstatus sets SPP=0, SIE=SPIE, and SPIE=1, and sets pc=vsepc. | VS 模式执行 SRET 时相应设置特权模式，vsstatus 中 SPP=0/SIE=SPIE/SPIE=1，pc=vsepc。 |
 | `norm:sret_v0` | hypervisor.adoc | When executed in M-mode or HS-mode (V=0), SRET determines new mode according to hstatus.SPV and sstatus.SPP, sets SPV=0, SPP=0, SIE=SPIE, SPIE=1, pc=sepc. | M/HS 模式执行 SRET 时根据 SPV/SPP 确定新模式，设置相应字段，pc=sepc。 |
+| `norm:mstateen0_envcfg_op` | smstateen.adoc | The ENVCFG bit in mstateen0 controls access to the henvcfg, henvcfgh, and the senvcfg CSRs. | mstateen0.ENVCFG 控制低于 M 特权级对 henvcfg/senvcfg 的访问（Smstateen 前置条件）。 |
+| `norm:hstateen0_envcfg_op` | smstateen.adoc | The ENVCFG bit in hstateen0 controls access to the senvcfg CSRs. | hstateen0.ENVCFG 控制 VS/VU-mode 对 senvcfg 的访问（Smstateen 前置条件）。 |
 
 ---
 
@@ -235,7 +246,7 @@
 - `norm:zicfiss_ssp_csr`：ssp CSR 访问受 envcfg sse 字段控制
 - `norm:zicfiss_m_menvcfg_sse`：特权级 < M 且 menvcfg.SSE=0 → illegal-instruction exception
 - `norm:zicfiss_vs_henvcfg_sse`：VS-mode 且 henvcfg.SSE=0 → virtual-instruction exception
-- `norm:zicfiss_vu_henvcfg_senvcfg_sse`：VU-mode 且 henvcfg.SSE=0 或 senvcfg.SSE=0 → virtual-instruction exception
+- `norm:zicfiss_vu_senvcfg_sse`：VU-mode 且 senvcfg.SSE=0 → virtual-instruction exception（henvcfg.SSE=0 时 senvcfg.SSE 只读零，由 `norm:henvcfg_sse_op` 覆盖）
 - `norm:zicfiss_sse_access`：其他情况允许访问
 
 **测试职责**：验证 ssp CSR 在 VS/VU-mode 下的访问控制，包括异常类型区分（illegal vs virtual）和多级使能门控。
@@ -391,75 +402,68 @@
 
 ---
 
-## 测试前置依赖
+## 注意事项
 
-### 框架层面需要补充的内容
-
-> [!IMPORTANT]
-> 以下修改是 Hypervisor × CFI 交叉测试的前置依赖。
-
-1. **henvcfg LPE/SSE 字段宏定义**：在 `common/encoding.h` 中添加 `HENVCFG_LPE` 和 `HENVCFG_SSE` 宏。
-2. **vsstatus.SPELP 字段宏定义**：在 `common/encoding.h` 中添加 `VSSTATUS_SPELP_BIT` 宏。
-3. **software-check exception cause**：在 `common/encoding.h` 中添加 `CAUSE_SOFTWARE_CHECK` (18) 宏。
-4. **mtval/stval/vstval CFI 编码**：添加 `SWCHECK_LANDING_PAD_FAULT` (2) 和 `SWCHECK_SHADOW_STACK_FAULT` (3) 宏。
-5. **CSR_SSP 宏定义**：在 `common/encoding.h` 中添加 `CSR_SSP` (0x011) 宏。
-6. **trap handler 增强**：识别 software-check exception (cause=18)，在 armed trap 场景下正确捕获并记录 `mtval`/`stval`/`vstval` 值。
-7. **VS-mode CFI 测试基础设施**：在 Hypervisor 测试框架中增加对 VS-mode 下 Zicfilp/Zicfiss 指令的编译和执行支持。
-
-### 测试文件结构
-
-实际实现拆分为两个独立测试目录（Zicfilp 与 Zicfiss 分别构建）：
-
-```
-Hypervisor_Zicfilp/
-├── Makefile
-├── kernel.ld
-├── main.c
-└── tests/
-    ├── test_helpers.h
-    ├── test_hyp_zicfilp_envcfg.c     # Group A1: henvcfg.LPE 使能控制
-    ├── test_hyp_zicfilp_spelp.c      # Group A2: vsstatus.SPELP 保存恢复
-    ├── test_hyp_zicfilp_lpad.c       # Group A3: VS-mode Landing Pad 功能
-    ├── test_hyp_zicfilp_deleg.c      # Group A4: software-check exception 委托
-    └── test_hyp_zicfilp_async.c      # Group A5: 异步事件与 ELP 交互
-Hypervisor_Zicfiss/
-├── Makefile
-├── kernel.ld
-├── main.c
-└── tests/
-    ├── test_helpers.h
-    ├── test_hyp_zicfiss_envcfg.c     # Group B1: henvcfg.SSE 使能控制
-    ├── test_hyp_zicfiss_ssp_csr.c    # Group B2: ssp CSR 访问控制
-    ├── test_hyp_zicfiss_ss_page.c    # Group B3: VS-stage SS 页类型
-    ├── test_hyp_zicfiss_gstage.c     # Group B4: G-stage 翻译交互
-    ├── test_hyp_zicfiss_bare.c       # Group B5: satp/vsatp Bare 模式
-    ├── test_hyp_zicfiss_deleg.c      # Group B6: Zicfiss 异常委托
-    ├── test_hyp_zicfiss_func.c       # Group B7: Zicfiss 功能完整性
-    └── test_hyp_zicfiss_revert.c     # Group B8: SSE=0 回退行为
-```
-
----
-
-## Verification Plan
-
-### Automated Tests
-- `cd Hypervisor_Zicfilp && make clean && make qemu` — QEMU 模拟器（需支持 H 扩展 + Zicfilp）
-- `cd Hypervisor_Zicfiss && make clean && make qemu` — QEMU 模拟器（需支持 H 扩展 + Zicfiss）
-- `cd Hypervisor_Zicfilp && make clean && make spike` / `cd Hypervisor_Zicfiss && make clean && make spike` — Spike 模拟器
-- `cd Hypervisor_Zicfilp && make clean && make sail` / `cd Hypervisor_Zicfiss && make clean && make sail` — Sail 模拟器
-
-### Manual Verification
-- 在硬件平台上通过 `make PLATFORM=haps_xiaohui` 编译后使用 `remote_debug.py` 部署测试
-
-### 注意事项
 1. 测试前需确认目标平台已实现 H 扩展和 Zicfilp/Zicfiss 扩展。
 2. 若平台未实现 CFI 扩展，henvcfg.LPE/SSE 应为只读零，相关测试应报告"扩展未实现"而非失败。
 3. software-check exception (cause=18) 的委托测试需确认 hedeleg bit 18 在平台上的可写性。
 4. Shadow Stack 页类型测试需要 VS-stage 页表的精细控制，确保正确设置 pte.xwr 编码。
-5. 不允许为了通过测试而降低 SPEC 标准。如果 QEMU/Sail/硬件的行为与 SPEC 不一致，应报告问题而非修改测试。
-6. 当前已知实现状态（known gap）：
+5. 当前已知实现状态（known gap）：
    - Group A5（HCFI-LP-31/42/43）的异步中断注入窗口（JALR 后、LPAD 解码前）非确定，当前以同步 software-check 异常作为代理验证 ELP 保存/恢复机制。
    - HCFI-SS-04/60/70（16-bit 压缩指令回退/流程）、HCFI-SS-30（真实 CBO 指令）、HCFI-SS-65/66（非幂等内存 / AMOSwap PMA）暂未直接实现，以注释标注为 known gap。
-7. 当前 QEMU（cskysim）已确认的 SPEC 偏差（测试保持 FAIL 以报告问题，不做 workaround）：
-   - VS→HS trap 时 ELP 被保存到 vsstatus.SPELP 而非 mstatus.SPELP（影响 HCFI-LP-15/16/17/31/42）。
-   - VS-mode xLPE 被 menvcfg.LPE 门控（SPEC 规定 VS xLPE = henvcfg.LPE 独立生效，影响 HCFI-LP-09）。
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+下表标明每条 Normative Rule 被哪些测试用例覆盖，Norm ID 与「覆盖的规范点」章节一致。
+
+| Norm ID | 覆盖测试用例 | 说明 |
+|---------|--------------|------|
+| `norm:henvcfg_lpe_op` | HCFI-LP-01~10 | LPE 读写、使能控制、回退行为 |
+| `norm:henvcfg_sse_op` | HCFI-SS-01~14, HCFI-SS-69~75 | SSE 读写、激活、回退与切换 |
+| `norm:vsstatus_spelp_op` | HCFI-LP-11~14, HCFI-LP-21~24 | SPELP 读写与 trap 保存恢复 |
+| `norm:vsstatus_spelp_op2` | HCFI-LP-12, HCFI-LP-13, HCFI-LP-21 | trap 到 VS-mode 时 SPELP 保存 ELP |
+| `norm:cfi_mstatus_mpelp_op` | — | M-mode 陷阱保存 MPELP，非本交叉方案范围（由 cfi_test_plan.md 覆盖） |
+| `norm:cfi_mstatus_spelp_op` | HCFI-LP-15~17, HCFI-LP-31, HCFI-LP-42 | VS trap 递送 HS 时 mstatus.SPELP 保存 |
+| `norm:cfi_sstatus_spelp_op` | — | S-mode（非虚拟化）场景，由 cfi_test_plan.md 覆盖 |
+| `norm:Zicfilp_pelp_trap` | HCFI-LP-12, HCFI-LP-15, HCFI-LP-18, HCFI-LP-21, HCFI-LP-31, HCFI-LP-42 | trap entry 时 xpelp←ELP |
+| `norm:Zicfilp_pelp_trap_return` | HCFI-LP-13, HCFI-LP-14, HCFI-LP-16, HCFI-LP-17, HCFI-LP-19, HCFI-LP-20, HCFI-LP-22, HCFI-LP-23, HCFI-LP-43 | xRET 时 ELP 恢复/清除 |
+| `norm:Zicfilp_forward_traps` | HCFI-LP-31, HCFI-LP-42, HCFI-LP-43, HCFI-LP-44 | JALR 后目标解码前的 trap 交付 |
+| `norm:Zicfilp_forward_trap_async_interrupt` | HCFI-LP-31, HCFI-LP-42, HCFI-LP-43 | 异步中断前向交付（known gap：代理验证） |
+| `norm:Zicfilp_forward_trap_async_exception` | HCFI-LP-29, HCFI-LP-44 | 高优先级同步异常前向交付 |
+| `norm:lpad_sw_exception` | HCFI-LP-05, HCFI-LP-08, HCFI-LP-26, HCFI-LP-28, HCFI-LP-32, HCFI-LP-33 | LP Fault 触发 software-check exception |
+| `norm:Zicfilp_exception_priority` | HCFI-LP-29, HCFI-LP-30 | software-check 异常优先级 |
+| `norm:zicfiss_ssp_csr` | HCFI-SS-15~23, HCFI-SS-71 | ssp CSR 访问控制 |
+| `norm:zicfiss_m_menvcfg_sse` | HCFI-SS-17, HCFI-SS-21 | menvcfg.SSE=0 → illegal-instruction |
+| `norm:zicfiss_vs_henvcfg_sse` | HCFI-SS-15, HCFI-SS-71 | VS-mode henvcfg.SSE=0 → virtual-instruction |
+| `norm:zicfiss_vu_senvcfg_sse` | HCFI-SS-18, HCFI-SS-19 | VU-mode senvcfg.SSE=0 → virtual-instruction |
+| `norm:zicfiss_sse_access` | HCFI-SS-16, HCFI-SS-20, HCFI-SS-22 | 使能齐备时 ssp 访问允许 |
+| `norm:ss_page_enc` | HCFI-SS-24 | pte.xwr=010 为 SS 页编码 |
+| `norm:ssmp_henvcfg_sse` | HCFI-SS-05, HCFI-SS-14, HCFI-SS-25, HCFI-SS-72 | henvcfg.SSE=0 时 SS 编码保留 |
+| `norm:ssmp_menvcfg_sse` | — | menvcfg.SSE=0 页编码保留，非虚拟化交叉范围（由 cfi_test_plan.md 覆盖） |
+| `norm:satp_mode_bare` | HCFI-SS-43~47 | vsatp Bare 模式 SS 指令 access-fault |
+| `norm:ssmp_ssamoswap` | — | M-mode 专用行为，非 VS/VU 交叉范围 |
+| `norm:ssmp_ss_page_access_fault` | HCFI-SS-26, HCFI-SS-30, HCFI-SS-53, HCFI-SS-54 | 非 SS 指令写 SS 页 → access-fault |
+| `norm:ssmp_ss_page_illegeal_access` | HCFI-SS-28, HCFI-SS-64 | SS 指令访问非 SS 页 → access-fault |
+| `norm:ssmp_ss_read_only_page` | HCFI-SS-29, HCFI-SS-34, HCFI-SS-55, HCFI-SS-56 | SS 指令访问只读页 → page-fault |
+| `norm:ss_fault_exception_code` | HCFI-SS-26~29, HCFI-SS-33, HCFI-SS-39~42, HCFI-SS-49~58 | SS 异常 cause 编码 7/15/23 |
+| `norm:ssp_xlen_aligned` | HCFI-SS-23 | ssp 未 XLEN 对齐 → access-fault |
+| `norm:ssmp_ss_idempotent_memory` | HCFI-SS-65 | 非幂等内存 → access-fault（known gap） |
+| `norm:active_g_stage_pte` | HCFI-SS-38~42 | G-stage 读写权限要求 |
+| `norm:hedeleg_op` | HCFI-LP-35~37, HCFI-SS-50~52 | software-check 二级委托链路 |
+| `norm:hedeleg_acc` | HCFI-LP-34 | hedeleg[18] 可写性 |
+| `norm:H_trap_vs_csrwrites` | HCFI-LP-35, HCFI-LP-38, HCFI-LP-39, HCFI-SS-50, HCFI-SS-57 | trap 到 VS-mode 的 CSR 写入 |
+| `norm:H_trap_hs_csrwrites` | HCFI-LP-36, HCFI-LP-40, HCFI-SS-41, HCFI-SS-54, HCFI-SS-58 | trap 到 HS-mode 的 CSR 写入 |
+| `norm:H_trap_m_csrwrites` | HCFI-LP-37, HCFI-LP-41, HCFI-SS-52 | trap 到 M-mode 的 CSR 写入 |
+| `norm:sret_v1` | HCFI-LP-13, HCFI-LP-14, HCFI-LP-22, HCFI-LP-23 | VS-mode SRET 行为 |
+| `norm:sret_v0` | HCFI-LP-16, HCFI-LP-17 | HS-mode SRET 返回 VS-mode |
+| `norm:mstateen0_envcfg_op` | HCFI-SS-06~08（前置条件） | Smstateen 门控，套件启动时打开通道 |
+| `norm:hstateen0_envcfg_op` | HCFI-SS-06~08（前置条件） | Smstateen 门控，套件启动时打开通道 |
+
+### 未被覆盖/不可测规范点说明
+
+1. `norm:cfi_mstatus_mpelp_op`、`norm:cfi_sstatus_spelp_op`、`norm:ssmp_menvcfg_sse`、`norm:ssmp_ssamoswap`：分别属于 M-mode 陷阱、S-mode（非虚拟化）、menvcfg.SSE=0 页编码与 M-mode 专用行为，不在 Hypervisor 交叉范围内，由 `cfi_test_plan.md` 覆盖。
+2. `norm:Zicfilp_forward_trap_async_interrupt`（HCFI-LP-31/42/43）：异步中断注入窗口（JALR 后、LPAD 解码前）非确定，当前以同步 software-check 异常作为代理验证 ELP 保存/恢复机制（known gap）。
+3. `norm:ssmp_ss_idempotent_memory`（HCFI-SS-65）：非幂等内存 / AMOSwap PMA 场景暂未直接实现（known gap）。
+4. HCFI-SS-04/60/70（16-bit 压缩指令回退/流程）、HCFI-SS-30（真实 CBO 指令）为 known gap，对应 `norm:henvcfg_sse_op`、`norm:ssmp_ss_page_access_fault` 的部分子场景。

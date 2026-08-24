@@ -9,7 +9,11 @@
 
 本测试计划覆盖 RISC-V Hypervisor (H) 扩展的中断相关功能点，包括虚拟中断注入（hvip/hip/hie）、guest external interrupts（hgeip/hgeie）、M-level 中断寄存器增强（mideleg/mip/mie）以及 hideleg 中断委托与 VS 中断号翻译。CSR 寄存器字段行为、异常与 trap 行为分别由兄弟子集覆盖。
 
-本测试计划依据 `SPEC/hypervisor.adoc` 中的规范点（norm 标记）编写。
+本测试计划依据 RISC-V 官方 SPEC 中的规范点（norm 标记）编写：
+
+- 本地路径：`SPEC/riscv-isa-manual/src/priv/hypervisor.adoc`（hvip/hip/hie/hgeip/hgeie/hideleg 等）、`SPEC/riscv-isa-manual/src/priv/machine.adoc`（mideleg/mip/mie 增强）
+- 官方仓库：https://github.com/riscv/riscv-isa-manual （对应仓库内上述路径文件）
+- 任一平台违反 SPEC 时用例保持 FAIL 并记录至 `bugs/` 目录
 
 ### 本文档覆盖的 SPEC 章节
 - Hypervisor and Virtual Supervisor CSRs（hvip, hip, hie, hgeip, hgeie, hideleg 中断委托行为）
@@ -171,3 +175,39 @@
 | DELEG-12 | 中断号翻译验证 VSSI→SSI | hideleg[2]=1 委托 VSSIP 到 VS-mode | vscause 记录 cause=1（非 2） |
 | DELEG-13 | 中断号翻译验证 VSTI→STI | hideleg[6]=1 委托 VSTIP 到 VS-mode | vscause 记录 cause=5（非 6） |
 | DELEG-14 | 中断号翻译验证 VSEI→SEI | hideleg[10]=1 委托 VSEIP 到 VS-mode | vscause 记录 cause=9（非 10） |
+
+---
+
+## 附录 A：规范点覆盖矩阵
+
+下表标明"覆盖的规范点"章节中每条规范点被哪些测试用例覆盖。
+
+| Norm ID | 覆盖的测试 ID |
+|---------|---------------|
+| `norm:hvip_sz_op` | HINT-01~03、HINT-09、HINT-16 |
+| `norm:hvip_acc` | HINT-01~03、HINT-16 |
+| `norm:hip_hie_sz_acc` | HINT-04~08、HINT-14、HINT-19、HINT-20 |
+| `norm:hip_op` | HINT-04~06、HINT-14、HINT-17、HINT-19 |
+| `norm:hie_op` | HINT-07、HINT-08、HINT-20 |
+| `norm:sie_hip_hie_mutex` | HINT-08 |
+| `norm:hip_vssip_vssie_op` | HINT-01、HINT-04、HINT-09、HINT-19 |
+| `norm:hip_vstip_vstie_acc_op` | HINT-02、HINT-06、HINT-17、HINT-21 |
+| `norm:hip_vseip_vseie_op` | HINT-03、HINT-05、HINT-22 |
+| `norm:hip_acc` | HINT-05、HINT-06、HINT-19 |
+| `norm:hie_acc` | HINT-07、HINT-20 |
+| `norm:hsint_priority` | HINT-12、HINT-13、HINT-18 |
+| `norm:hideleg_hs` | HINT-10、HINT-11、HINT-15、DELEG-11 |
+| `norm:H_cause` | HINT-10、HINT-21、HINT-22 |
+| `norm:hgeip_sz_acc_op` | HGEI-01、HGEI-04 |
+| `norm:hgeie_sz_acc_op` | HGEI-02、HGEI-03 |
+| `norm:hgeip_hgeie_fields` | HGEI-02、HGEI-04 |
+| `norm:geilen` | HGEI-02、HGEI-04、HGEI-05 |
+| `norm:hgeie_op` | HGEI-04、HGEI-05 |
+| `norm:mideleg_acc_h` | MIDLG-01、MIDLG-02 |
+| `norm:mideleg_hroz` | MIDLG-03 |
+| `norm:mip_mie_vs` | MIDLG-07 |
+| `norm:mip_mie_alias` | MIDLG-04、MIDLG-05、MIDLG-06 |
+| `norm:hideleg_op` | DELEG-08~11 |
+| `norm:hideleg_trans` | DELEG-08~10、DELEG-12~14 |
+
+未被覆盖/不可测规范点说明：无。本文档声明的规范点均有对应用例；HGEI-04/05 为条件用例（依赖 GEILEN 探测结果），MIDLG-02 为条件用例（仅 GEILEN>0 时验证 mideleg bit 12）。

@@ -10,17 +10,21 @@ This document describes the test plan for the Shvsatpa (Translation Mode Support
 
 ### Specification Sources
 
-- `SPEC/shvsatpa.adoc` — Shvsatpa Extension for Translation Mode Support, Version 1.0
-- `SPEC/hypervisor.adoc` lines 1382–1425 (`vsatp` register definition) — Provides `vsatp` field layout, substitution behavior for `satp` when V=1, and handling of unsupported MODE value writes
-- `SPEC/supervisor.adoc` lines 997–1065 (`satp` register and MODE field encoding) — Provides MODE encoding table and WARL write semantics
+This plan is based on the RISC-V Privileged Architecture specification (the Shvsatpa extension chapter and the Hypervisor/Supervisor extension chapters related to vsatp/satp):
+
+- Local SPEC paths:
+  - `SPEC/riscv-isa-manual/src/priv/shvsatpa.adoc` — Shvsatpa Extension for Translation Mode Support, Version 1.0
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — `vsatp` register definition (lines 1382–1425): field layout, substitution behavior for `satp` when V=1, handling of unsupported MODE value writes
+  - `SPEC/riscv-isa-manual/src/priv/supervisor.adoc` — `satp` register and MODE field encoding (lines 997–1065): MODE encoding table and WARL write semantics
+- Official GitHub repository: https://github.com/riscv/riscv-isa-manual (mapped via `SPEC/riscv-isa-manual` in `.gitmodules`)
 
 ### Key Reference Files
 
 | Path | Description |
 |------|-------------|
-| `SPEC/shvsatpa.adoc` | Full Shvsatpa specification (7 lines total) |
-| `SPEC/hypervisor.adoc:1382-1425` | `vsatp` register specification: VSXLEN-bit RW, substitutes for `satp` when V=1, MODE write handling |
-| `SPEC/supervisor.adoc:997-1065` | `satp` register specification: MODE encoding table (Bare=0, Sv39=8, Sv48=9, Sv57=10), WARL behavior |
+| `shvsatpa.adoc` | Full Shvsatpa specification (7 lines total) |
+| `hypervisor.adoc:1382-1425` | `vsatp` register specification: VSXLEN-bit RW, substitutes for `satp` when V=1, MODE write handling |
+| `supervisor.adoc:997-1065` | `satp` register specification: MODE encoding table (Bare=0, Sv39=8, Sv48=9, Sv57=10), WARL behavior |
 | `common/encoding.h` | `CSR_VSATP = 0x280`, `CSR_SATP = 0x180` |
 | `common/hyp/hyp_priv.h:21` | `run_in_vs_mode(fn, arg)` — Execute test function in VS-mode (V=1) |
 | `common/hyp/hyp_csr.h` | Hypervisor CSR read/write helper functions |
@@ -40,6 +44,7 @@ This document describes the test plan for the Shvsatpa (Translation Mode Support
 | `norm:satp_mode` | When MODE=Bare, supervisor virtual addresses are equal to supervisor physical addresses, and there is no additional memory protection. To select MODE=Bare, software must write zero to the remaining fields of `satp`. Attempting to select MODE=Bare with a nonzero pattern in the remaining fields has an UNSPECIFIED effect. |
 | `norm:satp_mode_sxlen64` | When SXLEN=64, three paged virtual-memory schemes are defined: Sv39, Sv48, and Sv57. One additional scheme, Sv64, will be defined in a later version. The remaining MODE settings are reserved for future use. |
 | `norm:satp_mode_op_unsupported` | If a write to `satp` specifies a MODE value that is not supported, the entire write has no effect; no fields in `satp` are modified. |
+| `vsatp_asid_warl` | The ASID field of `vsatp` is WARL, behaving like the ASID field of `satp`. (Derived from the vsatp field description in hypervisor.adoc, which carries no official norm: label at that location) |
 
 > [!IMPORTANT]
 > The core constraint of Shvsatpa is singular: whatever MODE `satp` supports, `vsatp` must also support. This plan confirms consistency by "first probing the set of MODEs supported by satp, then verifying vsatp supports the same set." Group 4 verifies V=1 passthrough semantics (VS-mode operates actual vsatp via satp instruction names), and Group 5 verifies that handling of unsupported MODE values conforms to the specification under both V=0 and V=1.
@@ -70,7 +75,7 @@ The MODE field of `satp`/`vsatp` is WARL: writing an unsupported value causes th
 6. Restore CSR
 
 > [!NOTE]
-> Probing Bare (MODE=0) requires special handling: the specification requires that when selecting Bare, all other fields must be zero (`SPEC/supervisor.adoc:1014-1016`), so all zeros are written when probing Bare.
+> Probing Bare (MODE=0) requires special handling: the specification requires that when selecting Bare, all other fields must be zero (`supervisor.adoc:1014-1016`), so all zeros are written when probing Bare.
 
 ### 2. Access Paths for satp and vsatp
 
@@ -107,16 +112,16 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ## Test Groups
 
 > [!IMPORTANT]
-> There are 6 test groups and 19 test cases in total. Group 1 probes the set of modes supported by satp in M/HS-mode; Group 2 directly verifies in M/HS-mode that vsatp supports the same mode set; Group 3 verifies vsatp mode support in VS-mode (V=1) via satp instructions; Group 4 verifies V=1 passthrough semantics; Group 5 verifies write handling for unsupported MODE values; Group 6 verifies ASID field width consistency. Each group provides: specification basis, test responsibilities, test case table (ID/name/description/expected result); each group provides 1 key C code example.
+> There are 6 test groups and 19 test cases in total. Group 1 probes the set of modes supported by satp in M/HS-mode; Group 2 directly verifies in M/HS-mode that vsatp supports the same mode set; Group 3 verifies vsatp mode support in VS-mode (V=1) via satp instructions; Group 4 verifies V=1 passthrough semantics; Group 5 verifies write handling for unsupported MODE values; Group 6 verifies ASID field width consistency. Each group provides: specification basis, test scope, test case table (ID/name/description/expected result).
 
 ---
 
 ### Group 1: `satp` MODE Support Probing (Baseline Establishment)
 
 **Specification Basis**:
-- `norm:satp_mode` (`SPEC/supervisor.adoc:1009-1018`): MODE field encoding definition
-- `norm:satp_mode_sxlen64` (`SPEC/supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
-- `norm:satp_mode_op_unsupported` (`SPEC/supervisor.adoc:1052-1055`): Writing unsupported MODE renders entire write ineffective
+- `norm:satp_mode` (`supervisor.adoc:1009-1018`): MODE field encoding definition
+- `norm:satp_mode_sxlen64` (`supervisor.adoc:1044-1050`): Defines Sv39/Sv48/Sv57 when SXLEN=64
+- `norm:satp_mode_op_unsupported` (`supervisor.adoc:1052-1055`): Writing unsupported MODE renders entire write ineffective
 
 **Test Responsibilities**: Probe the set of translation modes supported by `satp` in M/HS-mode to establish a comparison baseline for Group 2/3/4/5. Perform write-readback tests for each standard MODE value (Bare=0, Sv39=8, Sv48=9, Sv57=10).
 
@@ -135,8 +140,8 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ### Group 2: Consistency Verification of `vsatp` MODE Against `satp` Supported Modes (V=0 Direct Access)
 
 **Specification Basis**:
-- `norm:shvsatpa_satp_vsatp_modes` (`SPEC/shvsatpa.adoc:4-6`): All translation modes supported by `satp` must also be supported by `vsatp`
-- `norm:vsatp_sz_acc_op` (`SPEC/hypervisor.adoc:1384-1392`): `vsatp` is a VSXLEN-bit RW register
+- `norm:shvsatpa_satp_vsatp_modes` (`shvsatpa.adoc:4-6`): All translation modes supported by `satp` must also be supported by `vsatp`
+- `norm:vsatp_sz_acc_op` (`hypervisor.adoc:1384-1392`): `vsatp` is a VSXLEN-bit RW register
 
 **Test Responsibilities**: For each MODE detected as supported by satp in Group 1, directly write to `vsatp` (CSR 0x280) in M/HS-mode and verify readback MODE consistency, confirming vsatp supports the same mode set.
 
@@ -155,9 +160,9 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ### Group 3: VS-mode (V=1) Verification of `vsatp` Mode Support via `satp` Instruction
 
 **Specification Basis**:
-- `norm:shvsatpa_satp_vsatp_modes` (`SPEC/shvsatpa.adoc:4-6`): Modes supported by satp must also be supported by vsatp
-- `norm:vsatp_sz_acc_op` (`SPEC/hypervisor.adoc:1384-1392`): When V=1, `vsatp` substitutes for `satp`
-- `norm:vsatp_mode_unsupported_v1` (`SPEC/hypervisor.adoc:1417-1418`): When V=1, writing unsupported MODE causes write to be ignored
+- `norm:shvsatpa_satp_vsatp_modes` (`shvsatpa.adoc:4-6`): Modes supported by satp must also be supported by vsatp
+- `norm:vsatp_sz_acc_op` (`hypervisor.adoc:1384-1392`): When V=1, `vsatp` substitutes for `satp`
+- `norm:vsatp_mode_unsupported_v1` (`hypervisor.adoc:1417-1418`): When V=1, writing unsupported MODE causes write to be ignored
 
 **Test Responsibilities**: In VS-mode (V=1), write each MODE supported by satp via the `satp` instruction name (which actually operates vsatp) and confirm via readback. This simultaneously verifies the V=1 passthrough path and Shvsatpa consistency constraint.
 
@@ -176,7 +181,7 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ### Group 4: V=1 Passthrough Semantics Verification (`satp` Access Actually Operates `vsatp`)
 
 **Specification Basis**:
-- `norm:vsatp_sz_acc_op` (`SPEC/hypervisor.adoc:1384-1392`): When V=1, `vsatp` substitutes for the usual `satp`, so instructions that normally read or modify `satp` actually access `vsatp` instead
+- `norm:vsatp_sz_acc_op` (`hypervisor.adoc:1384-1392`): When V=1, `vsatp` substitutes for the usual `satp`, so instructions that normally read or modify `satp` actually access `vsatp` instead
 
 **Test Responsibilities**: Verify that values written by VS-mode (V=1) via `satp` instruction name can be read back from M/HS-mode via `vsatp` (CSR 0x280); and vice versa. Confirm that satp operations when V=1 do not affect HS-mode's real satp.
 
@@ -191,9 +196,9 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ### Group 5: Write Handling for Unsupported MODE Values
 
 **Specification Basis**:
-- `norm:vsatp_mode_unsupported_v0` (`SPEC/hypervisor.adoc:1415-1416`): When V=0, writing unsupported MODE value to `vsatp` either ignores the entire write (same as satp behavior) or treats fields as WARL normally
-- `norm:vsatp_mode_unsupported_v1` (`SPEC/hypervisor.adoc:1417-1418`): When V=1, writing unsupported MODE value to `satp` (actually writes vsatp) causes the write to be **ignored**, vsatp is not modified
-- `norm:satp_mode_op_unsupported` (`SPEC/supervisor.adoc:1052-1055`): Writing unsupported MODE to satp renders entire write ineffective
+- `norm:vsatp_mode_unsupported_v0` (`hypervisor.adoc:1415-1416`): When V=0, writing unsupported MODE value to `vsatp` either ignores the entire write (same as satp behavior) or treats fields as WARL normally
+- `norm:vsatp_mode_unsupported_v1` (`hypervisor.adoc:1417-1418`): When V=1, writing unsupported MODE value to `satp` (actually writes vsatp) causes the write to be **ignored**, vsatp is not modified
+- `norm:satp_mode_op_unsupported` (`supervisor.adoc:1052-1055`): Writing unsupported MODE to satp renders entire write ineffective
 
 **Test Responsibilities**: Verify that when writing unsupported MODE values to vsatp, the behavior under V=0 and V=1 paths respectively conforms to the specification.
 
@@ -211,8 +216,8 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 ### Group 6: ASID Field Width Verification
 
 **Specification Basis**:
-- `norm:vsatp_asid_op` (`SPEC/hypervisor.adoc:1394-1400`): The ASID field of vsatp is WARL, behavior similar to satp's ASID
-- `norm:shvsatpa_satp_vsatp_modes` (`SPEC/shvsatpa.adoc:4-6`): Shvsatpa implies "MODEs supported by vsatp also means ASID field is usable"
+- `vsatp_asid_warl` (`hypervisor.adoc:1394-1400`): The ASID field of vsatp is WARL, behavior similar to satp's ASID
+- `norm:shvsatpa_satp_vsatp_modes` (`shvsatpa.adoc:4-6`): Shvsatpa implies "MODEs supported by vsatp also means ASID field is usable"
 
 **Test Responsibilities**: Verify that the ASID field width of vsatp is consistent with satp (Shvsatpa requires mode consistency, ASID width should be synchronized).
 
@@ -265,16 +270,6 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 
 ## Test Execution Notes
 
-### Subdirectory and Build Integration (Implementation Phase Reference, Not Produced by This Plan)
-
-> [!IMPORTANT]
-> This plan phase **only produces `DOCS/testplan/shvsatpa_test_plan.md`**, does not create `shvsatpa/` subdirectory, does not modify top-level `Makefile`, does not write C test code. Subsequent implementation phase creates per this document:
-> - `shvsatpa/main.c` (refer to existing extensions such as `svadu/main.c`)
-> - `shvsatpa/Makefile` (`SPIKE_ISA_EXT = _shvsatpa`)
-> - `shvsatpa/kernel.ld`
-> - `shvsatpa/tests/test_probe.c`, `test_mode.c`, `test_vsmode.c`, `test_transparent.c`, `test_unsupported.c`
-> And add `shvsatpa` to the `EXTENSIONS` list in top-level `Makefile`.
-
 ### Runtime Environment
 
 - Group 1: M/HS-mode directly operates CSR 0x180 (satp), probes supported modes
@@ -297,3 +292,20 @@ After Group 1 probes the set of MODEs supported by `satp`, the results are store
 | VSATP-TRANS-03 fails | VS-mode write to satp incorrectly modified HS-mode's satp |
 | VSATP-UNSUP-01/02 readback MODE equals written reserved value | vsatp.MODE WARL implementation anomaly (should not retain illegal values) |
 | VSATP-UNSUP-03 fails (vsatp was modified) | Write with unsupported MODE under V=1 was not completely ignored, violates `norm:vsatp_mode_unsupported_v1` |
+
+---
+
+## Appendix: Specification Point Coverage Matrix
+
+| Norm ID | Covering Test Cases | Notes |
+|---------|---------------------|-------|
+| `norm:shvsatpa_satp_vsatp_modes` | VSATP-MODE-01 ~ VSATP-MODE-04, VSATP-VS-01 ~ VSATP-VS-04, VSATP-ASID-01 | Core constraint: MODEs supported by satp must also be supported by vsatp |
+| `norm:vsatp_sz_acc_op` | VSATP-MODE-01 ~ VSATP-MODE-04, VSATP-VS-01 ~ VSATP-VS-04, VSATP-TRANS-01 ~ VSATP-TRANS-03 | Register attributes and V=1 substitution semantics |
+| `norm:vsatp_mode_unsupported_v0` | VSATP-UNSUP-01, VSATP-UNSUP-02 | Both legal handlings are accepted when V=0 (ignore or WARL) |
+| `norm:vsatp_mode_unsupported_v1` | VSATP-VS-01 ~ VSATP-VS-04, VSATP-UNSUP-03 | Writing unsupported MODE when V=1 must be completely ignored |
+| `norm:vsatp_v0` | VSATP-MODE-01 ~ VSATP-MODE-04, VSATP-UNSUP-01 ~ VSATP-UNSUP-02 | Writing vsatp when V=0 does not directly affect machine behavior (cases repeatedly write and read back at V=0 without triggering translation side effects) |
+| `norm:satp_mode` | VSATP-PROBE-01 | MODE encoding definition; remaining fields written as zero when probing Bare |
+| `norm:satp_mode_sxlen64` | VSATP-PROBE-01 ~ VSATP-PROBE-04 | Probing baseline: the MODE set defined for SXLEN=64 |
+| `norm:satp_mode_op_unsupported` | VSATP-PROBE-01 ~ VSATP-PROBE-04 | Probing mechanism dependency: writing unsupported MODE to satp ignores the entire write |
+| `vsatp_asid_warl` | VSATP-ASID-01 | ASID width consistency between vsatp and satp |
+| satp/vsatp translation table lookup correctness | — | Not covered: only verifies that MODE can be held, see "Out of Scope" |

@@ -8,22 +8,26 @@
 
 ## 测试范围
 
-### 规范来源
+### 本文档覆盖的 SPEC 章节
 
-- `SPEC/shtvala.adoc` — Shtvala Extension for Trap Value Reporting, Version 1.0（共 6 行，单 normative rule）
-- `SPEC/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0
-  - Hypervisor Trap Value (`htval`) Register（L904-967）
-  - Two-Stage Address Translation（L1869-1899）
-  - Guest Physical Address Translation（L1901-1976）
-  - Guest-Page Faults（L2041-2067）
-  - hstatus 相关字段（L321-326）
+本方案依据 RISC-V Privileged Architecture 规范（Shtvala 扩展章节与 Hypervisor 扩展 htval/两阶段翻译相关章节）编写：
+
+- 本地 SPEC 路径：
+  - `SPEC/riscv-isa-manual/src/priv/shtvala.adoc` — Shtvala Extension for Trap Value Reporting, Version 1.0（共 6 行，单 normative rule）
+  - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — "H" Extension for Hypervisor Support, Version 1.0：
+    - Hypervisor Trap Value (`htval`) Register（L904-967）
+    - Two-Stage Address Translation（L1869-1899）
+    - Guest Physical Address Translation（L1901-1976）
+    - Guest-Page Faults（L2041-2067）
+    - hstatus 相关字段（L321-326）
+- 官方 GitHub 仓库：https://github.com/riscv/riscv-isa-manual （按 `.gitmodules` 中 `SPEC/riscv-isa-manual` 映射）
 
 ### 关键参考文件
 
 | 路径 | 说明 |
 |------|------|
-| `SPEC/shtvala.adoc` | Shtvala v1.0 全文（6 行） |
-| `SPEC/hypervisor.adoc` | H 扩展规范（含 htval/Sv*x4/GPF 描述） |
+| `shtvala.adoc` | Shtvala v1.0 全文（6 行） |
+| `hypervisor.adoc` | H 扩展规范（含 htval/Sv*x4/GPF 描述） |
 | `common/trap.c:31` | `trap_record.htval` 字段，统一存 GPA>>2 |
 | `common/trap.c:189` | HS-mode trap handler 读 `htval` (CSR 0x643) 写入 `trap_record.htval` |
 | `common/trap.c:502` | `trap_get_htval()` 函数声明，返回最近一次 trap 的 htval（GPA>>2） |
@@ -57,6 +61,11 @@
 | `norm:hgatp_mode_sv48x4` | For Sv48x4, partitioning is identical to Sv48, except with 2 more bits at the high end in VPN[3]. Address bits 63:50 must all be zeros, or else a guest-page-fault exception occurs. | Sv48x4 的分区与 Sv48 相同，但 VPN[3] 高端多 2 位。地址位 63:50 必须全为零，否则发生客户页错误。 |
 | `norm:hgatp_mode_sv57x4` | For Sv57x4, partitioning is identical to Sv57, except with 2 more bits at the high end in VPN[4]. Address bits 63:59 must all be zeros, or else a guest-page-fault exception occurs. | Sv57x4 的分区与 Sv57 相同，但 VPN[4] 高端多 2 位。地址位 63:59 必须全为零，否则发生客户页错误。 |
 | `norm:hstatus_gva_op` | Field GVA (Guest Virtual Address) is written by the implementation whenever a trap is taken into HS-mode. For any trap that writes a guest virtual address to `stval`, GVA is set to 1. For any other trap into HS-mode, GVA is set to 0. | GVA 字段在进入 HS 模式的陷阱时由实现写入。写入客户虚拟地址到 `stval` 的陷阱设置 GVA=1，其他陷阱设置 GVA=0。 |
+| `norm:mtval2_trapval` | When a guest-page-fault trap is taken into M-mode, `mtval2` is written with either zero or the guest physical address that faulted, shifted right by 2 bits. For other traps, `mtval2` is set to zero. | 客户页错误陷阱进入 M 模式时，`mtval2` 写入零或故障的客户物理地址右移 2 位；其他陷阱设为零。 |
+| `norm:hlsv_mode` | The hypervisor virtual-machine load and store instructions are valid only in M-mode or HS-mode, or in U-mode when `hstatus`.HU=1. | HLV/HLVX/HSV 指令仅在 M/HS 模式，或 hstatus.HU=1 时的 U 模式下有效。 |
+| `norm:hlsv_trans` | As usual for VS-mode and VU-mode, two-stage address translation is applied, and the HS-level `sstatus`.SUM is ignored. | HLV/HLVX/HSV 始终执行两阶段地址翻译，HS 级 sstatus.SUM 被忽略。 |
+| `norm:htinst_val` | `htinst` is a WARL register that need only be able to hold the values that the implementation may automatically write to it on a trap. | `htinst` 是 WARL 寄存器，仅需能保持实现在陷阱时可能自动写入的值。 |
+| `norm:H_trap_xtinst_guestpage` | For guest-page faults, the trap instruction register is written with a special pseudoinstruction value if: (a) the fault is caused by an implicit memory access for VS-stage address translation, and (b) a nonzero value (the faulting guest physical address) is written to `mtval2` or `htval`. | 客户页错误时，若故障由 VS 阶段隐式内存访问引起且 `mtval2`/`htval` 写入非零 GPA，则陷阱指令寄存器写入特殊伪指令值。 |
 
 > [!IMPORTANT]
 > Shtvala 规范的核心是**单条收紧规则**：把 H 扩展原文 "either zero or the guest physical address" 改为 "must be the guest physical address"。所有测试用例围绕"触发 GPF → 验证 htval 必须等于 GPA>>2 且 != 0"展开，并在 Shtvala 不直接约束但与 htval 行为联动的场景（如 Sv*x4 高位越界、跨页访问、非 GPF trap 清零等）借助 H 扩展的相邻 norm 完成完整覆盖。
@@ -64,7 +73,7 @@
 ### 不在测试范围内
 
 - **`mtval2` 行为**：Shtvala SPEC 原文不涉及 `mtval2`。`mtval2` 由 H 扩展基线 `norm:mtval2_trapval` 系列约束（含 medeleg=0 不委托、`mstatus.MPRV+MPV` 触发 M-mode 两阶段访问），归 H 扩展基线测试方案。但 Group 5 中 HLV/HLVX/HSV 指令的 GPF 路径（trap 到 M-mode、写 mtval2）作为 Shtvala 约束的对称覆盖纳入本方案
-- **`stval` 是否写 GVA 的强约束**：归 Sstvala 扩展（`SPEC/sstvala.adoc`）
+- **`stval` 是否写 GVA 的强约束**：归 Sstvala 扩展（`sstvala.adoc`）
 - **`htinst` 编码**：归 H 扩展基线（`norm:htinst_val`）
 - **Sv*x4 G-stage 翻译路径正确性**：归 `hyp_gstage_translation_test_plan.md`
 - **VS-stage 翻译路径正确性**：归 `hyp_2_stage_translation_test_plan.md`
@@ -138,8 +147,8 @@
 ### Group 1：htval 寄存器属性（基础 RW 与 WARL）
 
 **规范依据**：
-- `norm:htval_sz_acc_op`（`SPEC/hypervisor.adoc:906-910`）：htval 是 HSXLEN-bit RW 寄存器
-- `norm:htval_val`（`SPEC/hypervisor.adoc:956-959`）：htval 是 WARL，必须能装 0
+- `norm:htval_sz_acc_op`（`hypervisor.adoc:906-910`）：htval 是 HSXLEN-bit RW 寄存器
+- `norm:htval_val`（`hypervisor.adoc:956-959`）：htval 是 WARL，必须能装 0
 
 **测试职责**：验证 htval 寄存器在 M-mode/HS-mode 下可读可写、WARL 行为合法、VS/VU-mode 访问触发 illegal-instruction。这是 Shtvala 后续断言的前提。
 
@@ -154,44 +163,15 @@
 | HTVAL-REG-03 | WARL 子集合法性 | HS-mode 写入显然非法的全 1 值 `~0UL`，回读为 WARL 子集（不抛异常） | 不触发异常；回读值 ⊆ 写入值（按位） |
 | HTVAL-REG-04 | VS/VU-mode 访问 htval | VS-mode 执行 `csrr x5, htval` → cause 22 (virtual-instruction)；VU-mode 执行同样 → cause 2 (illegal-instruction) | VS：cause=22；VU：cause=2 |
 
-#### 关键代码示例：HTVAL-REG-02
-
-```c
-/* tests/hyp/test_shtvala_reg.c — HTVAL-REG-02 */
-
-#include "hyp/hyp_test.h"
-
-TEST_REGISTER(test_shtvala_htval_rw_hs);
-bool test_shtvala_htval_rw_hs(void) {
-    TEST_BEGIN("HTVAL-REG-02: HS-mode htval RW preserves GPA>>2");
-
-    SHTVALA_REQUIRE();  /* 平台未实现 Shtvala 则 TEST_SKIP */
-
-    /* 写 0 必须能保持 */
-    CSRW(CSR_HTVAL, 0);
-    TEST_ASSERT_EQ("htval write 0 preserved",
-                   CSRR(CSR_HTVAL), 0UL);
-
-    /* 写实现宽度内的 GPA>>2 必须能完整保持 */
-    uintptr_t test_gpa = 0x80100000UL;     /* 41-bit 内合法 GPA */
-    uintptr_t shifted  = test_gpa >> 2;    /* 实际写入值 */
-    CSRW(CSR_HTVAL, shifted);
-    TEST_ASSERT_EQ("htval write GPA>>2 preserved",
-                   CSRR(CSR_HTVAL), shifted);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 2：显式 G-stage 访问 GPF（Shtvala 核心：htval 必须非零）
 
 **规范依据**：
-- `norm:shtvala_htval_faulting_gpa`（`SPEC/shtvala.adoc:4-6`）：htval 必须写入 faulting GPA
-- `norm:htval_trapval`（`SPEC/hypervisor.adoc:916-921`）：GPF 时 htval 写 GPA>>2
-- `norm:H_guest_page_fault`（`SPEC/hypervisor.adoc:2043-2051`）：GPF 总规则
-- `norm:mtval2_htval_virtaddr`（`SPEC/hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 对应 stval
+- `norm:shtvala_htval_faulting_gpa`（`shtvala.adoc:4-6`）：htval 必须写入 faulting GPA
+- `norm:htval_trapval`（`hypervisor.adoc:916-921`）：GPF 时 htval 写 GPA>>2
+- `norm:H_guest_page_fault`（`hypervisor.adoc:2043-2051`）：GPF 总规则
+- `norm:mtval2_htval_virtaddr`（`hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 对应 stval
 
 **测试职责**：当 VS-mode 显式访问触发 G-stage GPF（cause 20/21/23）时，验证 `htval == faulting GPA >> 2` 且 `htval != 0`。这是 Shtvala 与基线 H 扩展的核心区别。
 
@@ -210,92 +190,13 @@ bool test_shtvala_htval_rw_hs(void) {
 | HTVAL-LGP-03 | Load GPF：vsatp=Sv39 + G-stage Invalid | vsatp=Sv39 设置 GVA→GPA 翻译，G-stage 该 GPA 为 Invalid → cause 21 | `cause == 21`；`htval == 翻译后 GPA >> 2 != 0`，与 stval（GVA）不同 |
 | HTVAL-AMO-01 | AMO 指令 Store GPF | vsatp=Bare，VS-mode 对 G-stage 缺 W 权限的 GPA 执行 `amoadd.d` → cause 23 | `cause == 23`；`htval == GPA >> 2 != 0`（AMO 与 Store 共享 cause 23 但触发路径不同：AMO 需 R+W 权限） |
 
-#### 关键代码示例：HTVAL-LGP-01（vsatp=Bare 简化）
-
-```c
-/* tests/hyp/test_shtvala_explicit.c — HTVAL-LGP-01 */
-
-#include "hyp/hyp_test.h"
-#include "hyp/two_stage.h"
-#include "hyp/gstage_pt.h"
-
-#define TEST_GVA_GPA  0x80100000UL    /* Bare 模式下 GVA == GPA */
-
-static void vs_load_unmapped_gpa(void) {
-    volatile uintptr_t *p = (volatile uintptr_t *)TEST_GVA_GPA;
-    (void)*p;   /* 触发 load GPF (cause 21) */
-}
-
-TEST_REGISTER(test_shtvala_load_gpf_invalid_pte);
-bool test_shtvala_load_gpf_invalid_pte(void) {
-    TEST_BEGIN("HTVAL-LGP-01: load GPF on G-stage Invalid PTE, htval == GPA>>2");
-
-    SHTVALA_REQUIRE();
-
-    /* 委托 GPF 到 HS-mode */
-    delegate_gpf_to_hs();
-
-    /* vsatp=Bare 让 GVA == GPA */
-    /* hgatp=Sv39x4，目标 GPA 不在 G-stage 页表中（PTE.V=0） */
-    two_stage_setup_bare_vsatp_sv39x4_hgatp();
-    /* 不映射 TEST_GVA_GPA，使其在 G-stage 翻译时缺失 */
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode((vs_func_t)vs_load_unmapped_gpa, 0);
-    });
-
-    CHECK_HTVAL("htval == faulting GPA >> 2", TEST_GVA_GPA >> 2);
-    TEST_ASSERT("htval != 0 (Shtvala enforcement)",
-                trap_get_htval() != 0);
-
-    HYP_TEST_END();
-}
-```
-
-#### 关键代码示例：HTVAL-LGP-03（vsatp=Sv39 双阶段）
-
-```c
-/* tests/hyp/test_shtvala_explicit.c — HTVAL-LGP-03 */
-
-#define TEST_GVA   0x40000000UL
-#define TEST_GPA   0x80200000UL
-
-TEST_REGISTER(test_shtvala_load_gpf_two_stage);
-bool test_shtvala_load_gpf_two_stage(void) {
-    TEST_BEGIN("HTVAL-LGP-03: load GPF after VS-stage translates, htval == GPA>>2");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-
-    /* vsatp=Sv39: TEST_GVA → TEST_GPA */
-    /* hgatp=Sv39x4: TEST_GPA 缺 PTE（Invalid） */
-    two_stage_t ts;
-    two_stage_init(&ts, SV39, SV39X4);
-    two_stage_map_vs(&ts, TEST_GVA, TEST_GPA, PTE_V|PTE_R|PTE_W|PTE_X|PTE_U);
-    /* 不在 G-stage 中映射 TEST_GPA → 触发 cause 21 */
-    two_stage_activate(&ts);
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(TEST_GVA);
-    });
-
-    /* htval 必须为 G-stage faulting GPA，不是 GVA */
-    CHECK_HTVAL("htval == G-stage faulting GPA >> 2", TEST_GPA >> 2);
-    TEST_ASSERT("htval != 0", trap_get_htval() != 0);
-    /* stval 应为 GVA */
-    TEST_ASSERT_EQ("stval == GVA", trap_get_stval(), TEST_GVA);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 3：隐式 VS-stage 翻译 GPF（htval = PTE 自身 GPA）
 
 **规范依据**：
-- `norm:shtvala_htval_faulting_gpa`（`SPEC/shtvala.adoc:4-6`）
-- `norm:htval_trapval`（`SPEC/hypervisor.adoc:922-929`）："a guest physical address written to `htval` is that of the implicit memory access that faulted—for example, the address of a VS-level page table entry that could not be read"
+- `norm:shtvala_htval_faulting_gpa`（`shtvala.adoc:4-6`）
+- `norm:htval_trapval`（`hypervisor.adoc:922-929`）："a guest physical address written to `htval` is that of the implicit memory access that faulted—for example, the address of a VS-level page table entry that could not be read"
 
 **测试职责**：验证当 VS-stage 翻译过程中隐式读取 PTE 触发 G-stage GPF 时，`htval` 等于该 **PTE 自身**的 GPA（不是原始 GVA 经 VS-stage 翻译后的 GPA，因为 VS-stage 翻译失败时该值未知）。
 
@@ -317,52 +218,14 @@ bool test_shtvala_load_gpf_two_stage(void) {
 | HTVAL-IMP-06 | Implicit write GPF 时 htinst == pseudoinstruction（write） | vsatp Sv39 构造 VS-stage PTE A=0（需硬件自动置 A），隐式写触发 GPF → cause 23 | `htinst == 0x00003020`（RV64 write pseudoinstruction）；若平台不自动更新 A/D 则 `TEST_SKIP` |
 | HTVAL-IMP-07 | Sv48x4 隐式 GPF 路径 | vsatp=Sv48，构造 L2 PTE 所在 GPA 在 G-stage（Sv48x4）未映射 → cause 21 | `htval == L2 PTE GPA >> 2 != 0`；若平台不支持 Sv48 则 `TEST_SKIP` |
 
-#### 关键代码示例：HTVAL-IMP-03
-
-```c
-/* tests/hyp/test_shtvala_implicit.c — HTVAL-IMP-03 */
-
-#define TEST_GVA       0x40000000UL
-#define LEAF_PT_GPA    0x80300000UL    /* VS-stage 叶子页表所在的 GPA */
-
-TEST_REGISTER(test_shtvala_implicit_leaf);
-bool test_shtvala_implicit_leaf(void) {
-    TEST_BEGIN("HTVAL-IMP-03: implicit VS-stage leaf PT GPF, htval == leaf PTE GPA>>2");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-
-    two_stage_t ts;
-    two_stage_init(&ts, SV39, SV39X4);
-    /* VS-stage：构造 TEST_GVA 的叶子 PTE 放在 LEAF_PT_GPA */
-    two_stage_set_vs_leaf_pt_at(&ts, TEST_GVA, LEAF_PT_GPA);
-    /* hgatp：根表/中级表的 GPA 都映射，但 LEAF_PT_GPA 不映射 */
-    two_stage_map_gs_except(&ts, LEAF_PT_GPA);
-    two_stage_activate(&ts);
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(TEST_GVA);
-    });
-
-    /* htval 是叶子 PTE 自身的 GPA，与原 GVA 翻译后的目标 GPA 无关 */
-    CHECK_HTVAL("htval == leaf PT GPA >> 2", LEAF_PT_GPA >> 2);
-    TEST_ASSERT("htval != 0", trap_get_htval() != 0);
-    /* htval 低 2 bit 必为 0（PTE 8-byte 对齐） */
-    TEST_ASSERT_EQ("htval low 2 bits = 0 for implicit",
-                   (trap_get_htval() << 2) & 0x3, 0UL);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 4：跨页 / Misaligned 访问（htval = faulting portion）
 
 **规范依据**：
-- `norm:htval_trapval`（`SPEC/hypervisor.adoc:931-936`）："for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `htval` corresponds to the faulting portion of the access"
-- `norm:H_straddle`（`SPEC/hypervisor.adoc:2053-2061`）：跨页访问 stval 写 page-boundary GVA
-- `norm:mtval2_htval_virtaddr`（`SPEC/hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 对应 stval 中的精确 GVA
+- `norm:htval_trapval`（`hypervisor.adoc:931-936`）："for misaligned loads and stores that cause guest-page faults, a nonzero guest physical address in `htval` corresponds to the faulting portion of the access"
+- `norm:H_straddle`（`hypervisor.adoc:2053-2061`）：跨页访问 stval 写 page-boundary GVA
+- `norm:mtval2_htval_virtaddr`（`hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 对应 stval 中的精确 GVA
 
 **测试职责**：当 load/store/取指访问跨越页边界，前半部分访问成功后半部分触发 G-stage GPF 时，验证 `htval` 等于 **faulting portion** 的 GPA（即页边界后那个字节起始的 GPA），而非原始访问起始地址。
 
@@ -380,52 +243,16 @@ bool test_shtvala_implicit_leaf(void) {
 > [!WARNING]
 > 大多数 RISC-V 实现支持硬件透明非对齐访问，HTVAL-STR-01 / STR-02 在该平台上需先探测：若不触发 misaligned 异常但触发 GPF，则继续；若硬件忽略非对齐导致单页访问，则用例 `TEST_SKIP`。
 
-#### 关键代码示例：HTVAL-STR-01
-
-```c
-/* tests/hyp/test_shtvala_straddle.c — HTVAL-STR-01 */
-
-#define PAGE_OK       0x80000000UL  /* 已映射 */
-#define PAGE_FAULT    0x80001000UL  /* G-stage 未映射 */
-#define LOAD_START    0x80000FFCUL  /* 跨页 load 起始 */
-
-TEST_REGISTER(test_shtvala_straddle_load);
-bool test_shtvala_straddle_load(void) {
-    TEST_BEGIN("HTVAL-STR-01: cross-page load GPF, htval == faulting half GPA>>2");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-
-    two_stage_t ts;
-    two_stage_init(&ts, BARE, SV39X4);
-    two_stage_map_gs_4k(&ts, PAGE_OK, PAGE_OK,
-                        PTE_V|PTE_R|PTE_W|PTE_X|PTE_U|PTE_A|PTE_D);
-    /* PAGE_FAULT 不映射 */
-    two_stage_activate(&ts);
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load_8byte(LOAD_START);
-    });
-
-    /* htval 报告 faulting portion（后半页起始） */
-    CHECK_HTVAL("htval == fault page GPA >> 2", PAGE_FAULT >> 2);
-    TEST_ASSERT("htval != 0", trap_get_htval() != 0);
-    TEST_ASSERT_EQ("stval == fault page boundary", trap_get_stval(), PAGE_FAULT);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 5：HLV / HLVX / HSV 指令触发的 G-stage GPF（mtval2 = GPA >> 2）
 
 **规范依据**：
-- `norm:shtvala_htval_faulting_gpa`（`SPEC/shtvala.adoc:4-6`）：htval / mtval2 必须写入 faulting GPA
-- `norm:htval_trapval` / `norm:mtval2_trapval`（`SPEC/hypervisor.adoc:916-921`）：GPF 时写 GPA>>2
-- `norm:hlsv_trans`（`SPEC/hypervisor.adoc:1492`）：HLV/HLVX/HSV 始终执行两阶段翻译
-- `norm:hlsv_mode`（`SPEC/hypervisor.adoc:1488`）：HLV/HLVX/HSV 仅在 M-mode、HS-mode 或 U-mode（hstatus.HU=1）下有效
-- `SPEC/hypervisor.adoc:1505-1507`（NOTE）：HLVX 的异常类型与 load 相同（cause=21），**不是**取指异常（cause=20）
+- `norm:shtvala_htval_faulting_gpa`（`shtvala.adoc:4-6`）：htval / mtval2 必须写入 faulting GPA
+- `norm:htval_trapval` / `norm:mtval2_trapval`（`hypervisor.adoc:916-921`）：GPF 时写 GPA>>2
+- `norm:hlsv_trans`（`hypervisor.adoc:1492`）：HLV/HLVX/HSV 始终执行两阶段翻译
+- `norm:hlsv_mode`（`hypervisor.adoc:1488`）：HLV/HLVX/HSV 仅在 M-mode、HS-mode 或 U-mode（hstatus.HU=1）下有效
+- `hypervisor.adoc:1505-1507`（NOTE）：HLVX 的异常类型与 load 相同（cause=21），**不是**取指异常（cause=20）
 
 **测试职责**：验证在 HS-mode（V=0）使用 HLV/HLVX/HSV 指令执行两阶段翻译时，若 G-stage 映射缺失导致 GPF，mtval2 正确写入 GPA >> 2。HLV/HSV 在 V=0 执行时 GPF trap 到 M-mode，因此验证目标是 `mcause` 和 `mtval2`（与 `htval` 语义对称）。
 
@@ -448,42 +275,15 @@ bool test_shtvala_straddle_load(void) {
 | HTVAL-HLV-03 | HSV.D G-stage store GPF | HS-mode 执行 HSV.D，目标 GPA 未映射 | `mcause == 23`（store GPF）；`mtval2 == GPA>>2` |
 | HTVAL-HLV-04 | HLVX.WU (vsatp=BARE) | HS-mode 执行 HLVX.WU，vsatp=BARE（VA 直接作为 GPA），目标 GPA 未映射 | `mcause == 21`（load GPF）；`mtval2 == GPA>>2` |
 
-#### 关键代码示例：HTVAL-HLV-01a
-
-```c
-/* shtvala/tests/test_htval_hlv.c — HTVAL-HLV-01a */
-
-TEST_REGISTER(test_htval_hlv_01a_hlvx_vu);
-bool test_htval_hlv_01a_hlvx_vu(void) {
-    TEST_BEGIN("HTVAL-HLV-01a: HLVX.WU @ VU (SPVP=0) gpf reports mtval2 = GPA>>2");
-    REQUIRE_HGATP_MODE(HGATP_MODE_SV39X4);
-
-    uintptr_t target = (uintptr_t)test_fault_page;
-    /* V=0, HLVX.WU through invalid G-stage PTE, effective priv = VU.
-     * Per hypervisor.adoc:1505-1507, HLVX raises the same exceptions
-     * as other load instructions -> CAUSE_LOAD_GUEST_PAGE_FAULT (21). */
-    bool fired = _fire_hlvx_fault_priv(target, /*flags=*/0, PRIV_U);
-    TEST_ASSERT("HLVX load-gpf fired (VU)", fired);
-    if (fired) {
-        TEST_ASSERT_EQ("mcause = 21 (load-gpf)",
-                       trap_get_cause(), CAUSE_LOAD_GUEST_PAGE_FAULT);
-        TEST_ASSERT_EQ("mtval2 = GPA>>2",
-                       trap_get_htval(), target >> 2);
-    }
-    hyp_reset_state();
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 6：G-stage MODE 覆盖与 GPA 高位越界
 
 **规范依据**：
-- `norm:hgatp_mode_x4`（`SPEC/hypervisor.adoc:1914-1924`）：Sv*x4 入参 GPA 比 Sv* 多 2 bit
-- `norm:hgatp_mode_sv39x4`（`SPEC/hypervisor.adoc:1943-1947`）：bits 63:41 必须为 0，否则 GPF
-- `norm:hgatp_mode_sv48x4`（`SPEC/hypervisor.adoc:1953-1959`）：bits 63:50 必须为 0，否则 GPF
-- `norm:hgatp_mode_sv57x4`（`SPEC/hypervisor.adoc:1965-1971`）：bits 63:59 必须为 0，否则 GPF
+- `norm:hgatp_mode_x4`（`hypervisor.adoc:1914-1924`）：Sv*x4 入参 GPA 比 Sv* 多 2 bit
+- `norm:hgatp_mode_sv39x4`（`hypervisor.adoc:1943-1947`）：bits 63:41 必须为 0，否则 GPF
+- `norm:hgatp_mode_sv48x4`（`hypervisor.adoc:1953-1959`）：bits 63:50 必须为 0，否则 GPF
+- `norm:hgatp_mode_sv57x4`（`hypervisor.adoc:1965-1971`）：bits 63:59 必须为 0，否则 GPF
 - `norm:shtvala_htval_faulting_gpa`：联动 —— 即使越界场景，htval 也必须写 GPA
 
 **测试职责**：验证三种 G-stage MODE（Sv39x4/Sv48x4/Sv57x4）下，无论合法范围内 GPA 还是高位越界 GPA 的 GPF，htval 都必须写入完整 faulting GPA>>2。
@@ -499,43 +299,12 @@ bool test_htval_hlv_01a_hlvx_vu(void) {
 | HTVAL-MOD-03 | Sv48x4 高位越界 GPF | hgatp Sv48x4，访问 GPA bit 50=1，越界 → cause 21 | `cause == 21`；`htval == 越界 GPA >> 2 != 0` |
 | HTVAL-MOD-04 | Sv57x4 高位越界 GPF | hgatp Sv57x4，访问 GPA bit 59=1，越界 → cause 21 | `cause == 21`；`htval == 越界 GPA >> 2 != 0` |
 
-#### 关键代码示例：HTVAL-MOD-02（Sv39x4 高位越界）
-
-```c
-/* tests/hyp/test_shtvala_mode.c — HTVAL-MOD-02 */
-
-#define OVERFLOW_GPA   (1UL << 41)   /* bit 41=1, Sv39x4 越界 */
-
-TEST_REGISTER(test_shtvala_sv39x4_overflow);
-bool test_shtvala_sv39x4_overflow(void) {
-    TEST_BEGIN("HTVAL-MOD-02: Sv39x4 GPA bit 41=1 → GPF, htval records full GPA");
-
-    SHTVALA_REQUIRE();
-    REQUIRE_HGATP_MODE(SV39X4);
-    delegate_gpf_to_hs();
-
-    two_stage_t ts;
-    two_stage_init(&ts, BARE, SV39X4);
-    two_stage_activate(&ts);
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(OVERFLOW_GPA);
-    });
-
-    /* WARL 子集允许情况下，htval 应完整记录越界 GPA */
-    CHECK_HTVAL("htval == overflow GPA >> 2", OVERFLOW_GPA >> 2);
-    TEST_ASSERT("htval != 0", trap_get_htval() != 0);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 7：非 GPF Trap 不污染 htval（必须写 0）
 
 **规范依据**：
-- `norm:htval_trapval`（`SPEC/hypervisor.adoc:919`）："For other traps, `htval` is set to zero"
+- `norm:htval_trapval`（`hypervisor.adoc:919`）："For other traps, `htval` is set to zero"
 
 **测试职责**：Shtvala 强化 GPF 时 htval 必须非零，反向也意味着非 GPF 进入 HS-mode 的 trap 必须**主动**清零 htval（防止读到上一次 GPF 的残留值）。
 
@@ -550,45 +319,13 @@ bool test_shtvala_sv39x4_overflow(void) {
 | HTVAL-CLR-03 | 先 GPF 后普通 page-fault | 触发 cause 21；HS-mode 触发 cause 12/13/15（普通 page-fault，非 guest） | 第二次 trap：`cause==12/13/15`；`htval == 0` |
 | HTVAL-CLR-04 | 先 GPF 后 virtual-instruction | 触发 cause 21；VS-mode 执行 HS-level CSR（cause 22） | 第二次 trap：`cause==22`；`htval == 0` |
 
-#### 关键代码示例：HTVAL-CLR-01
-
-```c
-/* tests/hyp/test_shtvala_clear.c — HTVAL-CLR-01 */
-
-TEST_REGISTER(test_shtvala_clear_after_ecall);
-bool test_shtvala_clear_after_ecall(void) {
-    TEST_BEGIN("HTVAL-CLR-01: htval cleared on ecall after GPF");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-    two_stage_setup_bare_vsatp_sv39x4_hgatp();
-
-    /* Step 1: 触发 GPF 把 htval 写非零 */
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(0x80100000UL);
-    });
-    TEST_ASSERT("htval != 0 after GPF", trap_get_htval() != 0);
-
-    /* Step 2: VS-mode ecall → cause 10 进 HS-mode */
-    EXPECT_TRAP_HS(CAUSE_VS_ECALL, {
-        run_in_vs_mode_ecall();
-    });
-
-    /* htval 必须被清零 */
-    TEST_ASSERT_EQ("htval cleared after non-GPF trap",
-                   trap_get_htval(), 0UL);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 8：htval / stval 一致性 + 低 2 bit 通过 stval 恢复
 
 **规范依据**：
-- `norm:mtval2_htval_virtaddr`（`SPEC/hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 必须对应 stval
-- `norm:htval_trapval` NOTE 段（`SPEC/hypervisor.adoc:948-953`）："the least-significant two bits are ordinarily the same as the least-significant two bits of the faulting virtual address in `stval`. For faults due to implicit memory accesses for VS-stage address translation, the least-significant two bits are instead zeros"
+- `norm:mtval2_htval_virtaddr`（`hypervisor.adoc:2063-2067`）：非 implicit 时 GPA 必须对应 stval
+- `norm:htval_trapval` NOTE 段（`hypervisor.adoc:948-953`）："the least-significant two bits are ordinarily the same as the least-significant two bits of the faulting virtual address in `stval`. For faults due to implicit memory accesses for VS-stage address translation, the least-significant two bits are instead zeros"
 
 **测试职责**：因为 htval 存的是 GPA>>2，完整 GPA 重建需要：
 - **显式访问**：`(htval << 2) | (stval & 0x3) == faulting GPA`
@@ -604,44 +341,12 @@ bool test_shtvala_clear_after_ecall(void) {
 | HTVAL-CON-02 | 显式 GPF 不同低 2 bit 组合 | 用 `0x...01`、`0x...02`、`0x...03` 三种低 2 bit 组合各跑一次 | 每次 `(htval << 2) \| (stval & 0x3) == GVA` |
 | HTVAL-CON-03 | 隐式 GPF 低 2 bit 必为 0 | 复用 HTVAL-IMP-03 设置，验证 `(htval << 2) & 0x3 == 0`，与 stval 低 2 bit 无关 | `htval << 2` 低 2 bit 为 0；与 stval 低 2 bit 不一定相等 |
 
-#### 关键代码示例：HTVAL-CON-01
-
-```c
-/* tests/hyp/test_shtvala_consistency.c — HTVAL-CON-01 */
-
-#define TEST_GVA_GPA  0x80100003UL    /* 低 2 bit = 0b11 */
-
-TEST_REGISTER(test_shtvala_consistency_low_bits);
-bool test_shtvala_consistency_low_bits(void) {
-    TEST_BEGIN("HTVAL-CON-01: (htval<<2) | (stval&3) == faulting GPA");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-    two_stage_setup_bare_vsatp_sv39x4_hgatp();
-    /* GPA 0x80100003 所在 4KB 页未映射 */
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(TEST_GVA_GPA);
-    });
-
-    uintptr_t reconstructed = (trap_get_htval() << 2) |
-                              (trap_get_stval() & 0x3);
-
-    TEST_ASSERT_EQ("reconstructed GPA == TEST_GVA_GPA",
-                   reconstructed, TEST_GVA_GPA);
-    TEST_ASSERT_EQ("stval low 2 bits preserved",
-                   trap_get_stval() & 0x3, 0x3UL);
-
-    HYP_TEST_END();
-}
-```
-
 ---
 
 ### Group 9：hstatus.GVA 联动
 
 **规范依据**：
-- `norm:hstatus_gva_op`（`SPEC/hypervisor.adoc:321-326`）：进 HS-mode 时若写 GVA 到 stval，则 hstatus.GVA=1；其他情况 GVA=0
+- `norm:hstatus_gva_op`（`hypervisor.adoc:321-326`）：进 HS-mode 时若写 GVA 到 stval，则 hstatus.GVA=1；其他情况 GVA=0
 
 **测试职责**：Shtvala 不直接管 hstatus.GVA，但 GPF 时 stval 写 GVA 与 htval 写 GPA 是一对联动信息，验证两者状态一致：GPF → GVA=1 且 htval≠0；非 GPF → GVA=0 且 htval=0。
 
@@ -652,31 +357,6 @@ bool test_shtvala_consistency_low_bits(void) {
 |---------|----------|----------|----------|
 | HTVAL-GVA-01 | GPF 时 GVA=1 && htval≠0 | 触发 cause 21 | `hstatus.GVA == 1`；`stval != 0`；`htval != 0` |
 | HTVAL-GVA-02 | 非 GPF 时 GVA=0 && htval=0 | VS/VU ecall 进 HS（cause 8/9/10） | `hstatus.GVA == 0`；`htval == 0` |
-
-#### 关键代码示例：HTVAL-GVA-01
-
-```c
-/* tests/hyp/test_shtvala_gva.c — HTVAL-GVA-01 */
-
-TEST_REGISTER(test_shtvala_gva_set_on_gpf);
-bool test_shtvala_gva_set_on_gpf(void) {
-    TEST_BEGIN("HTVAL-GVA-01: hstatus.GVA == 1 && htval != 0 on GPF");
-
-    SHTVALA_REQUIRE();
-    delegate_gpf_to_hs();
-    two_stage_setup_bare_vsatp_sv39x4_hgatp();
-
-    EXPECT_GUEST_PAGE_FAULT(CAUSE_LOAD_GUEST_PAGE_FAULT, {
-        run_in_vs_mode_load(0x80100000UL);
-    });
-
-    CHECK_GVA("hstatus.GVA == 1", 1);
-    TEST_ASSERT("htval != 0", trap_get_htval() != 0);
-    TEST_ASSERT("stval != 0", trap_get_stval() != 0);
-
-    HYP_TEST_END();
-}
-```
 
 ---
 
@@ -756,3 +436,27 @@ bool test_shtvala_gva_set_on_gpf(void) {
 | WARL 子集 | 允许极小子集（甚至只 0） | 必须能装下实现宽度内的所有 faulting GPA |
 | 非 GPF trap 时 htval | 写 0（基线已要求） | 同（Shtvala 不收紧） |
 | `mtval2` 行为 | 由 `mtval2_trapval` 系列约束 | **不受 Shtvala 约束**（out-of-scope） |
+
+---
+
+## 附录：规范点覆盖矩阵
+
+| Norm ID | 覆盖用例 | 备注 |
+|---------|----------|------|
+| `norm:shtvala_htval_faulting_gpa` | HTVAL-LGP-01 ~ HTVAL-LGP-03, HTVAL-SGP-01 ~ HTVAL-SGP-02, HTVAL-IGP-01, HTVAL-AMO-01, HTVAL-IMP-01 ~ HTVAL-IMP-07, HTVAL-STR-01 ~ HTVAL-STR-03, HTVAL-HLV-01a ~ HTVAL-HLV-04, HTVAL-MOD-01 ~ HTVAL-MOD-04 | 核心约束：所有 GPF 场景 htval 必须写 GPA 且非零 |
+| `norm:htval_sz_acc_op` | HTVAL-REG-01 ~ HTVAL-REG-04 | 寄存器基础读写属性 |
+| `norm:htval_trapval` | Group 2-6 各 GPF 用例（同核心约束行）；HTVAL-CLR-01 ~ HTVAL-CLR-04（非 GPF 写零）；HTVAL-CON-01 ~ HTVAL-CON-03（低 2 位 NOTE 段） | H 扩展基线写值规则 |
+| `norm:htval_val` | HTVAL-REG-01 ~ HTVAL-REG-04 | WARL：必须能持零；实现子集需容纳所有 faulting GPA |
+| `norm:H_guest_page_fault` | HTVAL-LGP-01 ~ HTVAL-LGP-03, HTVAL-SGP-01 ~ HTVAL-SGP-02, HTVAL-IGP-01 | GPF 委托与写值总规则 |
+| `norm:H_straddle` | HTVAL-STR-01 ~ HTVAL-STR-03 | 跨页访问 stval 写 page-boundary GVA |
+| `norm:mtval2_htval_virtaddr` | HTVAL-CON-01 ~ HTVAL-CON-03, HTVAL-LGP-01 ~ HTVAL-LGP-03 | 非隐式场景 GPA 对应 stval 中的精确 GVA |
+| `norm:hgatp_mode_x4` | HTVAL-MOD-01 ~ HTVAL-MOD-04 | Sv*x4 GPA 宽度扩展前提 |
+| `norm:hgatp_mode_sv39x4` | HTVAL-MOD-02 | bits 63:41 越界触发 GPF |
+| `norm:hgatp_mode_sv48x4` | HTVAL-MOD-03 | bits 63:50 越界触发 GPF |
+| `norm:hgatp_mode_sv57x4` | HTVAL-MOD-04 | bits 63:59 越界触发 GPF |
+| `norm:hstatus_gva_op` | HTVAL-GVA-01, HTVAL-GVA-02 | GVA 与 stval 写入联动 |
+| `norm:mtval2_trapval` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | HLV/HLVX/HSV 路径 trap 到 M-mode 时写 mtval2（对称覆盖） |
+| `norm:hlsv_mode` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | HLV/HLVX/HSV 有效模式前提 |
+| `norm:hlsv_trans` | HTVAL-HLV-01a ~ HTVAL-HLV-04 | 两阶段翻译始终生效 |
+| `norm:htinst_val` | HTVAL-IMP-05 | htinst 联动验证（WARL 持值范围） |
+| `norm:H_trap_xtinst_guestpage` | HTVAL-IMP-05 | 隐式 GPF 且 htval 非零时 htinst 必须写伪指令 |
