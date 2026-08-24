@@ -67,29 +67,42 @@ damo-priv-test/
 ## 快速开始
 
 ```bash
-# 构建单个扩展（默认：QEMU RV64）
-make pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# 构建单个扩展（例如 pmp 默认平台:QEMU 默认工具链:riscv64-unknown-elf-gcc）
+cd pmp && make clean && make 
 
-# 切换到其他平台构建
-make pmp CONFIG=sail-rv64-max CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# 切换到其他平台仅构建 例如:sail-rv64-max
+make clean && make CONFIG=sail-rv64-max
 
-# 构建所有扩展
-make all CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# 在模拟器上构建+运行 (需要模拟器执行二进制在环境PATH中)
+make clean && make qemu
+make clean && make spike
+make clean && make sail
+make clean && make whisper
 
-# 在模拟器上运行
-make qemu-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-make sail-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
-make spike-pmp CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+# 构建所有扩展 (在顶层)
+make all
 
 # 构建 RV32 版本
-make pmp XLEN=32 CROSS_COMPILER=/path/to/riscv32-unknown-elf-
+make pmp XLEN=32
 ```
 
 使用 `TEST_FILTER` 运行特定测试：
 
 ```bash
-make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"' CROSS_COMPILER=/path/to/riscv64-unknown-elf-
+make qemu-pmp EXTRA_CFLAGS='-DTEST_FILTER="PMP"'
 ```
+
+---
+
+## UART 静默模式
+
+在构建时通过 `EXTRA_CFLAGS` 动态开启：
+
+```bash
+cd <tests_dir>; make clean; make <target> EXTRA_CFLAGS='-DUART_SILENT_MODE'
+```
+
+注意：命令行变量变化不会触发已编译对象重建，切换该开关前必须先执行 `make clean`。
 
 ---
 
@@ -274,11 +287,11 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **Machine-mode (Sm\*)扩展** | `Sm_CSR` | M-Mode CSR | |
 | | `Sm_Interrupts` | M-Mode 中断处理 | |
 | | `Sm_Exceptions` | M-Mode 异常处理 | |
-| | `Smstateen` | 状态使能 | ✓ |
+| | `Smstateen` | 状态使能 | |
 | | `Smrnmi` | 可恢复 NMI | |
 | | `Smcdeleg` | 计数器委托 | |
-| | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | ✓ |
-| | `Smcsrind` | 间接 CSR 访问 | ✓ |
+| | `Smcntrpmf` | Cycle/Instret 特权模式过滤 | |
+| | `Smcsrind` | 间接 CSR 访问 | |
 | | `Smctr` | 控制流传输记录 | |
 | | `Smdbltrp` | 双重 trap | |
 | **Supervisor (Ss\*)扩展** | `Ss_CSR` | S-Mode CSR | |
@@ -304,17 +317,17 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `clic` | CLIC | |
 | | `aia_clic` | AIA + CLIC | |
 | | `aclint` | ACLINT | |
-| **CFI（控制流完整性）** | `cfi.Zicfilp` | CFI Landing Pad | ✓ |
-| | `cfi.Zicfiss` | CFI Shadow Stack | ✓ |
+| **CFI（控制流完整性）** | `cfi.Zicfilp` | CFI Landing Pad | |
+| | `cfi.Zicfiss` | CFI Shadow Stack | |
 | **CMO（缓存管理）** | `cmo.base` | CMO 基础 | |
-| | `cmo.Zicbom` | Cache Block Management | ✓ |
-| | `cmo.Zicbop` | Cache Block Prefetch | ✓ |
-| | `cmo.Zicboz` | Cache Block Zero | ✓ |
-| **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | ✓ |
-| | `zpm.Smnpm` | Next-level Pointer Masking | ✓ |
-| | `zpm.Ssnpm` | S-mode Pointer Masking | ✓ |
+| | `cmo.Zicbom` | Cache Block Management | |
+| | `cmo.Zicbop` | Cache Block Prefetch | |
+| | `cmo.Zicboz` | Cache Block Zero | |
+| **Pointer Masking** | `zpm.Smmpm` | M-mode Pointer Masking | |
+| | `zpm.Smnpm` | Next-level Pointer Masking | |
+| | `zpm.Ssnpm` | S-mode Pointer Masking | |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
-| | `qos.Ssqosid` | QoS Ssqosid | ✓ |
+| | `qos.Ssqosid` | QoS Ssqosid | |
 | **非特权扩展 (Zi\*)** | `Zicsr` | CSR 指令 | |
 | | `Zifencei` | 指令取指栅栏 | |
 | | `Zicond` | 整数条件操作 | |
@@ -337,7 +350,7 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | **其他** | `sbi` | SBI 接口 | |
 | | `ntrace` | Ntrace | |
 | | `raseri` | Raseri | |
-| | `Zkr` | 熵源（Key Seed） | ✓ |
+| | `Zkr` | 熵源（Key Seed） | |
 
 ---
 
