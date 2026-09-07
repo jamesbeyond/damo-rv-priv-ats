@@ -49,7 +49,7 @@ Hypervisor_Zicfiss,75,74,0,1
 Hypervisor_Zkr,18,18,0,0
 Hypervisor_Zihintntl,7,7,0,0
 Hypervisor_Zicntr,9,9,0,0
-Hypervisor_Zihpm,5,1,0,4
+Hypervisor_Zihpm,5,4,0,1
 Hypervisor_Vector,13,13,0,0
 Hypervisor_Zawrs,12,12,0,0
 Ss_CSR,75,55,0,20

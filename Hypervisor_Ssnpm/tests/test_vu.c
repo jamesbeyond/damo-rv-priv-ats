@@ -122,7 +122,7 @@ bool test_hzpm_vu_05(void) {
     /* norm:H_scsrs_nomatch: senvcfg has no matching VS CSR and keeps
      * its usual accessibility when V=1. If Smstateen is implemented,
      * open the ENVCFG gates so VS-mode may access senvcfg. */
-    if (stateen_is_available()) {
+    if (SMSTATEEN_AVAILABLE) {
         mstateen_set_bits(0, STATEEN0_ENVCFG);
         hstateen_set_bits(0, STATEEN0_ENVCFG);
     }

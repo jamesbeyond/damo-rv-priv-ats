@@ -40,7 +40,7 @@
 
 - 已由 `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md` 覆盖的 Hypervisor 基础功能
 - 各扩展在非 Hypervisor 场景下的行为（由各自独立测试计划覆盖）
-- Hypervisor 与 Ss\*/Sv\*/Z\* 扩展的交叉测试（分别由 `Hypervisor_Ss_test_plan.md`、`Hypervisor_Sv_test_plan.md`、`Hypervisor_Zi_test_plan.md` 覆盖）
+- Hypervisor 与 Ss\*/Sv\*/Z\* 扩展的交叉测试（分别由 `Hypervisor_Ss_test_plan.md`、`Hypervisor_Sv_test_plan.md`、`Hypervisor_Zi_test_plan.md`（非原子 Z 系列）与 `Hypervisor_Za_test_plan.md`（Za 原子/保留集系列：Zalrsc、Zawrs）覆盖）
 - Smcsrind M-mode CSR（miselect/mireg\*）的基本功能和 WARL 行为 — 由 `Smcsrind_test_plan.md` 覆盖
 - `mstateen0[60]` 对 S-mode 访问 siselect/sireg\*（非 H 扩展 CSR）的控制 — 由 `Smcsrind_test_plan.md` Group 4 覆盖
 - PMP/Smepmp/Spmp 在非 Hypervisor 场景下的基础功能 — 分别由 `pmp_test_plan.md`、`Smepmp_test_plan.md`、`spmp_test_plan.md` 覆盖

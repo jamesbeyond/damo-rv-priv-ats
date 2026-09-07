@@ -332,7 +332,17 @@ static inline void hstateen_set_bit63(int idx, bool enable) {
     else        hstateen_clear_bits(idx, STATEEN_BIT63);
 }
 
-/* Availability probe: returns true if Smstateen is implemented */
-bool stateen_is_available(void);
+/* Extension availability as a compile-time boolean constant (1/0), derived
+ * from the platform config's <EXT>_SUPPORTED declaration in
+ * config/<platform>/rvtest_config.h. Usable directly in `if (...)` and in
+ * `#if`. Prefer such macros over runtime probe functions -- extension support
+ * is config-declaration driven. A suite that touches the stateen CSRs must
+ * launch the simulator with the declared extension (e.g. Spike _smstateen).
+ * Add analogous <EXT>_AVAILABLE macros for other extensions as needed. */
+#ifdef SMSTATEEN_SUPPORTED
+#define SMSTATEEN_AVAILABLE  1
+#else
+#define SMSTATEEN_AVAILABLE  0
+#endif
 
 #endif /* HYP_CSR_H */

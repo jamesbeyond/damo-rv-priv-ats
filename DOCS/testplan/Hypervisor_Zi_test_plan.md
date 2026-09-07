@@ -2,7 +2,9 @@
 
 # Hypervisor 与 Z* 扩展交叉测试计划
 
-> 本文档描述 Hypervisor（H）扩展与其他 Z* 系列扩展（含 Zk* 密码学扩展）在交叉场景下的测试计划。本方案从 `Hypervisor_cross_test_plan.md` 拆分而来，仅保留 Hypervisor 与 Z* 扩展交叉的内容。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划并未完全覆盖。后续补充了 Hypervisor × Zawrs 交叉场景（Group 4）、Hypervisor × V 向量族交叉场景（Group 5）、Hypervisor × Zicntr 交叉场景（Group 6）与 Hypervisor × Zihpm 交叉场景（Group 7）。
+> 本文档描述 Hypervisor（H）扩展与其他 Z* 系列扩展（含 Zk* 密码学扩展）在交叉场景下的测试计划。本方案从 `Hypervisor_cross_test_plan.md` 拆分而来，仅保留 Hypervisor 与 Z* 扩展交叉的内容。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划并未完全覆盖。后续补充了 Hypervisor × V 向量族交叉场景、Hypervisor × Zicntr 交叉场景与 Hypervisor × Zihpm 交叉场景。
+>
+> 原 Hypervisor × Zawrs（原 Group 4，HZWRS-01~12）与 Hypervisor × Zalrsc（原 Group 8，HZLRSC-01~40）两个原子/保留集扩展的交叉场景已拆分至 `Hypervisor_Za_test_plan.md`（Za 原子扩展交叉测试中心），用例编号保持不变；本文档 Group 序号在拆分后重新排列（V 向量族为 Group 4、Zicntr 为 Group 5、Zihpm 为 Group 6）。
 >
 > 生成时间：2026-06-22
 
@@ -16,7 +18,6 @@
 - `SPEC/riscv-isa-manual/src/unpriv/zk.adoc` — Zkr 熵源扩展：`seed` CSR、`mseccfg.SSEED/USEED` 访问控制
 - `SPEC/riscv-isa-manual/src/unpriv/zihintntl.adoc` — Zihintntl 扩展：NTL HINT 指令的无架构副作用语义与 trap 行为
 - `SPEC/riscv-isa-manual/src/unpriv/zcmt.adoc` — Zcmt 扩展：cm.jt/cm.jalt 表跳转指令、jvt CSR 与两次隐式取指语义
-- `SPEC/riscv-isa-manual/src/unpriv/zawrs.adoc` — Zawrs 扩展：wrs.nto/wrs.sto 等待保留集指令、hstatus.VTW 门控的 virtual-instruction 机制
 - `SPEC/riscv-isa-manual/src/unpriv/vector-common.adoc` — V 向量族公共定义：vsstatus.vs 向量上下文状态字段、V=1 时向量指令/向量 CSR 的 Off 门控与双 Dirty 更新、向量浮点的 vsstatus.fs 交互
 - `SPEC/riscv-isa-manual/src/unpriv/zicntr.adoc` — Zicntr 扩展：cycle/time/instret 基础计数器、`rdtime` 语义与 htimedelta 时间偏移的交集、`scounteren` 在 V=1 时对 VU-mode 的持续控制（无对应 VS CSR）
 - `SPEC/riscv-isa-manual/src/unpriv/zihpm.adoc` — Zihpm 扩展：hpmcounter3–31 未实现计数器的访问行为（illegal-instruction 或常数值）在 V=1 场景下的门控交互
@@ -34,7 +35,6 @@
 - **Hypervisor × Zkr**：`mseccfg.SSEED` 对 VS/VU-mode 访问 `seed` CSR 的控制、VS/VU-mode 下 virtual-instruction 与 illegal-instruction 异常类型区分、HS-mode 访问 seed 的 SSEED 控制、只读访问异常优先于 virtual-instruction
 - **Hypervisor × Zihintntl**：HS/VS/VU-mode 下 NTL HINT 的正常执行（不得误触发 virtual-instruction exception）、NTL 作用于 H 扩展虚拟机访存指令（HLV/HSV/HLVX）、VS-mode 下 NTL + CMO 的 virtual-instruction 报告、VS-mode 下 NTL + target 的 G-stage guest-page-fault 报告
 - **Hypervisor × Zcmt**：HS/VS/VU-mode 下表跳转指令（cm.jt/cm.jalt）的正常执行、VS/VU-mode 下 jvt CSR 的访问与 Smstateen（JVT 位）门控、VS-mode 下 JVT 表项取指的两阶段翻译与 G-stage guest instruction page fault 报告
-- **Hypervisor × Zawrs**：HS/VS/VU-mode 下 wrs.nto/wrs.sto 的正常执行（不得误触发 virtual-instruction exception）、VS/VU-mode 下 `hstatus.VTW` 对 `wrs.nto` 的 virtual-instruction 门控、`mstatus.TW` 优先于 `hstatus.VTW` 的异常类型判定、VTW 条款仅作用于 `wrs.nto` 而不作用于 `wrs.sto`
 - **Hypervisor × V 向量族**：实现 H 扩展时 `vsstatus.vs` 字段（bits[10:9]）的存在性与读写、V=1 时 `vsstatus.vs`/`mstatus.vs` 任一为 Off 对向量指令与向量 CSR 的 illegal-instruction 门控、修改向量状态使两者同时置 Dirty、`vsstatus.sd` 与 `vsstatus.vs` 的联动、向量浮点指令的 `vsstatus.fs` 门控与双 Dirty 更新、`misa.v` 可写时 `vsstatus.vs` 的存在性（适用 V、Zve*、Zv* 全部共享 `vector-common.adoc` 的向量扩展）
 - **Hypervisor × Zicntr**：`rdtime` 指令在 VS/VU-mode 下返回 `time + htimedelta`（指令级 delta 语义）、`hcounteren` CY/TM/IR 位对 `cycle`/`time`/`instret` 的门控（作为前置条件与异常类型区分）、`scounteren` 无对应 VS CSR 在 V=1 时继续控制 VU-mode 对基础计数器的可见性（含 `hcounteren`=0 时的被遮断分支）
 - **Hypervisor × Zihpm**：未实现 `hpmcounter3–31` 在 V=1 下的访问行为（常数值或异常两种均合法）与 `hcounteren` HPMn 门控的交互、VU-mode 访问 `hpmcounter` 的 `mcounteren → hcounteren → scounteren` 三层门控链
@@ -47,11 +47,11 @@
 - Zkr 非 Hypervisor 场景（M/S/U-mode 访问 seed 的基础控制）— 由 `Zkr_test_plan.md` 覆盖
 - Zihintntl 非 Hypervisor 场景（M/S/U-mode 基础语义、编码、压缩变体、CMO 交互、LR/SC 前进保证等）— 由 `zihintntl_test_plan.md` 覆盖
 - Zcmt 非 Hypervisor 场景（jvt WARL 行为、编码与操作语义、PMP/页表故障处理、表更新可见性与字节序等）— 由 `zcmt_test_plan.md` 覆盖
-- Zawrs 非 Hypervisor 场景（指令编码与可用性、停顿与恢复语义、mstatus.TW 超时 illegal-instruction 行为等）— 由 `Zawrs_test_plan.md` 覆盖
 - V 向量族非 Hypervisor 场景（vtype/vl 行为、向量指令基础语义、mstatus.vs 非虚拟化门控等）— 当前无独立测试方案，不在本文档范围；`hypervisor.adoc` 中与 `vector-common.adoc` 等价的 `norm:vsstatus_vs_op`/`norm:vsstatus_fs_op` 已由 `Hypervisor_CSR_test_plan.md`（VSST-03~09）覆盖，本方案不重复
 - Zicntr 非 Hypervisor 场景（cycle/time/instret 计数器语义、M/S/U-mode counteren 控制矩阵）— 由 `Zicntr_test_plan.md`、`Sm_CSR_test_plan.md`、`Ss_CSR_test_plan.md` 覆盖
 - Zihpm 非 Hypervisor 场景（hpmcounter 语义与事件配置、M/S/U-mode counteren 控制矩阵）— 由 `Zihpm_test_plan.md`、`Sm_CSR_test_plan.md`、`Ss_CSR_test_plan.md` 覆盖
-- `hcounteren` 位级可写性与 VS/VU-mode 计数器访问的写回/门控矩阵 — 由 `Shcounterenw_test_plan.md` 与 `Hypervisor_Ss_test_plan.md` Group 3（Hypervisor × Sscounterenw）覆盖；本文档（Group 6/7）仅补充其未覆盖的指令级与未实现计数器行为用例，不重复验证门控矩阵本身
+- `hcounteren` 位级可写性与 VS/VU-mode 计数器访问的写回/门控矩阵 — 由 `Shcounterenw_test_plan.md` 与 `Hypervisor_Ss_test_plan.md` Group 3（Hypervisor × Sscounterenw）覆盖；本文档（Group 5/6）仅补充其未覆盖的指令级与未实现计数器行为用例，不重复验证门控矩阵本身
+- **Hypervisor 与 Za 系列原子/保留集扩展（Zalrsc、Zawrs）的全部交叉场景** — 由 `Hypervisor_Za_test_plan.md` 覆盖（原本文档 Group 4「Hypervisor × Zawrs」与 Group 8「Hypervisor × Zalrsc」已整体迁出，用例编号 HZWRS-01~12 / HZLRSC-01~40 保持不变）；Zalrsc 与 Zawrs 的非 Hypervisor 场景分别由 `Zalrsc_test_plan.md`、`Zawrs_test_plan.md` 覆盖，主存 RsrvEventual PMA 与受约束 LR/SC 循环前向进展的主存保证由 `Ziccrse_test_plan.md` 覆盖
 
 ---
 
@@ -72,10 +72,6 @@
 | `norm:jvt_base_vm` | `zcmt.adoc` | jvt[base] is a virtual address, whenever virtual memory is enabled. | 虚拟内存启用时（含 VS-mode 的 vsatp 翻译），jvt.base 是虚拟地址。 |
 | `norm:Zcmt_fetch` | `zcmt.adoc` | ... the execution of a table jump instruction involves two instruction fetches, the first to read the instruction (cm.jt/cm.jalt) and the second to read from the jump vector table (JVT). Both instruction fetches are _implicit_ reads, and both require execute permission; read permission is irrelevant. | 表跳转涉及两次指令取指：第一次取指令本身，第二次取 JVT 表项；两次均为隐式读且都要求执行权限，读权限无关。 |
 | `norm:Zcmt_trap` | `zcmt.adoc` | If an exception occurs on either instruction fetch, xEPC is set to the PC of the table jump instruction, xCAUSE is set as expected for the type of fault and xTVAL (if not set to zero) contains the fetch address which caused the fault. | 任一次取指发生异常时，xEPC 设为表跳转指令的 PC，xCAUSE 按故障类型设置，xTVAL（若实现写非零）为引发故障的取指地址。 |
-| `norm:Zawrs_exec_resume_rules` | `zawrs.adoc` | The wrs.nto and wrs.sto instructions follow the rules of the wfi instruction for resuming execution on a locally enabled pending interrupt. | wrs.nto/wrs.sto 遵循 wfi 指令关于本地使能的 pending 中断恢复执行的规则（VS/VU-mode 下存在本地使能中断时不停顿、不触发 VTW 异常）。 |
-| `norm:Zawrs_virtual_instr_excp` | `zawrs.adoc` | When executing in VS- or VU-mode, if the vtw bit is set in hstatus, the tw bit in mstatus is clear, and the wrs.nto does not complete within an implementation-specific bounded time limit, the wrs.nto instruction will cause a virtual-instruction exception. | 在 VS/VU-mode 下，若 hstatus.VTW=1、mstatus.TW=0，且 wrs.nto 未在实现特定有限时间内完成，将引发虚拟指令异常。 |
-| `norm:Zawrs_priv_illegal_instr_excp` | `zawrs.adoc` | When the tw (timeout wait) bit in mstatus is set and wrs.nto is executed in any privilege mode other than M-mode, and it does not complete within an implementation-specific bounded time limit, the wrs.nto instruction will cause an illegal-instruction exception. | mstatus.TW=1 时，非 M-mode（含 VS/VU-mode）执行 wrs.nto 若未在实现限定时间内完成，引发非法指令异常（TW 条款优先于 VTW）。 |
-| `norm:Zawrs_stall_terminate` | `zawrs.adoc` | While stalled, an implementation is permitted to occasionally terminate the stall and complete execution for any reason. | 停顿期间，实现允许以任何原因终止停顿并完成执行（Group 4 时序失败处置的依据）。 |
 | `norm:vsstatus_vs_sz_acc` | `vector-common.adoc` | When the hypervisor extension is present, a vector context status field, vs, is added to vsstatus[10:9]. It is defined analogously to the floating-point context status field, fs. | 实现 H 扩展时，vsstatus 增加向量上下文状态字段 vs（bits[10:9]），定义类比浮点上下文字段 fs。 |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | `vector-common.adoc` | When V=1, both vsstatus.vs and mstatus.vs are in effect: attempts to execute any vector instruction, or to access the vector CSRs, raise an illegal-instruction exception when either field is set to Off. | V=1 时 vsstatus.vs 与 mstatus.vs 同时生效；任一为 Off，执行任何向量指令或访问向量 CSR 均引发非法指令异常。 |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | `vector-common.adoc` | When V=1 and neither vsstatus.vs nor mstatus.vs is set to Off, executing any instruction that changes vector state, including the vector CSRs, will change both mstatus.vs and vsstatus.vs to Dirty. | V=1 且两者均非 Off，任何改变向量状态（含向量 CSR）的指令将 mstatus.vs 与 vsstatus.vs 同时置为 Dirty。 |
@@ -87,9 +83,8 @@
 | `norm:zicntr_rdtime_op` | `zicntr.adoc` | The rdtime pseudoinstruction reads the low XLEN bits of the time CSR, which counts wall-clock real time that has passed from an arbitrary start time in the past. | rdtime 读取 time CSR 低 XLEN 位；V=1 时该读回值为 time + htimedelta（结合 `norm:htimedelta_sz_acc_op`）。 |
 | `norm:hpm_unimplemented_counter_access` | `zihpm.adoc` | Accessing an unimplemented counter may cause an illegal-instruction exception or may return a constant value. | 访问未实现计数器可引发非法指令异常，也可返回常数值（两种实现均合法，V=1 时同样适用）。 |
 | `H_scsrs_nomatch_vu_counter` | `hypervisor.adoc`（`norm:H_scsrs_nomatch` 的计数器特化） | Some standard supervisor CSRs (senvcfg, scounteren, and scontext, possibly others) have no matching VS CSR. These supervisor CSRs continue to have their usual function and accessibility even when V=1, except with VS-mode and VU-mode substituting for HS-mode and U-mode. | `scounteren` 无对应 VS CSR，V=1 时继续以 VS 替代 HS、VU 替代 U 的方式生效，控制 VU-mode 对计数器的可见性。 |
-| `hcounteren_gate_v1_counter` | `hypervisor.adoc`（`norm:hcounteren_op` 特化） | When the CY, TM, IR, or HPMn bit in hcounteren is clear, attempts to read the corresponding counter while V=1 will cause a virtual-instruction exception if the same bit in mcounteren is 1. | `hcounteren` 对应位清零且 `mcounteren` 同位为 1 时，V=1 下读对应计数器触发 virtual-instruction 异常；本文档（Group 6/7）仅将其作为未实现计数器/指令级用例的前置门控条件引用。 |
+| `hcounteren_gate_v1_counter` | `hypervisor.adoc`（`norm:hcounteren_op` 特化） | When the CY, TM, IR, or HPMn bit in hcounteren is clear, attempts to read the corresponding counter while V=1 will cause a virtual-instruction exception if the same bit in mcounteren is 1. | `hcounteren` 对应位清零且 `mcounteren` 同位为 1 时，V=1 下读对应计数器触发 virtual-instruction 异常；本文档（Group 5/6）仅将其作为未实现计数器/指令级用例的前置门控条件引用。 |
 | `norm:stateen0_jvt_op` | `smstateen.adoc` | The JVT bit controls access to the `jvt` CSR provided by the Zcmt extension. | stateen0 的 JVT 位控制对 Zcmt 提供的 jvt CSR 的访问。 |
-| `norm:H_virtinst_xtval` | `hypervisor.adoc` | On a virtual-instruction trap, `mtval` or `stval` is written the same as for an illegal-instruction trap. | virtual-instruction 异常的 mtval/stval 写入规则与 illegal-instruction 相同（指令编码或 0）。 |
 | `norm:htval_trapval` | `hypervisor.adoc` | htval trap value reporting for guest-page faults (implementation may write zero or the faulting GPA>>2). | guest-page fault 时 htval 的故障值报告（实现允许写零或故障 GPA>>2）。 |
 
 ---
@@ -227,53 +222,7 @@
 
 ---
 
-## Group 4. Hypervisor × Zawrs 交叉测试
-
-**规范依据**：
-- `norm:Zawrs_virtual_instr_excp`：VS/VU-mode 下 `hstatus.VTW`=1、`mstatus.TW`=0 且 `wrs.nto` 未在实现限定时间内完成 → virtual-instruction exception
-- `norm:Zawrs_exec_resume_rules`：wrs 指令遵循 `wfi` 的本地使能中断恢复规则；存在本地使能的 pending 中断时不停顿，VTW 异常路径不触发（对照 `Hypervisor_CSR_test_plan.md` 的 `norm:hstatus_vtw_op`/`norm:vtw_virtinstr` WFI 语义；`norm:vtw_virtinstr` 同时允许实现在 VTW=1 时总是触发 virtual-instruction，即使存在被全局屏蔽的 pending 中断，故 HZWRS-06 为记录型用例）
-- `zawrs.adoc`（`norm:Zawrs_priv_illegal_instr_excp`）：`mstatus.TW`=1 时非 M-mode 执行 `wrs.nto` 未完成引发 illegal-instruction——TW 条款优先于 VTW，VS/VU-mode 亦按 illegal 报告（与 HSTAT-06 的 WFI 语义一致）
-- `zawrs.adoc`：VTW 条款仅点名 `wrs.nto`，`wrs.sto` 由其短超时限定、不受 VTW 门控；wrs 指令在所有特权模式可用，HS-mode 不受 VTW 约束（VTW 仅作用于 V=1）
-
-**测试职责**：验证 Zawrs 指令在虚拟化环境下的行为：HS/VS/VU-mode 正常执行不误触发 virtual-instruction exception；VS/VU-mode 下 `hstatus.VTW` 对 `wrs.nto` 的 virtual-instruction 门控；`mstatus.TW` 与 `hstatus.VTW` 的优先级与异常类型区分；VTW 条款的指令范围（仅 `wrs.nto`）。指令以 raw encoding 注入：`wrs.nto` = 0x00D00073（SYSTEM opcode=0x73，funct3=0，rd=0，funct12=0x0d），`wrs.sto` = 0x01D00073（funct12=0x1d）。
-
-### 4.1 HS/VS/VU-mode wrs 指令正常执行（VTW=0）
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| HZWRS-01 | HS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0，HS-mode 以 `lr` 建立保留集并前置本地使能的 pending 软中断，依次执行 `wrs.nto` 与 `wrs.sto`（raw encoding） | 均正常完成，无异常 |
-| HZWRS-02 | VS-mode 执行 wrs.nto/wrs.sto | `hstatus.VTW`=0、`mstatus.TW`=0，VS-mode 同场景执行两条指令 | 均正常完成，不误触发 virtual-instruction exception |
-| HZWRS-03 | VU-mode 执行 wrs.nto/wrs.sto | 同上配置，VU-mode 执行两条指令 | 均正常完成，无异常 |
-
-### 4.2 hstatus.VTW 门控（VS/VU-mode wrs.nto）
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| HZWRS-04 | VS-mode VTW=1 wrs.nto 触发 virtual-instruction | `hstatus.VTW`=1、`mstatus.TW`=0，屏蔽所有本地使能中断，VS-mode 执行 `wrs.nto`（trap-armed） | virtual-instruction exception (cause=22) |
-| HZWRS-05 | VU-mode VTW=1 wrs.nto 触发 virtual-instruction | 同配置，VU-mode 执行 `wrs.nto` | virtual-instruction exception (cause=22) |
-| HZWRS-06 | VTW=1 但本地使能中断已 pending（记录型） | `hstatus.VTW`=1，置位并本地使能一个中断后，VS-mode 执行 `wrs.nto` | 两种行为均合法：指令立即完成（不停顿，`norm:Zawrs_exec_resume_rules`）；或按 `norm:vtw_virtinstr` 的 VTW 拦截许可报 virtual-instruction (cause=22)。记录实现选择，若触发异常必须为 cause=22，不做强制判定 |
-| HZWRS-07 | VTW 异常的 trap 报告 | 承接 HZWRS-04 场景，检查 HS-mode trap 现场 | cause=22，stval 按 `norm:H_virtinst_xtval` 规则写入（指令编码或 0），hstatus.SPV=1，handler 跳过后正常恢复 |
-
-### 4.3 TW 优先级与指令范围（VS/VU-mode）
-
-| 测试 ID | 测试名称 | 测试描述 | 预期结果 |
-|---------|----------|----------|----------|
-| HZWRS-08 | VTW=1 且 TW=1 时 VS-mode 报 illegal | `hstatus.VTW`=1、`mstatus.TW`=1，VS-mode 执行 `wrs.nto` | illegal-instruction exception (cause=2)（TW 条款优先，`norm:Zawrs_priv_illegal_instr_excp`） |
-| HZWRS-09 | VTW=1 且 TW=1 时 VU-mode 报 illegal | 同配置，VU-mode 执行 `wrs.nto` | illegal-instruction exception (cause=2) |
-| HZWRS-10 | VTW=1 仅作用于 wrs.nto | `hstatus.VTW`=1、`mstatus.TW`=0，VS-mode 执行 `wrs.sto` | 短超时后正常完成，无异常（VTW 条款仅点名 `wrs.nto`） |
-| HZWRS-11 | VTW 不影响 HS-mode | `hstatus.VTW`=1，HS-mode 执行 `wrs.nto` | 正常完成，无异常（VTW 仅作用于 V=1） |
-| HZWRS-12 | VS-mode 下 TW=1 单独生效 | `mstatus.TW`=1、`hstatus.VTW`=0，VS-mode 执行 `wrs.nto` | illegal-instruction exception (cause=2)（对照 `Hypervisor_CSR_test_plan.md` HSTAT-06 的 WFI 语义） |
-
-> [!NOTE]
-> - 本组所有测试必须在运行时通过 `HAS_H_EXT()` 检测 H 扩展，并以 trap-armed raw encoding 探测 Zawrs 支持（未实现时全套 TEST_SKIP）；Zawrs 依赖 Zalrsc，用例须先以 `lr` 建立保留集。
-> - 与 WFI/VTW 用例（HSTAT-04）同样存在时序依赖：VTW 异常要求 `wrs.nto` "未在实现限定时间内完成"。若实现按 `norm:Zawrs_stall_terminate` 以极短时长提前终止停顿导致异常不触发，应保持用例失败并记录至 `bugs/` 目录，不得放宽断言。
-> - HZWRS-06 为记录型用例：`norm:vtw_virtinstr` 允许实现在 VTW=1 时总是触发 virtual-instruction（即使存在被全局屏蔽的 pending 中断），因此"立即完成"与"报 cause=22"均为合法实现；用例仅记录实现选择并约束异常类型（若触发必须为 cause=22），同时避免依赖实现停顿时长。
-> - HZWRS-08/09 验证异常类型判定：`mstatus.TW`=1 时按 `norm:Zawrs_priv_illegal_instr_excp` 报 illegal-instruction (cause=2)，不得报 virtual-instruction；断言必须使用精确 cause 常量。
-> - Zawrs 非 Hypervisor 场景（编码与可用性、停顿与恢复、TW 基础行为）由 `Zawrs_test_plan.md` 覆盖。
-
----
-
-## Group 5. Hypervisor × V 向量族交叉测试
+## Group 4. Hypervisor × V 向量族交叉测试
 
 **规范依据**：
 - `norm:vsstatus_vs_sz_acc`：实现 H 扩展时 vsstatus 增加向量上下文状态字段 vs（bits[10:9]），定义类比 fs
@@ -287,7 +236,7 @@
 
 **测试职责**：验证向量上下文状态（vsstatus.vs）与向量浮点状态（vsstatus.fs）的 VS 级副本在 V=1 场景下的行为：字段存在性与读写、Off 门控（指令与向量 CSR）、双 Dirty 更新、SD 联动、向量浮点门控。向量/向量浮点指令以 raw encoding（.word）注入，避免构建 march 对 v 扩展的依赖。
 
-### 5.1 vsstatus.vs 字段与向量指令/CSR 门控（VS/VU）
+### 4.1 vsstatus.vs 字段与向量指令/CSR 门控（VS/VU）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -300,7 +249,7 @@
 | HVEC-07 | vsstatus.sd 与 vs 联动 | HS-mode 写 `vsstatus.vs`=Dirty 读 `vsstatus.sd`；再写 `vsstatus.vs`=Initial（其余上下文字段非 Dirty）再读 | vs=Dirty → sd=1；vs=Initial → sd=0（`norm:vsstatus_sd_op_vs`） |
 | HVEC-08 | （记录型）实现可随时提升 Clean 为 Dirty | 两者均置 Clean (0b02)，VS-mode 执行向量指令后回读两个字段 | 保持 Clean 与提升为 Dirty 均合法（`norm:hw_mstatus_vs_dirty_update`），记录实现行为，不做强制判定 |
 
-### 5.2 向量浮点门控（vsstatus.fs，VS/VU）
+### 4.2 向量浮点门控（vsstatus.fs，VS/VU）
 
 **前置条件**：F 扩展（`misa.f`）与向量浮点指令支持（trap-armed raw encoding 探测），不满足则本小节全套 TEST_SKIP。
 
@@ -311,7 +260,7 @@
 | HVEC-11 | VU-mode 向量浮点门控 | `vsstatus.fs`=Off，VU-mode 执行向量浮点指令 | illegal-instruction exception (cause=2) |
 | HVEC-12 | 修改浮点状态使两者同时置 Dirty | 两者均置 Initial，VS-mode 执行修改浮点状态的向量浮点指令 | `mstatus.fs`=3 (Dirty) 且 `vsstatus.fs`=3 (Dirty) |
 
-### 5.3 条件用例（misa.v 可写）
+### 4.3 条件用例（misa.v 可写）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -322,12 +271,12 @@
 > - 向量/向量浮点指令以 raw encoding（.word）注入（如 vsetivli/vadd.vv/vfadd.vv 的固定编码），避免工具链依赖。
 > - Off 门控的异常类型固定为 illegal-instruction (cause=2)：这是扩展上下文状态门控，不属于 Hypervisor 受控访问的 virtual-instruction (cause=22)，断言不得混淆。
 > - HVEC-08/HVEC-13 为记录型用例：`norm:hw_mstatus_vs_dirty_update`/`norm:vsstatus_vs_exists` 均为实现许可行为，不做强制判定。
-> - 中断环境：VS/VU 用例在零挂起中断环境下执行（与 Group 4 同原则，避免中断递送污染 trap 记录）。
+> - 中断环境：VS/VU 用例在零挂起中断环境下执行（与 `Hypervisor_Za_test_plan.md` Group 2 的 Zawrs 用例同原则，避免中断递送污染 trap 记录）。
 > - V 向量族非虚拟化场景（vtype/vl、基础语义）无独立测试方案，不在本组范围。
 
 ---
 
-## Group 6. Hypervisor × Zicntr 交叉测试
+## Group 5. Hypervisor × Zicntr 交叉测试
 
 **与 Hypervisor 的交集点**：
 1. **`time` 读取偏移**：V=1 时 VS/VU-mode 读取 `time`（含 `rdtime` 指令）返回 `time + htimedelta`（`norm:htimedelta_sz_acc_op`）；CSR 级语义已由 `Hypervisor_CSR_test_plan.md` HTDLT-01~05 覆盖，本组补充指令级（raw encoding）路径
@@ -343,7 +292,7 @@
 
 **测试职责**：验证 `rdtime` 指令级时间偏移语义与 `scounteren` 在 V=1 时对 VU-mode 的持续控制（`cycle`/`time`/`instret`）。计数器指令以 raw encoding 注入（`rdcycle`=0xC0002xx3、`rdtime`=0xC0102xx3、`rdinstret`=0xC0202xx3，funct3=2 SYSTEM/csrrs rd, csr, x0），避免工具链别名干扰。
 
-### 6.1 rdtime 指令级 htimedelta 语义（VS/VU）
+### 5.1 rdtime 指令级 htimedelta 语义（VS/VU）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -354,7 +303,7 @@
 | HZCNT-05 | hcounteren.TM=0 时 VS-mode rdtime 触发 virtual-instruction | `mcounteren.TM`=1、`hcounteren.TM`=0，VS-mode 执行 `rdtime`（trap-armed） | virtual-instruction exception (cause=22)（`hcounteren_gate_v1_counter`） |
 | HZCNT-06 | mcounteren.TM=0 时 VS-mode rdtime 报 illegal | `mcounteren.TM`=0、`hcounteren.TM`=0，VS-mode 执行 `rdtime` | illegal-instruction exception (cause=2)（`mcounteren` 层先决，不得报 cause=22） |
 
-### 6.2 scounteren 在 V=1 时对 VU-mode 的持续控制（cycle）
+### 5.2 scounteren 在 V=1 时对 VU-mode 的持续控制（cycle）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -372,7 +321,7 @@
 
 ---
 
-## Group 7. Hypervisor × Zihpm 交叉测试
+## Group 6. Hypervisor × Zihpm 交叉测试
 
 **与 Hypervisor 的交集点**：
 1. **hcounteren HPMn 门控**：`hcounteren` 第 N 位清零且 `mcounteren` 同位为 1 时，V=1 下读 `hpmcounterN` 触发 virtual-instruction（`norm:hcounteren_op`）；门控矩阵由 `Shcounterenw_test_plan.md` 覆盖，本组仅将其作为前置条件（例外：HZHPM-03 验证门控关闭时异常由门控触发、与计数器是否实现无关）
@@ -387,7 +336,7 @@
 
 **测试职责**：验证未实现 `hpmcounter` 在 V=1 下的合法行为空间与 `hpmcounter` 的 VU 三层门控链。`hpmcounterN` 访问以 raw encoding 注入（CSR 0xC00+N，csrrs rd, csr, x0 形式），避免工具链别名干扰。
 
-### 7.1 未实现 hpmcounter 在 V=1 下的行为
+### 6.1 未实现 hpmcounter 在 V=1 下的行为
 
 **前置条件**：以 M-mode 写 `mhpmcounterN` 非零并回读的方式探测（沿用 `Shcounterenw_test_plan.md` 的探测策略），选定一个未实现（只读零）的 `hpmcounterN`（N∈3..31）；平台全部实现时本子节全套 TEST_SKIP。
 
@@ -398,7 +347,7 @@
 | HZHPM-03 | hcounteren[N]=0 遮断未实现计数器 | 尝试置 `mcounteren[N]`=1；清零 `hcounteren[N]`，VS-mode 执行 `csrr hpmcounterN` | 门控关闭时异常由门控触发，与计数器是否实现无关：`mcounteren[N]`=1 时 virtual-instruction (cause=22)；`mcounteren[N]` 只读零时由 `mcounteren` 层先决报 illegal-instruction (cause=2) |
 | HZHPM-04 | 记录型：回读值一致性 | 重复 HZHPM-01 的访问若干次 | 若实现返回常数值，多次读回一致；若实现报异常，每次异常 cause 一致。记录实现行为，不做强制判定 |
 
-### 7.2 hpmcounter 的 VU 三层门控链（已实现计数器）
+### 6.2 hpmcounter 的 VU 三层门控链（已实现计数器）
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -423,15 +372,15 @@
 
 4. **virtual-instruction 与 illegal-instruction 的区分**：VS/VU-mode 访问受控 CSR 时，SSEED=1 的 HS 限定读写触发 virtual-instruction (cause=22)；SSEED=0 或只读访问触发 illegal-instruction (cause=2)。
 
-5. **Zawrs 时序依赖**：Group 4 的 `wrs.nto` 用例依赖"未在实现限定时间内完成"这一时序条件（与 `Hypervisor_CSR_test_plan.md` HSTAT-04 的 WFI/VTW 用例同风格）。实现若按 `norm:Zawrs_stall_terminate` 提前终止停顿，应保持用例失败并记录 `bugs/`，不得放宽断言。
+5. **向量指令注入与上下文门控**：Group 4 的向量/向量浮点指令以 raw encoding 注入；`vsstatus.vs`/`vsstatus.fs` 的 Off 门控报 illegal-instruction (cause=2)，不是 virtual-instruction；实现允许随时将 Initial/Clean 提升为 Dirty（`norm:hw_mstatus_vs_dirty_update`），相关用例为记录型，不得以"状态被提升"为由判失败。
 
-6. **向量指令注入与上下文门控**：Group 5 的向量/向量浮点指令以 raw encoding 注入；`vsstatus.vs`/`vsstatus.fs` 的 Off 门控报 illegal-instruction (cause=2)，不是 virtual-instruction；实现允许随时将 Initial/Clean 提升为 Dirty（`norm:hw_mstatus_vs_dirty_update`），相关用例为记录型，不得以"状态被提升"为由判失败。
+6. **Group 4 向量上下文门控要点**：平台 V/F 支持以 `config/<platform>/rvtest_config.h` 的 `V_SUPPORTED`/`F_SUPPORTED` 宏为准（不做运行时探测）；`misa.v` 可写性须运行时探测，不可写时 HVEC-13 条件 TEST_SKIP。HVEC-07（`vsstatus.sd` 须随 `vsstatus.vs`=Dirty 置 1，`norm:vsstatus_sd_op_vs`）与 HVEC-12（修改浮点状态的向量浮点指令须将 `mstatus.fs` 与 `vsstatus.fs` 同时置 Dirty，`norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`）为**强制断言**：任一平台不满足即属违反 SPEC，用例保持 FAIL 并记录至 `bugs/` 目录，不得为通过测试而放宽断言或做特判。
 
-7. **Group 5 实现与平台验证现状**（实现：`Hypervisor_Vector/` 套件，13 用例）：平台 V/F 支持以 `config/<platform>/rvtest_config.h` 的 `V_SUPPORTED`/`F_SUPPORTED` 宏为准（不做运行时探测）。Spike（`rv64imafdcvh_zicsr_zifencei`）13/13 全部通过；QEMU（qemu-rv64-max，`-cpu max`）10 PASS / 2 FAIL / 1 SKIP：HVEC-07（`vsstatus.sd` 未随 `vsstatus.vs`=Dirty 置 1，`norm:vsstatus_sd_op_vs`）与 HVEC-12（修改浮点状态的向量浮点指令未将两处 `fs` 字段置 Dirty，`norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`）为 QEMU 实现缺陷（Spike 对照通过），已归档 `bugs/qemu_hypervisor_vector_bugs.md`，用例保持失败；HVEC-13 因 QEMU `misa.v` 不可写而条件 SKIP（Spike 上实际执行并通过）。
+7. **Group 5/6 计数器交集要点**：`rdtime`/计数器访问以 raw encoding 注入；时钟比较采用差值区间而非精确相等；未实现 `hpmcounter` 的常数值/异常两种行为均为合法实现（记录型用例，不得放宽也不得误判）；门控异常的 cause 区分（cause=22 vs cause=2）为强制断言；门控矩阵本身不重复验证（由 `Shcounterenw_test_plan.md` 覆盖）。注意：负偏移 `rdtime` 的断言必须用有符号差值而非无符号比较——开机早期真实 `time` 小于偏移幅度时截断回绕会使无符号比较不成立（HZCNT-04 实现要点）。
 
-8. **Group 6/7 计数器交集要点**：`rdtime`/计数器访问以 raw encoding 注入；时钟比较采用差值区间而非精确相等；未实现 `hpmcounter` 的常数值/异常两种行为均为合法实现（记录型用例，不得放宽也不得误判）；门控异常的 cause 区分（cause=22 vs cause=2）为强制断言；门控矩阵本身不重复验证（由 `Shcounterenw_test_plan.md` 覆盖）。注意：负偏移 `rdtime` 的断言必须用有符号差值而非无符号比较——开机早期真实 `time` 小于偏移幅度时截断回绕会使无符号比较不成立（HZCNT-04 实现要点）。
+8. **Group 5/6 计数器探测与分支覆盖要点**：计数器已实现/未实现的探测方式为 M-mode 写 `mhpmcounterN` 非零并回读，**不得**以 `mcounteren` 位回粘探测替代（后者仅反映门控位可写性，按 `norm:mcounteren_flds_rdonly0` 与计数器存在性无等价关系）。`mhpmcounterN` 镜像为只读零属 SPEC 允许的合法实现（`norm:mhpmcounter_mhpmevent_rdonly0`），本方案约定视同“未实现”。用例设计须覆盖两条合法分支：`mcounteren[N]` 只读零时的 `mcounteren` 层先决路径（报 illegal-instruction，cause=2），以及门控可开启时的“常数值 / 异常”双合法路径；某平台不具备其中一条分支的前置条件时（如门控不可开、无已实现计数器），对应用例合规 TEST_SKIP。两条分支均为合法路径，不得以平台命中哪一条为由判定成败。
 
-9. **Group 6/7 实现与平台验证现状**（实现：`Hypervisor_Zicntr/` 套件 9 用例、`Hypervisor_Zihpm/` 套件 5 用例）：QEMU（qemu-rv64-max，`-cpu max`）：Zicntr 9/9 PASS；Zihpm 4 PASS / 1 SKIP（QEMU 实现 `hpmcounter3-18`，`mhpmcounter19-31` 只读零；探测选中 `hpmcounter19`，其 `mcounteren[19]` 只读零，HZHPM-01~03 按 `mcounteren` 层先决路径验证并报 cause=2；HZHPM-04 因门控不可开合规 SKIP；HZHPM-05 在已实现的 `hpmcounter3` 上验证三层门控链并通过）。Spike（`rv64imach_zicsr_zifencei_zicntr`/`_zihpm`）：Zicntr 9/9 PASS；Zihpm 4 PASS / 1 SKIP（Spike 的 `mhpmcounter3-31` 镜像为只读零，`norm:mhpmcounter_mhpmevent_rdonly0` 允许该实现，按本方案约定视同未实现；HZHPM-01~04 在门控开启分支执行，读回常数值 0 或门控关闭报 cause=22 均为合法路径；HZHPM-05 因无已实现计数器合规 SKIP）。两平台分别覆盖 `mcounteren` 先决分支与门控开启常数值分支，0 FAIL。计数器已实现/未实现探测为 M-mode 写 `mhpmcounterN` 非零并回读（不是 `mcounteren` 位回粘探测：后者仅测门控位可写性，按 `norm:mcounteren_flds_rdonly0` 与计数器存在性无等价关系）。
+9. **原子/保留集扩展交叉已迁出**：Hypervisor × Zalrsc（HZLRSC-01~40）与 Hypervisor × Zawrs（HZWRS-01~12）的交叉用例已整体迁移至 `Hypervisor_Za_test_plan.md`（分别为该文档 Group 1 与 Group 2），**用例编号保持不变**，其规范点、覆盖矩阵与关键注意事项一并迁出。本文档不再覆盖 LR/SC 与 wrs 指令的任何虚拟化行为；Group 4（V 向量族）NOTE 中关于中断环境原则的对照引用指向该文档 Group 2。后续 Za 系列其余扩展（Zaamo、Zabha、Zacas、Zalasr）与 Hypervisor 的交叉场景应直接新增至该文档，不再回归本文档。
 
 ---
 
@@ -447,7 +396,7 @@
 - `DOCS/testplan/Zkr_test_plan.md` — Zkr 独立测试计划
 - `DOCS/testplan/zihintntl_test_plan.md` — Zihintntl 独立测试计划
 - `DOCS/testplan/zcmt_test_plan.md` — Zcmt 独立测试计划
-- `DOCS/testplan/Zawrs_test_plan.md` — Zawrs 独立测试计划（非 Hypervisor 场景）
+- `DOCS/testplan/Hypervisor_Za_test_plan.md` — Hypervisor 与 Za 原子扩展交叉测试计划（本方案拆出的 Hypervisor × Zalrsc 与 Hypervisor × Zawrs 交叉场景，含 HZLRSC-01~40 与 HZWRS-01~12）
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
@@ -479,11 +428,6 @@
 | `norm:Zcmt_trap` | HZCMT-08、HZCMT-09 |
 | `norm:stateen0_jvt_op` | HZCMT-04 ~ HZCMT-06 |
 | `norm:htval_trapval` | HZCMT-09 |
-| `norm:Zawrs_exec_resume_rules` | HZWRS-01 ~ HZWRS-03、HZWRS-06（HZWRS-06 为记录型：两种合法行为均接受） |
-| `norm:Zawrs_virtual_instr_excp` | HZWRS-04、HZWRS-05、HZWRS-06、HZWRS-07 |
-| `norm:Zawrs_priv_illegal_instr_excp` | HZWRS-08、HZWRS-09、HZWRS-12 |
-| `norm:Zawrs_stall_terminate` | —（实现允许的提前终止停顿行为，作为 Group 4 NOTE 与关键注意事项 5 的失败处置依据，无直接用例） |
-| `norm:H_virtinst_xtval` | HZWRS-07 |
 | `norm:vsstatus_vs_sz_acc` | HVEC-01 |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | HVEC-02、HVEC-03、HVEC-04 |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | HVEC-05、HVEC-06 |

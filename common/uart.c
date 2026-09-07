@@ -50,6 +50,14 @@ void uart_init(void) {
 }
 
 void uart_putc(char c) {
+#ifdef UART_SILENT_MODE
+    /* Skip all HTIF console writes in silent mode.
+     * Test termination is unaffected: RVMODEL_HALT_PASS/FAIL write
+     * tohost directly from assembly, so pass/fail is still reported
+     * through the simulator exit code. */
+    (void)c;
+    return;
+#endif
     /* Wait until previous HTIF command is consumed */
     while (tohost != 0)
         ;

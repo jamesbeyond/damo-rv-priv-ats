@@ -707,11 +707,3 @@ void sstateen_set_bits(int idx, uintptr_t mask) {
 void sstateen_clear_bits(int idx, uintptr_t mask) {
     sstateen_write(idx, sstateen_read(idx) & ~mask);
 }
-
-bool stateen_is_available(void) {
-    uintptr_t saved = mstateen_read(0);
-    mstateen_write(0, ~(uintptr_t)0);
-    uintptr_t readback = mstateen_read(0);
-    mstateen_write(0, saved);
-    return (readback != 0);
-}
