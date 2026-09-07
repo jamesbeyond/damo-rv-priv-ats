@@ -37,7 +37,7 @@
 
 - 已由 `Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md` 覆盖的 Hypervisor 基础功能
 - 各扩展在非 Hypervisor 场景下的行为（由各自独立测试计划覆盖）
-- Hypervisor 与 Ss\*/Sm\*/Z\* 扩展的交叉测试（分别由 `Hypervisor_Ss_test_plan.md`、`Hypervisor_Sm_test_plan.md`、`Hypervisor_Zi_test_plan.md` 覆盖）
+- Hypervisor 与 Ss\*/Sm\*/Z\* 扩展的交叉测试（分别由 `Hypervisor_Ss_test_plan.md`、`Hypervisor_Sm_test_plan.md`、`Hypervisor_Zi_test_plan.md`（非原子 Z 系列）与 `Hypervisor_Za_test_plan.md`（Za 原子/保留集系列：Zalrsc、Zawrs）覆盖）
 
 ---
 

@@ -39,7 +39,7 @@ const platform_caps_t *platform_probe(void) {
     _caps.hgatp_vmid_bits = hgatp_vmid_width();
 
     /* ----- Sub-extension availability ----- */
-    _caps.ssstateen = stateen_is_available();
+    _caps.ssstateen = SMSTATEEN_AVAILABLE;
     _caps.vstvec_vectored = vstvec_supports_vectored();
 
     /* ----- hcounteren writability (Shcounterenw) -----

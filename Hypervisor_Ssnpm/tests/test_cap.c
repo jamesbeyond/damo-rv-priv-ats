@@ -252,7 +252,7 @@ bool test_hzpm_cap_10(void) {
      * and raises illegal-instruction instead (norm:mstateen0_envcfg_op
      * + norm:stateen_illegal_state_access), which is a different
      * (also spec-compliant) interception path not under test here. */
-    if (stateen_is_available())
+    if (SMSTATEEN_AVAILABLE)
         mstateen_set_bits(0, STATEEN0_ENVCFG);
 
     trap_expect_begin();

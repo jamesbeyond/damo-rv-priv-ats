@@ -305,6 +305,11 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
 | | `Hypervisor_PMP` | Hyp + PMP (PMP and virtualization interaction) | ✓ |
 | | `Hypervisor_Vector` | Hyp + V (vector extension virtualization) | ✓ |
+| | `Hypervisor_Zaamo` | Hyp + Zaamo (atomic memory operations) | ✓ |
+| | `Hypervisor_Zabha` | Hyp + Zabha (byte/halfword atomics) | ✓ |
+| | `Hypervisor_Zacas` | Hyp + Zacas (atomic compare-and-swap) | ✓ |
+| | `Hypervisor_Zalasr` | Hyp + Zalasr (load-acquire/store-release) | ✓ |
+| | `Hypervisor_Zalrsc` | Hyp + Zalrsc (load-reserved/store-conditional) | ✓ |
 | | `Hypervisor_Zawrs` | Hyp + Zawrs (wait-on-reservation-set) | ✓ |
 | | `Hypervisor_Zicntr` | Hyp + Zicntr (base counters) | ✓ |
 | | `Hypervisor_Zihintntl` | Hyp + Zihintntl (non-temporal access hints) | ✓ |
@@ -353,6 +358,15 @@ For test-writing guidelines and core API reference, see [`DOCS/develop_guide/`](
 | | `zpm.Ssnpm` | S-mode Pointer Masking | |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | |
+| **Atomic (Za\*)** | `Zaamo` | Atomic Memory Operations (AMO) | |
+| | `Zalrsc` | Load-Reserved / Store-Conditional (LR/SC) | |
+| | `Zabha` | Byte and Halfword Atomic Memory Operations | |
+| | `Zacas` | Atomic Compare-and-Swap (CAS) | |
+| | `Zalasr` | Atomic Load-Acquire / Store-Release | |
+| | `Zawrs` | Wait-on-Reservation-Set | |
+| | `Zama16b` | 16-byte misaligned atomicity (PMA) | |
+| | `Za64rs` | Reservation-set size <= 64 bytes | |
+| | `Za128rs` | Reservation-set size <= 128 bytes | |
 | **Unpriv Extensions (Zi\*)** | `Zicsr` | CSR instructions | |
 | | `Zifencei` | Instruction-fetch fence | |
 | | `Zicond` | Integer conditional operations | |

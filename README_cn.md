@@ -304,6 +304,11 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `Hypervisor_Zkr` | Hyp + Zkr | ✓ |
 | | `Hypervisor_PMP` | Hyp + PMP（PMP 与虚拟化交互） | ✓ |
 | | `Hypervisor_Vector` | Hyp + V（向量扩展虚拟化） | ✓ |
+| | `Hypervisor_Zaamo` | Hyp + Zaamo（原子内存操作） | ✓ |
+| | `Hypervisor_Zabha` | Hyp + Zabha（字节/半字原子操作） | ✓ |
+| | `Hypervisor_Zacas` | Hyp + Zacas（原子比较交换） | ✓ |
+| | `Hypervisor_Zalasr` | Hyp + Zalasr（Load-Acquire/Store-Release） | ✓ |
+| | `Hypervisor_Zalrsc` | Hyp + Zalrsc（Load-Reserved/Store-Conditional） | ✓ |
 | | `Hypervisor_Zawrs` | Hyp + Zawrs（Wait-on-Reservation-Set） | ✓ |
 | | `Hypervisor_Zicntr` | Hyp + Zicntr（基础计数器） | ✓ |
 | | `Hypervisor_Zihintntl` | Hyp + Zihintntl（非临时性访问提示） | ✓ |
@@ -352,6 +357,15 @@ make CONFIG=haps_xiaohui CROSS_COMPILER=/path/to/riscv64-unknown-elf-
 | | `zpm.Ssnpm` | S-mode Pointer Masking | |
 | **QoS** | `qos.cbqri` | QoS CBQRI | |
 | | `qos.Ssqosid` | QoS Ssqosid | |
+| **原子扩展 (Za\*)** | `Zaamo` | 原子内存操作（AMO） | |
+| | `Zalrsc` | Load-Reserved/Store-Conditional（LR/SC） | |
+| | `Zabha` | 字节/半字原子内存操作 | |
+| | `Zacas` | 原子比较交换（CAS） | |
+| | `Zalasr` | 原子 Load-Acquire/Store-Release | |
+| | `Zawrs` | 等待保留集（Wait-on-Reservation-Set） | |
+| | `Zama16b` | 16 字节非对齐原子性（PMA） | |
+| | `Za64rs` | 保留集大小 <= 64 字节 | |
+| | `Za128rs` | 保留集大小 <= 128 字节 | |
 | **非特权扩展 (Zi\*)** | `Zicsr` | CSR 指令 | |
 | | `Zifencei` | 指令取指栅栏 | |
 | | `Zicond` | 整数条件操作 | |
