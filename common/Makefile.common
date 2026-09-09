@@ -79,6 +79,7 @@ OBJDUMP = $(CROSS_COMPILER)objdump
 # Common object files (built from common/ sources)
 COMMON_OBJS = \
     $(COMMON_DIR)/entry.o \
+    $(COMMON_DIR)/reg_init.o \
     $(COMMON_DIR)/platform_init.o \
     $(COMMON_DIR)/trap_asm.o \
     $(COMMON_DIR)/trap.o \

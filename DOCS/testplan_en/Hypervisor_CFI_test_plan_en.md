@@ -91,11 +91,11 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-# Part A: Hypervisor × Zicfilp (Forward-Edge Control Flow / Landing Pad)
+# Group 1: Hypervisor × Zicfilp (Forward-Edge Control Flow / Landing Pad)
 
 ---
 
-## Group A1. henvcfg.LPE Field and VS-mode Zicfilp Enable Control
+## Group 1.1. henvcfg.LPE Field and VS-mode Zicfilp Enable Control
 
 **Spec Reference**:
 - `norm:henvcfg_lpe_op`: LPE=1 enables Zicfilp in VS-mode; LPE=0 keeps ELP at NO_LP_EXPECTED, LPAD operates as no-op
@@ -118,7 +118,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group A2. vsstatus.SPELP Field and VS-mode Trap Save/Restore
+## Group 1.2. vsstatus.SPELP Field and VS-mode Trap Save/Restore
 
 **Spec Reference**:
 - `norm:vsstatus_spelp_op`: vsstatus.SPELP saves VS-mode previous ELP, encoding 0=NO_LP_EXPECTED, 1=LP_EXPECTED
@@ -147,7 +147,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group A3. VS-mode Landing Pad Functionality and software-check exception
+## Group 1.3. VS-mode Landing Pad Functionality and software-check exception
 
 **Spec Reference**:
 - `norm:lpad_sw_exception`: ELP=LP_EXPECTED and target instruction is not LPAD → software-check exception
@@ -170,7 +170,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group A4. VS-mode software-check exception Delegation
+## Group 1.4. VS-mode software-check exception Delegation
 
 **Spec Reference**:
 - `norm:hedeleg_op`: Synchronous exception already delegated to HS when V=1 is further delegated to VS if corresponding hedeleg bit is set
@@ -193,7 +193,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group A5. VS-mode Zicfilp Trap Interrupt and Async Event Interaction
+## Group 1.5. VS-mode Zicfilp Trap Interrupt and Async Event Interaction
 
 **Spec Reference**:
 - `norm:Zicfilp_forward_traps`: Async interrupts and sync exceptions with higher priority than software-check may be delivered after JALR but before target decode
@@ -210,11 +210,11 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-# Part B: Hypervisor × Zicfiss (Backward-Edge Control Flow / Shadow Stack)
+# Group 2: Hypervisor × Zicfiss (Backward-Edge Control Flow / Shadow Stack)
 
 ---
 
-## Group B1. henvcfg.SSE Field and VS-mode Zicfiss Enable Control
+## Group 2.1. henvcfg.SSE Field and VS-mode Zicfiss Enable Control
 
 **Spec Reference**:
 - `norm:henvcfg_sse_op`: SSE=1 activates VS-mode Zicfiss; SSE=0 causes instruction reversion, page table encoding reserved, senvcfg.SSE read-only zero, SSAMOSWAP triggers virtual-instruction exception
@@ -242,7 +242,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B2. ssp CSR Access Control in VS/VU-mode
+## Group 2.2. ssp CSR Access Control in VS/VU-mode
 
 **Spec Reference**:
 - `norm:zicfiss_ssp_csr`: ssp CSR access controlled by envcfg sse fields
@@ -267,7 +267,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B3. VS-stage Page Table Shadow Stack Page Type
+## Group 2.3. VS-stage Page Table Shadow Stack Page Type
 
 **Spec Reference**:
 - `norm:ss_page_enc`: R=0, W=1, X=0 represents SS page
@@ -298,7 +298,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B4. G-stage Translation and Shadow Stack Interaction
+## Group 2.4. G-stage Translation and Shadow Stack Interaction
 
 **Spec Reference**:
 - cfi.adoc: G-stage address translation and protection are not affected by Zicfiss extension, G-stage pte.xwr=010 remains reserved
@@ -317,7 +317,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B5. Shadow Stack Behavior in satp/vsatp Bare Mode
+## Group 2.5. Shadow Stack Behavior in satp/vsatp Bare Mode
 
 **Spec Reference**:
 - `norm:satp_mode_bare`: When satp.mode (vsatp.mode when V=1) is Bare and effective privilege < M, shadow stack instructions raise store/AMO access-fault
@@ -335,7 +335,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B6. VS-mode Zicfiss Exception Behavior and Delegation
+## Group 2.6. VS-mode Zicfiss Exception Behavior and Delegation
 
 **Spec Reference**:
 - `norm:hedeleg_op`: Synchronous exception already delegated to HS when V=1 is further delegated to VS if corresponding hedeleg bit is set
@@ -360,7 +360,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B7. VS-mode Zicfiss Functional Completeness
+## Group 2.7. VS-mode Zicfiss Functional Completeness
 
 **Spec Reference**:
 - `norm:henvcfg_sse_op`: SSE=1 fully activates VS-mode Zicfiss
@@ -384,7 +384,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 
 ---
 
-## Group B8. Comprehensive VS-mode Zicfiss Reversion Behavior when henvcfg.SSE=0
+## Group 2.8. Comprehensive VS-mode Zicfiss Reversion Behavior when henvcfg.SSE=0
 
 **Spec Reference**:
 - `norm:henvcfg_sse_op`: Complete reversion rule list when SSE=0
@@ -411,7 +411,7 @@ This section lists all specification points (norm IDs) referenced in the test gr
 3. Delegation tests for software-check exception (cause=18) require confirming the writability of hedeleg bit 18 on the platform.
 4. Shadow Stack page type tests require fine-grained control of VS-stage page tables to ensure correct pte.xwr encoding.
 5. Current known implementation status (known gap):
-   - Group A5 (HCFI-LP-31/42/43) async interrupt injection window (after JALR, before LPAD decode) is non-deterministic; currently uses sync software-check exception as a proxy to verify ELP save/restore mechanism.
+   - Group 1.5 (HCFI-LP-31/42/43) async interrupt injection window (after JALR, before LPAD decode) is non-deterministic; currently uses sync software-check exception as a proxy to verify ELP save/restore mechanism.
    - HCFI-SS-04/60/70 (16-bit compressed instruction reversion/flow), HCFI-SS-30 (real CBO instruction), HCFI-SS-65/66 (non-idempotent memory / AMOSwap PMA) are not directly implemented yet, marked as known gap in comments.
 
 ---

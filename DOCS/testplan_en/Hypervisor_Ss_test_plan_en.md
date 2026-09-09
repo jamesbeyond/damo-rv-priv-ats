@@ -2,9 +2,7 @@
 
 # Hypervisor × Ss* Extensions Cross Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Ss* (Supervisor-level) extension families. This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Ss* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans (`Hypervisor_CSR_test_plan.md`, `Hypervisor_Interrupts_test_plan.md`, `Hypervisor_Exceptions_test_plan.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`) do not fully cover them.
->
-> Generation date: 2026-06-22
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Ss* (Supervisor-level) extension families, covering the intersection of the Hypervisor extension with Sstvala, Ssccptr, Sscounterenw, Ssstateen, Sstc, Sscsrind, Ssdbltrp, Ssctr, Ssqosid, Sscofpmf, and Smcdeleg/Ssccfg.
 
 ---
 
@@ -155,8 +153,8 @@ The following table lists the core specification points covered by this plan. En
 **Test Scope**: Verify the control behavior of the `hcounteren` register over VS/VU-mode performance monitoring counter (hpmcounter) access, as well as the writability of the corresponding bits of `hcounteren`.
 
 > [!NOTE]
-> - The Sscounterenw extension requires: for any `hpmcounter` that is not read-only zero, the corresponding bit of `scounteren` (and `hcounteren`) must be writable. The tests in this group verify the writability and control behavior of `hcounteren`.
-> - Please refer to the `Shcounterenw_test_plan.md` extension tests.
+> - The Sscounterenw extension requires: for any `hpmcounter` that is not read-only zero, the corresponding bit of `scounteren` must be writable; the gating of VS/VU-mode counter access by `hcounteren` is Hypervisor-extension behavior.
+> - The cross specification points declared in this group are covered by standalone plans and are not re-designed here: `scounteren` writability is covered by `Sscounterenw_test_plan.md`; `hcounteren` gating of VS/VU-mode and the mcounteren/hcounteren/scounteren hierarchy are covered by `Shcounterenw_test_plan.md` (SHCNTW-ACCESS and SHCNTW-HIER series).
 
 ---
 
@@ -1043,7 +1041,7 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 | P1 (Important) | Group 8.1 (vsctrctl) | HCROSS-SSCTR-01~10 | vsctrctl is the core control register for VS-mode CTR |
 | P1 (Important) | Group 8.3 (VS/VU ext traps) | HCROSS-SSCTR-15~20 | VS/VU-mode external trap recording is key in virtualization scenarios |
 | P1 (Important) | Group 8.5 (Virt transitions) | HCROSS-SSCTR-25~29 | configuration sources of virtualized mode transitions are the correctness guarantee of CTR under the Hypervisor |
-| P2 (Recommended) | Group 3 (Sscounterenw) | HCROSS-SSCOUNTERENW-01~09 | hcounteren control behavior is the guarantee of performance monitoring isolation |
+| P2 (Recommended) | Group 3 (Sscounterenw) | Covered by `Shcounterenw_test_plan.md` and `Sscounterenw_test_plan.md` | hcounteren control behavior is the guarantee of performance monitoring isolation |
 | P2 (Recommended) | Group 5 (Sstc) | HCROSS-SSTC-01~15 | vstimecmp and VS-mode timers are the core facility of Hypervisor virtualization timers |
 | P2 (Recommended) | Group 6.4 (Hyp cross) | HCROSS-SSCSRIND-28~33 | transparent remapping and alias behavior depend on the H extension |
 | P2 (Recommended) | Group 7.4 (menvcfg.DTE Hyp) | HCROSS-SSDBLTRP-17~18 | global control of Hypervisor CSRs by menvcfg.DTE |
@@ -1054,7 +1052,7 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 | P2 (Recommended) | Group 11 (Smcdeleg/Ssccfg) | HCROSS-SSCCFG-01~24 | virtualization of scountovf/scountinhibit, LCOFI virtual interrupt bits, and vsireg* access rules are the guarantee of counter delegation isolation |
 | P3 (Optional) | Group 2 (Ssccptr) | HCROSS-SSCCPTR-01~04 | PMA-level constraints depend on platform guarantees; cases with limited dynamic PMA configuration capability TEST_SKIP per platform capability |
 
-> Note: The test cases of Ssqosid (Group 9) (SRMCFG-19~24) were not assigned individual priorities in the original merged plan; it is recommended to follow the priorities in `Ssqosid_test_plan.md`. The priority of the hstateen control cases (HCROSS-SSSTA-01~50) in Group 4 (Ssstateen) follows the P1 rating of Group 8 in the original merged plan.
+> Note: For the test cases of Ssqosid (Group 9) (SRMCFG-19~24), it is recommended to follow the priorities in `Ssqosid_test_plan.md`. The hstateen control cases (HCROSS-SSSTA-01~50) in Group 4 (Ssstateen) are rated P1.
 
 ---
 
@@ -1074,28 +1072,28 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 
 ## References
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/sstvala.adoc` — Sstvala Extension
-- `SPEC/ssccptr.adoc` — Ssccptr Extension
-- `SPEC/sscounterenw.adoc` — Sscounterenw Extension
-- `SPEC/smstateen.adoc` — Smstateen Extension Specification
-- `SPEC/sstc.adoc` — Sstc Extension Specification (Supervisor-mode Timer Interrupts)
-- `SPEC/smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
-- `SPEC/ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
-- `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
-- `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
-- `SPEC/sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
-- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `sstvala.adoc` — Sstvala Extension
+- `ssccptr.adoc` — Ssccptr Extension
+- `sscounterenw.adoc` — Sscounterenw Extension
+- `smstateen.adoc` — Smstateen Extension Specification
+- `sstc.adoc` — Sstc Extension Specification (Supervisor-mode Timer Interrupts)
+- `smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
+- `ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
+- `smctr.adoc` — Smctr/Ssctr (Control Transfer Records) Extension
+- `sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
+- `sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
+- `smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR subset test plan
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor interrupts subset test plan
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor exceptions and trap subset test plan
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` — Two-stage translation test plan
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` — G-stage standalone test plan
-- `DOCS/testplan/sstvala_test_plan.md` — Sstvala standalone test plan
-- `DOCS/testplan/ssccptr_test_plan.md` — Ssccptr standalone test plan
-- `DOCS/testplan/sscounterenw_test_plan.md` — Sscounterenw standalone test plan
-- `DOCS/testplan/ssstateen_test_plan.md` — Ssstateen standalone test plan
-- `DOCS/testplan/sstc_test_plan.md` — Sstc standalone test plan
+- `DOCS/testplan/Sstvala_test_plan.md` — Sstvala standalone test plan
+- `DOCS/testplan/Ssccptr_test_plan.md` — Ssccptr standalone test plan
+- `DOCS/testplan/Sscounterenw_test_plan.md` — Sscounterenw standalone test plan
+- `DOCS/testplan/Ssstateen_test_plan.md` — Ssstateen standalone test plan
+- `DOCS/testplan/Sstc_test_plan.md` — Sstc standalone test plan
 - `DOCS/testplan/Sscsrind_test_plan.md` — Sscsrind Supervisor Mode test plan
 - `DOCS/testplan/Ssdbltrp_test_plan.md` — Ssdbltrp standalone test plan
 - `DOCS/testplan/Ssctr_test_plan.md` — Ssctr Supervisor Mode test plan
@@ -1108,7 +1106,7 @@ The tests in this group verify the behavior of the Ssqosid extension under Hyper
 
 ## Appendix A: Specification Point Coverage Matrix
 
-The following table indicates which test cases cover each specification point in the "Covered Specification Points" section and in the Spec Reference of each Group. Entries marked with (self-decomposed) are non-official-label entries.
+The following table indicates which test cases cover each specification point in the "Covered Specification Points" section and in the Spec Reference of each Group.
 
 | Norm ID | Covered Test IDs |
 |---------|------------------|
@@ -1116,8 +1114,8 @@ The following table indicates which test cases cover each specification point in
 | `norm:sstvala_stval_faulting_vaddr` | HCROSS-SSTVALA-01~05 |
 | `norm:sstvala_stval_faulting_instruction` | HCROSS-SSTVALA-06~08 |
 | `norm:ssccptr_memory_pte_reads` | HCROSS-SSCCPTR-01~04 |
-| `norm:sscounterenw_hpmcounter_scounteren` | Group 3 (Sscounterenw, cases to be refined following the pattern of `Shcounterenw_test_plan.md`) |
-| `hcounteren_vs_vu_control` (self-decomposed) | Group 3 (Sscounterenw) |
+| `norm:sscounterenw_hpmcounter_scounteren` | Covered by `Sscounterenw_test_plan.md` (scounteren writability); Group 3 declares the cross spec reference only |
+| `hcounteren_vs_vu_control` | Covered by `Shcounterenw_test_plan.md` (SHCNTW-ACCESS-01~08, SHCNTW-HIER-01~05 verify hcounteren gating of VS/VU-mode) |
 | `norm:hstateen_rv64_csrs` | HCROSS-SSSTA-01~05 |
 | `norm:stateen_rv32_upper_bits_csrs` | HCROSS-SSSTA-06 (RV32 platforms; TEST_SKIP on RV64) |
 | `norm:hstateen_encoding` | HCROSS-SSSTA-46~50 |
@@ -1150,6 +1148,7 @@ The following table indicates which test cases cover each specification point in
 | `norm:hypervisor_impl_csrs_access_control` | HCROSS-SSCSRIND-24~27 |
 | `norm:sscsrind_csrs_access_control` | HCROSS-SSCSRIND-22, HCROSS-SSCSRIND-23 |
 | `norm:csrs_alias` | HCROSS-SSCSRIND-33 |
+| `norm:mstateen_zero_initialization` | Group 6 (Sscsrind) precondition: writable mstateen bits are 0 at reset, so mstateen0[60] must be set to 1 before testing VS/VU access (HCROSS-SSCSRIND-01~33) |
 | `norm:henvcfg_DTE` | HCROSS-SSDBLTRP-01 |
 | `norm:henvcfg_dte_op` | HCROSS-SSDBLTRP-02~04, HCROSS-SSDBLTRP-06 |
 | `norm:menvcfg_dte_op` | HCROSS-SSDBLTRP-05, HCROSS-SSDBLTRP-17, HCROSS-SSDBLTRP-18 |
@@ -1188,5 +1187,5 @@ The following table indicates which test cases cover each specification point in
 | `norm:ssccfg_hyp_m_s_vsireg_illegal` | HCROSS-SSCCFG-18, HCROSS-SSCCFG-19 |
 | `norm:ssccfg_hyp_vs_access_sireg_conditional` | HCROSS-SSCCFG-20, HCROSS-SSCCFG-21 |
 | `norm:hstateen0_csrind_op` | HCROSS-SSCCFG-22~24 (Ssccfg perspective; see HCROSS-SSSTA-27~29 and HCROSS-SSCSRIND-24~27 for the same-source verification) |
-| `ssqosid_virtinst` (self-decomposed) | SRMCFG-19, SRMCFG-20, SRMCFG-21, SRMCFG-24 |
-| `ssqosid_smstateen_bit55_0` (self-decomposed) | SRMCFG-23 |
+| `ssqosid_virtinst` | SRMCFG-19, SRMCFG-20, SRMCFG-21, SRMCFG-24 |
+| `ssqosid_smstateen_bit55_0` | SRMCFG-23 |

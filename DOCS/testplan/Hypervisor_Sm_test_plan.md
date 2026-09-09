@@ -2,9 +2,7 @@
 
 # Hypervisor 与 Sm* 扩展交叉测试计划
 
-> 本文档描述 Hypervisor（H）扩展与其他 Sm* 系列（Machine-level）扩展在交叉场景下的测试计划。本方案从 `Hypervisor_cross_test_plan.md` 拆分而来，仅保留 Hypervisor 与 Sm* 扩展交叉的内容。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划并未完全覆盖。
->
-> 生成时间：2026-06-22
+> 本文档描述 Hypervisor（H）扩展与其他 Sm* 系列（Machine-level）扩展在交叉场景下的测试计划。
 
 ---
 
@@ -30,7 +28,7 @@
 
 ### 覆盖的扩展交叉
 
-- **Hypervisor × Smcsrind**：`mstateen0[60]` (CSRIND) 对 S-mode (HS-mode) 访问 `vsiselect`/`vsireg*` 的控制、M-mode 访问不受 state-enable 控制验证；含 Smcdeleg 视角的同源规范（`norm:smcdeleg_mstateen0_bit60`，从 `Smcdeleg_test_plan.md` 迁入）
+- **Hypervisor × Smcsrind**：`mstateen0[60]` (CSRIND) 对 S-mode (HS-mode) 访问 `vsiselect`/`vsireg*` 的控制、M-mode 访问不受 state-enable 控制验证；含 Smcdeleg 视角的同源规范（官方标签 `norm:sscsrind_csrs_access_control`，从 `Smcdeleg_test_plan.md` 迁入）
 - **Hypervisor × Smctr**：`hstateen0.CTR` 对 VS-mode CTR 状态访问的控制、`mstateen0.CTR=0` 对 `vsctrctl` 的阻止、MTE 外部陷阱在 VS/VU-mode 到 M-mode 的录制行为
 - **Hypervisor × Smcntrpmf**：`mcyclecfg`/`minstretcfg` 的 VSINH/VUINH 位对 VS/VU-mode cycle/instret 计数的抑制、未实现 H 扩展时 VSINH/VUINH 只读零、`hcounteren` 与计数抑制的正交性
 - **Hypervisor × Smstateen**：`mstateen0` 对 hstateen CSR 访问的控制、`mstateen0` 零位传播到 hstateen、各功能位（SE0/ENVCFG/CSRIND/IMSIC/CONTEXT/P1P13）对 Hypervisor CSR 的阻止、VS/VU-mode virtual-instruction
@@ -58,7 +56,7 @@
 | `norm:unimplemented_mode_bits` | `smcntrpmf.adoc` | For each bit in 61:58, if the associated privilege mode is not implemented, the bit is read-only zero. | `mcyclecfg`/`minstretcfg` 的 61:58 位中，若对应特权模式未实现，该位为只读零。 |
 | `norm:counter_inhibited_behavior` | `smcntrpmf.adoc` | The fundamental behavior of cycle and instret is modified in that counting does not occur while executing in an inhibited privilege mode. | cycle 和 instret 的基本行为被修改：在被抑制的特权模式下执行时不发生计数。 |
 | `hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. | `hcounteren` CSR 控制 VS 和 VU 模式下性能监控计数器的可用性。 |
-| `norm:smcdeleg_mstateen0_bit60` | `smcdeleg.adoc` | If extension Smstateen is implemented, setting bit 60 of CSR `mstateen0` to zero prevents access to registers `siselect`, `sireg*`, `vsiselect`, and `vsireg*` from privileged modes less privileged than M-mode. | 若实现了 Smstateen 扩展，将 `mstateen0` 的 bit 60 设为 0 会阻止低于 M-mode 的特权级访问 `siselect`、`sireg*`、`vsiselect` 和 `vsireg*`。 |
+| `norm:sscsrind_csrs_access_control` | `smcsrind.adoc` | If extension Smstateen is implemented, setting bit 60 of CSR `mstateen0` to zero prevents access to registers `siselect`, `sireg*`, `vsiselect`, and `vsireg*` from privileged modes less privileged than M-mode. | 若实现了 Smstateen 扩展，将 `mstateen0` 的 bit 60 设为 0 会阻止低于 M-mode 的特权级访问 `siselect`、`sireg*`、`vsiselect` 和 `vsireg*`。 |
 | `norm:H_pmp` | `hypervisor.adoc` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. | 机器级 PMP 作用于 supervisor 物理地址，与虚拟化模式无关（V=1 时依然生效）。 |
 | `norm:pmp_with_paging` | `machine.adoc` | When paging is enabled, instructions that access virtual memory may result in multiple physical-memory accesses, including implicit references to the page tables. The PMP checks apply to all of these accesses. The effective privilege mode for implicit page-table accesses is S. | 启用分页后，指令访问虚拟内存会产生多次物理访问（含对页表的隐式引用），PMP 检查适用于所有这些访问；隐式页表访问的有效特权级为 S。 |
 | `norm:pmp_sfence_required` | `machine.adoc` | When the PMP settings are modified, M-mode software must synchronize the PMP settings with the virtual memory system and any PMP or address-translation caches (SFENCE.VMA with rs1=x0 and rs2=x0 after writing PMP CSRs). | 修改 PMP 设置后，M-mode 软件必须将 PMP 设置与虚拟内存系统及翻译缓存同步（写 PMP CSR 后执行 SFENCE.VMA，rs1=x0、rs2=x0）。 |
@@ -75,7 +73,7 @@
 **规范依据**：
 - `norm:sscsrind_csrs_access_control`：若 Smstateen 与 Smcsrind 同时实现，`mstateen0[60]` (CSRIND) 控制对 `siselect`、`sireg*`、`vsiselect`、`vsireg*` 的访问。当 `mstateen0[60]=0` 时，从低于 M-mode 的特权级访问这些 CSR 触发 illegal-instruction 异常。
 - `norm:hypervisor_impl_csrs_access_control`：若 Hypervisor 扩展已实现，`hstateen0[60]` 同样定义，但仅控制 VS/VU-mode 对 `siselect`/`sireg*`（实为 `vsiselect`/`vsireg*`）的访问。当 `hstateen0[60]=0` 且 `mstateen0[60]=1` 时，VS/VU-mode 访问 `siselect`/`sireg*` 触发 virtual-instruction 异常（非 illegal-instruction）。
-- `norm:smcdeleg_mstateen0_bit60`：若实现了 Smstateen 扩展，将 `mstateen0` 的 bit 60 设为 0 会阻止低于 M-mode 的特权级访问 `siselect`、`sireg*`、`vsiselect` 和 `vsireg*`。此为 `smcdeleg.adoc` 对同一控制规则的表述（与 `norm:sscsrind_csrs_access_control` 同源）；本方案覆盖其中 `vsiselect`/`vsireg*`（Hypervisor CSR）部分。对 `siselect`/`sireg*` 部分的验证见 `Smcdeleg_test_plan.md` Group 4 与 `Smcsrind_test_plan.md` Group 4。
+- 同一控制规则（`norm:sscsrind_csrs_access_control`）在 `smcdeleg.adoc` 中亦有表述（Smcdeleg 视角，从 `Smcdeleg_test_plan.md` 迁入）；本方案覆盖其中 `vsiselect`/`vsireg*`（Hypervisor CSR）部分。对 `siselect`/`sireg*` 部分的验证见 `Smcdeleg_test_plan.md` Group 4 与 `Smcsrind_test_plan.md` Group 4。
 
 **测试职责**：验证 Smcsrind 扩展在 Hypervisor 场景下的 CSRIND 访问控制：
 - Group 1.1 (01-08)：`mstateen0[60]` 对 S-mode (HS-mode) 访问 `vsiselect`/`vsireg*` 的控制。M-mode 访问不受 state-enable 影响。
@@ -283,7 +281,7 @@
 
 ## Group 4. Hypervisor × Smstateen
 
-本组测试验证 Smstateen 扩展在 Hypervisor 场景下的行为，包括 hstateen CSR 访问控制、HS-mode/VS-mode/VU-mode 特权级交互等。这些测试从 `smstateen_test_plan.md` 迁移而来，专门针对依赖 H 扩展的用例。
+本组测试验证 Smstateen 扩展在 Hypervisor 场景下的行为，包括 hstateen CSR 访问控制、HS-mode/VS-mode/VU-mode 特权级交互等。这些测试从 `Smstateen_test_plan.md` 迁移而来，专门针对依赖 H 扩展的用例。
 
 ### 测试 ID 映射表
 
@@ -418,7 +416,7 @@
 | P1（重要） | Group 5.1/5.2 (PMP 交集) | HCROSS-PMP-01~06 | `norm:H_pmp` 与 `norm:pmp_with_paging` 是 guest 内存隔离的最后一道防线；显式访问与隐式页表遍历的异常类型区分是高频实现错误点 |
 | P2（建议） | Group 5.3/5.4 (PMP 同步与 HLVX) | HCROSS-PMP-07~08 | 翻译缓存 PMP 属性同步与 HLVX 边界行为，依赖实现缓存结构，平台相关性较强 |
 
-> 注：Smcntrpmf（Group 3）的测试用例（PMF-CSR-05、PMF-CYC-08/09、PMF-INS-06/07、PMF-CTR-04、HCROSS-PMF-01）在原始合并方案中未单独标注优先级，建议参照 `Smcntrpmf_test_plan.md` 的优先级执行。
+> 注：Smcntrpmf（Group 3）的测试用例（PMF-CSR-05、PMF-CYC-08/09、PMF-INS-06/07、PMF-CTR-04、HCROSS-PMF-01）建议参照 `Smcntrpmf_test_plan.md` 的优先级执行。
 
 ---
 
@@ -438,18 +436,18 @@
 
 ## 参考
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/smstateen.adoc` — Smstateen Extension Specification
-- `SPEC/smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
-- `SPEC/smctr.adoc` — Smctr (Control Transfer Records - Machine-level) Extension
-- `SPEC/smcntrpmf.adoc` — Smcntrpmf (Cycle and Instret Privilege Mode Filtering) Extension
-- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
-- `SPEC/machine.adoc` — Machine-Level ISA（含 PMP 章节与 pmp-vmem：PMP 与分页的交互）
-- `SPEC/pmp.adoc` — Physical Memory Protection（machine.adoc 内章节）
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `smstateen.adoc` — Smstateen Extension Specification
+- `smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
+- `smctr.adoc` — Smctr (Control Transfer Records - Machine-level) Extension
+- `smcntrpmf.adoc` — Smcntrpmf (Cycle and Instret Privilege Mode Filtering) Extension
+- `smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
+- `machine.adoc` — Machine-Level ISA（含 PMP 章节与 pmp-vmem：PMP 与分页的交互）
+- PMP 章节（位于 `machine.adoc` 内）— Physical Memory Protection
 - `DOCS/testplan/Smcsrind_test_plan.md` — Smcsrind Machine Mode 测试计划
 - `DOCS/testplan/Smctr_test_plan.md` — Smctr Machine Mode 测试计划
 - `DOCS/testplan/Smcntrpmf_test_plan.md` — Smcntrpmf 独立测试计划
-- `DOCS/testplan/smstateen_test_plan.md` — Smstateen 独立测试计划
+- `DOCS/testplan/Smstateen_test_plan.md` — Smstateen 独立测试计划
 - `DOCS/testplan/Smcdeleg_test_plan.md` — Smcdeleg 扩展测试计划（Machine Mode）
 - `DOCS/testplan/pmp_test_plan.md` — PMP 独立测试计划（非 Hypervisor 场景）
 - `DOCS/testplan/Smepmp_test_plan.md` — Smepmp 独立测试计划（非 Hypervisor 场景）
@@ -479,8 +477,7 @@
 | `norm:mstateen0_context_op` | HCROSS-SMSTA-10 |
 | `norm:mstateen0_p1p13_op` | HCROSS-SMSTA-11、HCROSS-SMSTA-12 |
 | `norm:stateen_illegal_state_access` | HCROSS-SMSTA-13、HCROSS-SMSTA-14 |
-| `norm:sscsrind_csrs_access_control` | HCROSS-SMCSRIND-01~08（VS-mode 角度的同源验证见 `Hypervisor_Ss_test_plan.md` Sscsrind Group） |
-| `norm:smcdeleg_mstateen0_bit60` | HCROSS-SMCSRIND-01~08（与 `norm:sscsrind_csrs_access_control` 同源；从 `Smcdeleg_test_plan.md` 迁入，本方案覆盖其 `vsiselect`/`vsireg*` 部分） |
+| `norm:sscsrind_csrs_access_control` | HCROSS-SMCSRIND-01~08（VS-mode 角度的同源验证见 `Hypervisor_Ss_test_plan.md` Sscsrind Group；`smcdeleg.adoc` 对同一规则亦有表述，从 `Smcdeleg_test_plan.md` 迁入） |
 | `norm:hypervisor_impl_csrs_access_control` | HCROSS-SMCSRIND-09~11（VS-mode 角度的同源验证见 `Hypervisor_Ss_test_plan.md` Sscsrind Group） |
 | `norm:mstateen_ctr0_except1` | HCROSS-SMCTR-01 |
 | `norm:hstateen_ctr` | HCROSS-SMCTR-02、HCROSS-SMCTR-03、HCROSS-SMCTR-04~09 |

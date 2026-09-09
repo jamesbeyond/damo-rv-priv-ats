@@ -51,7 +51,13 @@ Hypervisor_Zihintntl,7,7,0,0
 Hypervisor_Zicntr,9,9,0,0
 Hypervisor_Zihpm,5,4,0,1
 Hypervisor_Vector,13,10,2,1
+Hypervisor_Zalrsc,40,32,7,1
+Hypervisor_Zaamo,31,23,7,1
+Hypervisor_Zacas,36,28,7,1
+Hypervisor_Zabha,39,30,8,1
+Hypervisor_Zalasr,36,33,2,1
 Hypervisor_Zawrs,12,12,0,0
+Hypervisor_Zca,29,29,0,0
 Ss_CSR,75,64,1,10
 Ss_Exceptions,50,38,1,11
 Ss_Interrupts,38,38,0,0
@@ -121,3 +127,12 @@ Zkt,40,38,0,2
 Zcmop,23,23,0,0
 Zcmp,51,0,0,51
 Zcmt,49,0,0,49
+Za64rs,52,32,0,20
+Za128rs,52,32,0,20
+Zaamo,34,26,1,7
+Zabha,43,41,2,0
+Zacas,56,47,1,8
+Zalasr,53,42,5,6
+Zalrsc,56,44,3,9
+Zama16b,60,41,10,9
+Zawrs,13,13,0,0

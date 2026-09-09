@@ -2,9 +2,7 @@
 
 # Hypervisor 与 Ss* 扩展交叉测试计划
 
-> 本文档描述 Hypervisor（H）扩展与其他 Ss* 系列（Supervisor-level）扩展在交叉场景下的测试计划。本方案从 `Hypervisor_cross_test_plan.md` 拆分而来，仅保留 Hypervisor 与 Ss* 扩展交叉的内容。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划（`Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md`）并未完全覆盖。
->
-> 生成时间：2026-06-22
+> 本文档描述 Hypervisor（H）扩展与其他 Ss* 系列（Supervisor-level）扩展在交叉场景下的测试计划，覆盖 Hypervisor 与 Sstvala、Ssccptr、Sscounterenw、Ssstateen、Sstc、Sscsrind、Ssdbltrp、Ssctr、Ssqosid、Sscofpmf、Smcdeleg/Ssccfg 的交叉验证内容。
 
 ---
 
@@ -155,8 +153,8 @@
 **测试职责**：验证 `hcounteren` 寄存器对 VS/VU-mode 性能监控计数器（hpmcounter）访问的控制行为，以及 `hcounteren` 对应位的可写性。
 
 > [!NOTE]
-> - Sscounterenw 扩展要求：对于任何非只读零的 `hpmcounter`，`scounteren`（以及 `hcounteren`）的对应位必须可写。本组测试验证 `hcounteren` 的可写性和控制行为。
-> - 请参考 `Shcounterenw_test_plan.md` 扩展测试
+> - Sscounterenw 扩展要求：对于任何非只读零的 `hpmcounter`，`scounteren` 的对应位必须可写；`hcounteren` 对 VS/VU-mode 计数器访问的门控属 Hypervisor 扩展行为。
+> - 本组声明的交叉规范点由独立方案覆盖，不在本方案重复设计用例：`scounteren` 可写性见 `Sscounterenw_test_plan.md`；`hcounteren` 对 VS/VU-mode 的门控及 mcounteren/hcounteren/scounteren 层级交互见 `Shcounterenw_test_plan.md`（SHCNTW-ACCESS、SHCNTW-HIER 系列）。
 
 ---
 
@@ -1045,7 +1043,7 @@
 | P1（重要） | Group 8.1 (vsctrctl) | HCROSS-SSCTR-01~10 | vsctrctl 是 VS-mode CTR 的核心控制寄存器 |
 | P1（重要） | Group 8.3 (VS/VU ext traps) | HCROSS-SSCTR-15~20 | VS/VU-mode 外部陷阱录制是虚拟化场景的关键 |
 | P1（重要） | Group 8.5 (Virt transitions) | HCROSS-SSCTR-25~29 | 虚拟化模式转换配置来源是 CTR 在 Hypervisor 下的正确性保证 |
-| P2（建议） | Group 3 (Sscounterenw) | HCROSS-SSCOUNTERENW-01~09 | hcounteren 控制行为是性能监控隔离的保证 |
+| P2（建议） | Group 3 (Sscounterenw) | 由 `Shcounterenw_test_plan.md`、`Sscounterenw_test_plan.md` 覆盖 | hcounteren 控制行为是性能监控隔离的保证 |
 | P2（建议） | Group 5 (Sstc) | HCROSS-SSTC-01~15 | vstimecmp 和 VS-mode 定时器是 Hypervisor 虚拟化定时器的核心设施 |
 | P2（建议） | Group 6.4 (Hyp 交叉) | HCROSS-SSCSRIND-28~33 | 透明重映射和别名行为依赖 H 扩展 |
 | P2（建议） | Group 7.4 (menvcfg.DTE Hyp) | HCROSS-SSDBLTRP-17~18 | menvcfg.DTE 对 Hypervisor CSR 的全局控制 |
@@ -1056,7 +1054,7 @@
 | P2（建议） | Group 11 (Smcdeleg/Ssccfg) | HCROSS-SSCCFG-01~24 | scountovf/scountinhibit 虚拟化、LCOFI 虚拟中断位与 vsireg* 访问规则是计数器委托隔离的保证 |
 | P3（可选） | Group 2 (Ssccptr) | HCROSS-SSCCPTR-01~04 | PMA 层面的约束依赖平台保证，动态 PMA 配置能力受限的用例按平台能力 TEST_SKIP |
 
-> 注：Ssqosid（Group 9）的测试用例（SRMCFG-19~24）在原始合并方案中未单独标注优先级，建议参照 `Ssqosid_test_plan.md` 的优先级执行。Group 4 (Ssstateen) 的 hstateen 控制用例（HCROSS-SSSTA-01~50）优先级参照原合并方案 Group 8 的 P1 定级。
+> 注：Ssqosid（Group 9）的测试用例（SRMCFG-19~24）建议参照 `Ssqosid_test_plan.md` 的优先级执行。Group 4 (Ssstateen) 的 hstateen 控制用例（HCROSS-SSSTA-01~50）定为 P1。
 
 ---
 
@@ -1076,28 +1074,28 @@
 
 ## 参考
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/sstvala.adoc` — Sstvala Extension
-- `SPEC/ssccptr.adoc` — Ssccptr Extension
-- `SPEC/sscounterenw.adoc` — Sscounterenw Extension
-- `SPEC/smstateen.adoc` — Smstateen Extension Specification
-- `SPEC/sstc.adoc` — Sstc Extension Specification (Supervisor-mode Timer Interrupts)
-- `SPEC/smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
-- `SPEC/ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
-- `SPEC/ssctr.adoc` — Ssctr (Control Transfer Records - Supervisor-level) Extension
-- `SPEC/riscv-ssqosid/sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
-- `SPEC/sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
-- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `sstvala.adoc` — Sstvala Extension
+- `ssccptr.adoc` — Ssccptr Extension
+- `sscounterenw.adoc` — Sscounterenw Extension
+- `smstateen.adoc` — Smstateen Extension Specification
+- `sstc.adoc` — Sstc Extension Specification (Supervisor-mode Timer Interrupts)
+- `smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
+- `ssdbltrp.adoc` — Ssdbltrp Double Trap Extension
+- `smctr.adoc` — Smctr/Ssctr (Control Transfer Records) Extension
+- `sqosid.adoc` — Ssqosid (QoS Identifiers) Extension Specification
+- `sscofpmf.adoc` — Sscofpmf Extension Specification (Count Overflow and Mode-Based Filtering)
+- `smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` — 两阶段翻译测试计划
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` — G-stage 独立测试计划
-- `DOCS/testplan/sstvala_test_plan.md` — Sstvala 独立测试计划
-- `DOCS/testplan/ssccptr_test_plan.md` — Ssccptr 独立测试计划
-- `DOCS/testplan/sscounterenw_test_plan.md` — Sscounterenw 独立测试计划
-- `DOCS/testplan/ssstateen_test_plan.md` — Ssstateen 独立测试计划
-- `DOCS/testplan/sstc_test_plan.md` — Sstc 独立测试计划
+- `DOCS/testplan/Sstvala_test_plan.md` — Sstvala 独立测试计划
+- `DOCS/testplan/Ssccptr_test_plan.md` — Ssccptr 独立测试计划
+- `DOCS/testplan/Sscounterenw_test_plan.md` — Sscounterenw 独立测试计划
+- `DOCS/testplan/Ssstateen_test_plan.md` — Ssstateen 独立测试计划
+- `DOCS/testplan/Sstc_test_plan.md` — Sstc 独立测试计划
 - `DOCS/testplan/Sscsrind_test_plan.md` — Sscsrind Supervisor Mode 测试计划
 - `DOCS/testplan/Ssdbltrp_test_plan.md` — Ssdbltrp 独立测试计划
 - `DOCS/testplan/Ssctr_test_plan.md` — Ssctr Supervisor Mode 测试计划
@@ -1110,7 +1108,7 @@
 
 ## 附录 A：规范点覆盖矩阵
 
-下表标明"覆盖的规范点"章节及各 Group 规范依据中每条规范点被哪些测试用例覆盖。带（自行拆解）标注的为非官方标签条目。
+下表标明“覆盖的规范点”章节及各 Group 规范依据中每条规范点被哪些测试用例覆盖。
 
 | Norm ID | 覆盖的测试 ID |
 |---------|---------------|
@@ -1118,8 +1116,8 @@
 | `norm:sstvala_stval_faulting_vaddr` | HCROSS-SSTVALA-01~05 |
 | `norm:sstvala_stval_faulting_instruction` | HCROSS-SSTVALA-06~08 |
 | `norm:ssccptr_memory_pte_reads` | HCROSS-SSCCPTR-01~04 |
-| `norm:sscounterenw_hpmcounter_scounteren` | Group 3（Sscounterenw，用例待按 `Shcounterenw_test_plan.md` 模式细化） |
-| `hcounteren_vs_vu_control`（自行拆解） | Group 3（Sscounterenw） |
+| `norm:sscounterenw_hpmcounter_scounteren` | 由 `Sscounterenw_test_plan.md` 覆盖（scounteren 可写性）；Group 3 仅声明交叉规范依据 |
+| `hcounteren_vs_vu_control` | 由 `Shcounterenw_test_plan.md` 覆盖（SHCNTW-ACCESS-01~08、SHCNTW-HIER-01~05 验证 hcounteren 对 VS/VU-mode 的门控） |
 | `norm:hstateen_rv64_csrs` | HCROSS-SSSTA-01~05 |
 | `norm:stateen_rv32_upper_bits_csrs` | HCROSS-SSSTA-06（RV32 平台；RV64 TEST_SKIP） |
 | `norm:hstateen_encoding` | HCROSS-SSSTA-46~50 |
@@ -1152,6 +1150,7 @@
 | `norm:hypervisor_impl_csrs_access_control` | HCROSS-SSCSRIND-24~27 |
 | `norm:sscsrind_csrs_access_control` | HCROSS-SSCSRIND-22、HCROSS-SSCSRIND-23 |
 | `norm:csrs_alias` | HCROSS-SSCSRIND-33 |
+| `norm:mstateen_zero_initialization` | Group 6（Sscsrind）前置条件：复位后 mstateen 可写位为 0，测试 VS/VU 访问前须置 mstateen0[60]=1（HCROSS-SSCSRIND-01~33） |
 | `norm:henvcfg_DTE` | HCROSS-SSDBLTRP-01 |
 | `norm:henvcfg_dte_op` | HCROSS-SSDBLTRP-02~04、HCROSS-SSDBLTRP-06 |
 | `norm:menvcfg_dte_op` | HCROSS-SSDBLTRP-05、HCROSS-SSDBLTRP-17、HCROSS-SSDBLTRP-18 |
@@ -1190,5 +1189,5 @@
 | `norm:ssccfg_hyp_m_s_vsireg_illegal` | HCROSS-SSCCFG-18、HCROSS-SSCCFG-19 |
 | `norm:ssccfg_hyp_vs_access_sireg_conditional` | HCROSS-SSCCFG-20、HCROSS-SSCCFG-21 |
 | `norm:hstateen0_csrind_op` | HCROSS-SSCCFG-22~24（Ssccfg 角度；同源验证见 HCROSS-SSSTA-27~29、HCROSS-SSCSRIND-24~27） |
-| `ssqosid_virtinst`（自行拆解） | SRMCFG-19、SRMCFG-20、SRMCFG-21、SRMCFG-24 |
-| `ssqosid_smstateen_bit55_0`（自行拆解） | SRMCFG-23 |
+| `ssqosid_virtinst` | SRMCFG-19、SRMCFG-20、SRMCFG-21、SRMCFG-24 |
+| `ssqosid_smstateen_bit55_0` | SRMCFG-23 |

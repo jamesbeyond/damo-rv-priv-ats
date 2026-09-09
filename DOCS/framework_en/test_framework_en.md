@@ -39,7 +39,8 @@ common/
 ├── trap.c                # Trap handling logic (arm/disarm, cause recording)
 ├── trap_asm.S            # Trap entry assembly (context save/restore)
 ├── privilege.c           # Privilege level switching (goto_priv, run_in_priv)
-├── entry.S               # M-mode boot sequence, BSS initialization, _platform_init hook
+├── entry.S               # M-mode boot sequence, GPR clearing, BSS initialization, _platform_init hook
+├── reg_init.S            # Register-file initialization (_fp_reg_init: clears f0-f31 + fcsr)
 ├── platform_init.S       # Default weak symbol implementation of _platform_init
 ├── mem_ops.h             # Memory load/store/execute/AMO primitives (norvc)
 ├── csr_accessors.c       # Dynamic CSR read/write by index
@@ -59,10 +60,16 @@ common/
 ```
 _entry (entry.S)
   │
-  ├── Clear BSS
+  ├── Clear GPRs (x1-x31, every hart)
   ├── Set stack pointer
-  ├── Call _platform_init (weak symbol hook)
   ├── Set mtvec → m_trap_entry
+  ├── Clear BSS
+  ├── Call _platform_init (weak symbol hook)
+  ├── Call _fp_reg_init (reg_init.S): clear FP registers (f0-f31 + fcsr)
+  │     └── FLQ/FLD/FLW selected from misa.{Q,D,F} to match FLEN; sets
+  │         mstatus.FS=Initial temporarily and restores the boot value
+  │         afterwards (changing FS never alters the register contents)
+  ├── Clear GPRs again (removes the temporaries left by the boot code)
   │
   └── Jump to main()
         │
