@@ -54,7 +54,10 @@ EXT_HYP_SS="Hypervisor_Ssccfg Hypervisor_Ssccptr  Hypervisor_Sscofpmf Hypervisor
 EXT_HYP_SV="Hypervisor_Svadu  Hypervisor_Svinval  Hypervisor_Svnapot  Hypervisor_Svpbmt"
 EXT_HYP_ZI="Hypervisor_Zicbom  Hypervisor_Zicbop  Hypervisor_Zicboz  Hypervisor_Zicfilp  Hypervisor_Zicfiss  Hypervisor_Zkr Hypervisor_Zihintntl Hypervisor_Zicntr Hypervisor_Zihpm Hypervisor_Vector Hypervisor_Zawrs"
 
-ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_SS} ${EXT_SV} ${EXT_SD} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZK} ${EXT_ZC}"
+# Hypervisor atomic and reservation set extensions
+EXT_HYP_ZA="Hypervisor_Zalrsc Hypervisor_Zaamo Hypervisor_Zacas Hypervisor_Zabha Hypervisor_Zalasr"
+
+ALL_SUITES="${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA} ${EXT_SS} ${EXT_SV} ${EXT_SD} ${EXT_SM} ${EXT_PMP} ${EXT_CFI} ${EXT_ZPM} ${EXT_CMO} ${EXT_ZI} ${EXT_ZK} ${EXT_ZC}"
 
 usage()
 {
@@ -74,7 +77,7 @@ resolve_suite()
     local s="$1"
     case "$s" in
         all)  echo "${ALL_SUITES}" ;;
-        hyp)  echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI}" ;;
+        hyp)  echo "${EXT_HYP} ${EXT_HYP_VM} ${EXT_HYP_SM} ${EXT_HYP_SS} ${EXT_HYP_SV} ${EXT_HYP_ZI} ${EXT_HYP_ZA}" ;;
         ss)   echo "${EXT_SS}" ;;
         sv)   echo "${EXT_SV}" ;;
         sd)   echo "${EXT_SD}" ;;
