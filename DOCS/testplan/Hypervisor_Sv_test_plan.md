@@ -2,9 +2,7 @@
 
 # Hypervisor 与 Sv* 扩展交叉测试计划
 
-> 本文档描述 Hypervisor（H）扩展与其他 Sv* 系列（ Supervisor 虚拟地址翻译相关）扩展在交叉场景下的测试计划。本方案从 `Hypervisor_cross_test_plan.md` 拆分而来，仅保留 Hypervisor 与 Sv* 扩展交叉的内容。这些测试场景原本在各扩展的独立测试计划中被标记为"由 Hypervisor 测试计划覆盖"或"因缺少 H 扩展而排除"，但经分析发现现有 Hypervisor 测试计划（`Hypervisor_CSR_test_plan.md`、`Hypervisor_Interrupts_test_plan.md`、`Hypervisor_Exceptions_test_plan.md`、`Hypervisor_2_stage_test_plan.md`、`Hypervisor_gstage_test_plan.md`）并未完全覆盖。
->
-> 生成时间：2026-06-22
+> 本文档描述 Hypervisor（H）扩展与其他 Sv* 系列（Supervisor 虚拟地址翻译相关）扩展在交叉场景下的测试计划。
 
 ---
 
@@ -130,7 +128,7 @@
 
 **测试职责**：验证 Svnapot 在 G-stage 翻译中的行为，包括 G-stage NAPOT PTE 的基本翻译、保留编码异常、以及 VS-stage 和 G-stage 同时使用 NAPOT 的两阶段翻译正确性。
 
-> **注意**：本组测试从 `svnapot_test_plan.md` Group 10 迁移而来。需要 H 扩展和 Svnapot 扩展同时可用。
+> **注意**：本组测试从 `Svnapot_test_plan.md` Group 10 迁移而来。需要 H 扩展和 Svnapot 扩展同时可用。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -141,7 +139,7 @@
 > [!NOTE]
 > - 本组测试验证 Svnapot 扩展在 Hypervisor G-stage 翻译中的行为。Svnapot 规范明确指出，如果同时实现了 Hypervisor 扩展，NAPOT 翻译在 G-stage 页表中同样受支持。
 > - HCROSS-SVNAPOT-01 验证 G-stage 中 64 KiB NAPOT PTE 的基本 GPA→SPA 翻译功能，与 `Hypervisor_gstage_test_plan.md` 中的普通 PTE 测试互补。
-> - HCROSS-SVNAPOT-02 验证 G-stage NAPOT PTE 使用保留编码（ppn[0] 低 4 位非 `1000` 且 N=1）时，硬件应触发 guest-page-fault。这与 VS-stage 中的保留编码行为一致（参见 `svnapot_test_plan.md` Group 3）。
+> - HCROSS-SVNAPOT-02 验证 G-stage NAPOT PTE 使用保留编码（ppn[0] 低 4 位非 `1000` 且 N=1）时，硬件应触发 guest-page-fault。这与 VS-stage 中的保留编码行为一致（参见 `Svnapot_test_plan.md` Group 3）。
 > - HCROSS-SVNAPOT-03 验证两阶段翻译中 VS-stage 和 G-stage 同时使用 NAPOT PTE 的场景：VS-stage 将 GVA→GPA 使用 NAPOT 映射，G-stage 将 GPA→SPA 也使用 NAPOT 映射，最终 GVA→SPA 翻译应正确。
 
 ---
@@ -154,7 +152,7 @@
 
 **测试职责**：验证两阶段地址翻译中 PBMT 属性的叠加覆盖行为，包括 G-stage PBMT 覆盖 PMA、VS-stage PBMT 覆盖中间属性、两阶段叠加、以及 `hgatp.MODE=0` 时跳过 G-stage 覆盖的场景。
 
-> **注意**：本组测试从 `svpbmt_test_plan.md` Group 10 迁移而来。需要 H 扩展和 Svpbmt 扩展同时可用。
+> **注意**：本组测试从 `Svpbmt_test_plan.md` Group 10 迁移而来。需要 H 扩展和 Svpbmt 扩展同时可用。
 
 | 测试 ID | 测试名称 | 测试描述 | 预期结果 |
 |---------|----------|----------|----------|
@@ -203,20 +201,20 @@
 
 ## 参考
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/svadu.adoc` — Svadu Extension
-- `SPEC/svinval.adoc` — Svinval Extension
-- `SPEC/svnapot.adoc` — Svnapot Extension
-- `SPEC/svpbmt.adoc` — Svpbmt Extension
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `svadu.adoc` — Svadu Extension
+- `svinval.adoc` — Svinval Extension
+- `svnapot.adoc` — Svnapot Extension
+- `svpbmt.adoc` — Svpbmt Extension
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR 子集测试计划
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor 中断子集测试计划
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor 异常与 trap 子集测试计划
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` — 两阶段翻译测试计划
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` — G-stage 独立测试计划
-- `DOCS/testplan/svadu_test_plan.md` — Svadu 独立测试计划
-- `DOCS/testplan/svinval_test_plan.md` — Svinval 独立测试计划
-- `DOCS/testplan/svnapot_test_plan.md` — Svnapot 独立测试计划
-- `DOCS/testplan/svpbmt_test_plan.md` — Svpbmt 独立测试计划
+- `DOCS/testplan/Svadu_test_plan.md` — Svadu 独立测试计划
+- `DOCS/testplan/Svinval_test_plan.md` — Svinval 独立测试计划
+- `DOCS/testplan/Svnapot_test_plan.md` — Svnapot 独立测试计划
+- `DOCS/testplan/Svpbmt_test_plan.md` — Svpbmt 独立测试计划
 - `ideas/hypervisor_gap.md` — Hypervisor 测试缺口分析
 
 ---
@@ -229,7 +227,7 @@
 |---------|---------------|
 | `norm:henvcfg_adue_op` | HCROSS-SVADU-01~04 |
 | `norm:Svadu_hypervisor_adue_writable` | HCROSS-SVADU-01 |
-| `svadu_hfence_gvma_sync`（自行拆解） | HCROSS-SVADU-05、HCROSS-SVADU-06 |
+| `svadu_hfence_gvma_sync` | HCROSS-SVADU-05、HCROSS-SVADU-06 |
 | `norm:Svinval_hinval_vvma_gvma` | HCROSS-SINVAL-01~04 |
 | `norm:Svinval_hinval_gvma_uses_vmid` | HCROSS-SINVAL-05、HCROSS-SINVAL-06 |
 | `norm:Svinval_virtual_instruction_vu_vs` | HCROSS-SINVAL-07~10、HCROSS-SINVAL-15 |

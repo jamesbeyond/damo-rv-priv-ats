@@ -2,11 +2,7 @@
 
 # Hypervisor × Z* Extensions Cross Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Z* extension families (including Zk* cryptography extensions). This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Z* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans do not fully cover them. Hypervisor × V vector family cross scenarios, Hypervisor × Zicntr cross scenarios, and Hypervisor × Zihpm cross scenarios were supplemented afterwards.
->
-> The cross scenarios of the two atomic/reservation-set extensions — the former Hypervisor × Zawrs (former Group 4, HZWRS-01~12) and Hypervisor × Zalrsc (former Group 8, HZLRSC-01~40) — have been split out into `Hypervisor_Za_test_plan.md` (the Za atomic extension cross-test center), with case IDs unchanged; the Group numbering in this document is rearranged after the split (V vector family is Group 4, Zicntr is Group 5, Zihpm is Group 6).
->
-> Generation date: 2026-06-22
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Z* extension families (including Zk* cryptography extensions, the V vector family, Zicntr, and Zihpm).
 
 ---
 
@@ -17,7 +13,6 @@ This plan is based on the following official RISC-V specifications (local paths)
 - `SPEC/riscv-isa-manual/src/priv/hypervisor.adoc` — Hypervisor (H) extension: virtual-instruction exception mechanism for VS/VU-mode access to controlled CSRs
 - `SPEC/riscv-isa-manual/src/unpriv/zk.adoc` — Zkr entropy source extension: `seed` CSR, `mseccfg.SSEED/USEED` access control
 - `SPEC/riscv-isa-manual/src/unpriv/zihintntl.adoc` — Zihintntl extension: no-architectural-side-effect semantics and trap behavior of NTL HINT instructions
-- `SPEC/riscv-isa-manual/src/unpriv/zcmt.adoc` — Zcmt extension: cm.jt/cm.jalt table jump instructions, jvt CSR, and two-implicit-fetch semantics
 - `SPEC/riscv-isa-manual/src/unpriv/vector-common.adoc` — V vector family common definitions: vsstatus.vs vector context status field, Off gating of vector instructions/vector CSRs and dual Dirty updates when V=1, vsstatus.fs interaction for vector floating point
 - `SPEC/riscv-isa-manual/src/unpriv/zicntr.adoc` — Zicntr extension: cycle/time/instret base counters, the intersection of `rdtime` semantics and the htimedelta time offset, continued control of VU-mode by `scounteren` when V=1 (no corresponding VS CSR)
 - `SPEC/riscv-isa-manual/src/unpriv/zihpm.adoc` — Zihpm extension: gating interaction when V=1 of the access behavior of unimplemented hpmcounter3–31 (illegal-instruction or constant value)
@@ -34,7 +29,6 @@ Official repository:
 
 - **Hypervisor × Zkr**: `mseccfg.SSEED` control over VS/VU-mode access to the `seed` CSR; distinguishing virtual-instruction from illegal-instruction exception types in VS/VU-mode; SSEED control of HS-mode access to seed; read-only access exceptions taking precedence over virtual-instruction
 - **Hypervisor × Zihintntl**: normal execution of NTL HINTs in HS/VS/VU-mode (must not spuriously raise a virtual-instruction exception); NTL applied to H-extension virtual-machine memory access instructions (HLV/HSV/HLVX); virtual-instruction reporting of NTL + CMO in VS-mode; G-stage guest-page-fault reporting of NTL + target in VS-mode
-- **Hypervisor × Zcmt**: normal execution of table jump instructions (cm.jt/cm.jalt) in HS/VS/VU-mode; jvt CSR access and Smstateen (JVT bit) gating in VS/VU-mode; two-stage translation of JVT entry fetches in VS-mode and G-stage guest instruction page fault reporting
 - **Hypervisor × V vector family**: presence and read/write of the `vsstatus.vs` field (bits[10:9]) when the H extension is implemented; illegal-instruction gating of vector instructions and vector CSRs when either `vsstatus.vs` or `mstatus.vs` is Off at V=1; modifying vector state sets both to Dirty; linkage between `vsstatus.sd` and `vsstatus.vs`; `vsstatus.fs` gating and dual Dirty updates for vector floating-point instructions; presence of `vsstatus.vs` when `misa.v` is writable (applicable to all vector extensions sharing `vector-common.adoc`: V, Zve*, Zv*)
 - **Hypervisor × Zicntr**: the `rdtime` instruction returns `time + htimedelta` in VS/VU-mode (instruction-level delta semantics); gating of `cycle`/`time`/`instret` by the CY/TM/IR bits of `hcounteren` (as a precondition and exception type distinction); continued control of VU-mode visibility of base counters by `scounteren` (which has no corresponding VS CSR) when V=1 (including the blocked branch when `hcounteren`=0)
 - **Hypervisor × Zihpm**: access behavior of unimplemented `hpmcounter3–31` at V=1 (both constant value and exception are legal) and its interaction with `hcounteren` HPMn gating; the three-level `mcounteren → hcounteren → scounteren` gating chain for VU-mode access to `hpmcounter`
@@ -45,12 +39,12 @@ Official repository:
 - Behavior of each extension in non-Hypervisor scenarios (covered by their respective standalone test plans)
 - Cross tests between the Hypervisor and Ss\*/Sv\*/Sm\* extensions (covered by `Hypervisor_Ss_test_plan.md`, `Hypervisor_Sv_test_plan.md`, `Hypervisor_Sm_test_plan.md` respectively)
 - Zkr non-Hypervisor scenarios (basic control of seed access in M/S/U-mode) — covered by `Zkr_test_plan.md`
-- Zihintntl non-Hypervisor scenarios (basic semantics in M/S/U-mode, encodings, compressed variants, CMO interaction, LR/SC forward progress guarantees, etc.) — covered by `zihintntl_test_plan.md`
-- Zcmt non-Hypervisor scenarios (jvt WARL behavior, encoding and operational semantics, PMP/page-table fault handling, table update visibility and endianness, etc.) — covered by `zcmt_test_plan.md`
+- Zihintntl non-Hypervisor scenarios (basic semantics in M/S/U-mode, encodings, compressed variants, CMO interaction, LR/SC forward progress guarantees, etc.) — covered by `Zihintntl_test_plan.md`
+- **All cross scenarios between the Hypervisor and Zcmt** — migrated entirely to Group 2 of `Hypervisor_Zc_test_plan.md` (the former Group 3 "Hypervisor × Zcmt" of this document, case IDs HZCMT-01~09 unchanged); Zcmt non-Hypervisor scenarios (jvt WARL behavior, encoding and operational semantics, PMP/page-table fault handling, table update visibility and endianness, etc.) are covered by `Zcmt_test_plan.md`
 - V vector family non-Hypervisor scenarios (vtype/vl behavior, basic semantics of vector instructions, non-virtualized gating of mstatus.vs, etc.) — no standalone test plan currently exists and they are out of scope for this document; `norm:vsstatus_vs_op`/`norm:vsstatus_fs_op` in `hypervisor.adoc` (equivalent to `vector-common.adoc`) are already covered by `Hypervisor_CSR_test_plan.md` (VSST-03~09) and are not duplicated here
 - Zicntr non-Hypervisor scenarios (cycle/time/instret counter semantics, M/S/U-mode counteren control matrix) — covered by `Zicntr_test_plan.md`, `Sm_CSR_test_plan.md`, `Ss_CSR_test_plan.md`
 - Zihpm non-Hypervisor scenarios (hpmcounter semantics and event configuration, M/S/U-mode counteren control matrix) — covered by `Zihpm_test_plan.md`, `Sm_CSR_test_plan.md`, `Ss_CSR_test_plan.md`
-- Bit-level writability of `hcounteren` and the write-back/gating matrix of VS/VU-mode counter access — covered by `Shcounterenw_test_plan.md` and `Hypervisor_Ss_test_plan.md` Group 3 (Hypervisor × Sscounterenw); this document (Group 5/6) only supplements the instruction-level and unimplemented-counter behavior cases not covered there, without re-verifying the gating matrix itself
+- Bit-level writability of `hcounteren` and the write-back/gating matrix of VS/VU-mode counter access — covered by `Shcounterenw_test_plan.md` and `Hypervisor_Ss_test_plan.md` Group 3 (Hypervisor × Sscounterenw); this document (Group 4/5) only supplements the instruction-level and unimplemented-counter behavior cases not covered there, without re-verifying the gating matrix itself
 - **All cross scenarios between the Hypervisor and the Za-series atomic/reservation-set extensions (Zalrsc, Zawrs)** — covered by `Hypervisor_Za_test_plan.md` (the former Group 4 "Hypervisor × Zawrs" and Group 8 "Hypervisor × Zalrsc" of this document have been migrated out entirely, with case IDs HZWRS-01~12 / HZLRSC-01~40 unchanged); the non-Hypervisor scenarios of Zalrsc and Zawrs are covered by `Zalrsc_test_plan.md` and `Zawrs_test_plan.md` respectively, and the main-memory RsrvEventual PMA and the main-memory guarantee of forward progress for constrained LR/SC loops are covered by `Ziccrse_test_plan.md`
 
 ---
@@ -67,11 +61,6 @@ The following table lists the specification points covered by this plan. Entries
 | `norm:seed_ro_illegal` | `zk.adoc` | Attempts to access the seed CSR using a read-only CSR-access instruction (csrrs/csrrc with rs1=x0 or csrrsi/csrrci with uimm=0) raise an illegal-instruction exception; any other CSR-access instruction may be used to access seed. |
 | `norm:NTL_target_definition` | `zihintntl.adoc` | The insn:ntl[] instructions do not change architectural state, nor do they alter the architecturally visible effects of the target instruction. |
 | `norm:NTL_range` | `zihintntl.adoc` | The insn:ntl[] instructions affect all memory-access instructions except the cache-management instructions in the ext:zicbom[] extension. |
-| `norm:cm-jt_op` | `zcmt.adoc` | cm.jt reads an entry from the jump vector table in memory and jumps to the address that was read. |
-| `norm:cm-jalt_op` | `zcmt.adoc` | cm.jalt reads an entry from the jump vector table in memory and jumps to the address that was read, linking to _ra_. |
-| `norm:jvt_base_vm` | `zcmt.adoc` | jvt[base] is a virtual address, whenever virtual memory is enabled. |
-| `norm:Zcmt_fetch` | `zcmt.adoc` | ... the execution of a table jump instruction involves two instruction fetches, the first to read the instruction (cm.jt/cm.jalt) and the second to read from the jump vector table (JVT). Both instruction fetches are _implicit_ reads, and both require execute permission; read permission is irrelevant. |
-| `norm:Zcmt_trap` | `zcmt.adoc` | If an exception occurs on either instruction fetch, xEPC is set to the PC of the table jump instruction, xCAUSE is set as expected for the type of fault and xTVAL (if not set to zero) contains the fetch address which caused the fault. |
 | `norm:vsstatus_vs_sz_acc` | `vector-common.adoc` | When the hypervisor extension is present, a vector context status field, vs, is added to vsstatus[10:9]. It is defined analogously to the floating-point context status field, fs. |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | `vector-common.adoc` | When V=1, both vsstatus.vs and mstatus.vs are in effect: attempts to execute any vector instruction, or to access the vector CSRs, raise an illegal-instruction exception when either field is set to Off. |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | `vector-common.adoc` | When V=1 and neither vsstatus.vs nor mstatus.vs is set to Off, executing any instruction that changes vector state, including the vector CSRs, will change both mstatus.vs and vsstatus.vs to Dirty. |
@@ -84,8 +73,6 @@ The following table lists the specification points covered by this plan. Entries
 | `norm:hpm_unimplemented_counter_access` | `zihpm.adoc` | Accessing an unimplemented counter may cause an illegal-instruction exception or may return a constant value. |
 | `H_scsrs_nomatch_vu_counter` | `hypervisor.adoc` (counter specialization of `norm:H_scsrs_nomatch`) | Some standard supervisor CSRs (senvcfg, scounteren, and scontext, possibly others) have no matching VS CSR. These supervisor CSRs continue to have their usual function and accessibility even when V=1, except with VS-mode and VU-mode substituting for HS-mode and U-mode. |
 | `hcounteren_gate_v1_counter` | `hypervisor.adoc` (specialization of `norm:hcounteren_op`) | When the CY, TM, IR, or HPMn bit in hcounteren is clear, attempts to read the corresponding counter while V=1 will cause a virtual-instruction exception if the same bit in mcounteren is 1. |
-| `norm:stateen0_jvt_op` | `smstateen.adoc` | The JVT bit controls access to the `jvt` CSR provided by the Zcmt extension. |
-| `norm:htval_trapval` | `hypervisor.adoc` | htval trap value reporting for guest-page faults (implementation may write zero or the faulting GPA>>2). |
 
 ---
 
@@ -145,7 +132,7 @@ The following table lists the specification points covered by this plan. Entries
 - `norm:NTL_target_definition`: NTL instructions do not change architectural state, nor do they alter the architecturally visible effects of the target instruction; in virtualization environments, the architectural behavior of NTL prefix sequences must be identical to the non-virtualized case
 - `norm:NTL_range`: NTL affects all memory-access instructions, and the H extension's HLV/HSV/HLVX virtual-machine memory access instructions are also within its scope
 
-**Test Scope**: Verify that the behavior of NTL HINTs in virtualization environments (HS/VS/VU-mode) is consistent with non-virtualized scenarios: normal execution, no spurious virtual-instruction exception, and trap reporting information (cause/epc/tval/GVA/htval) identical to the case without the prefix. The cases in this group are migrated from `zihintntl_test_plan.md` (the virtualization portion of the original NTL-12, NTL-RG-07, NTL-CMO-08, NTL-TRAP-08).
+**Test Scope**: Verify that the behavior of NTL HINTs in virtualization environments (HS/VS/VU-mode) is consistent with non-virtualized scenarios: normal execution, no spurious virtual-instruction exception, and trap reporting information (cause/epc/tval/GVA/htval) identical to the case without the prefix. The cases in this group are migrated from `Zihintntl_test_plan.md` (the virtualization portion of the original NTL-12, NTL-RG-07, NTL-CMO-08, NTL-TRAP-08).
 
 ### 2.1 NTL Execution in HS/VS/VU-mode
 
@@ -176,53 +163,11 @@ The following table lists the specification points covered by this plan. Entries
 > [!NOTE]
 > - All tests in this group must detect the availability of the H extension at runtime via `HAS_H_EXT()`; if unavailable, TEST_SKIP.
 > - Zihintntl has no independent misa/CSR detection flag; it is enabled by platform configuration declaration. NTL instructions are injected into the execution stream with raw encoding (.word 0x00200033/0x00300033/0x00400033/0x00500033) to avoid toolchain alias interference.
-> - NTL-HYP-05 additionally needs to probe Zicbom; NTL-HYP-06 needs to construct a mapping that is valid in VS-stage but invalid in G-stage. The core assertion strategy follows the "HINT no-side-effect comparison method" of `zihintntl_test_plan.md`: the architecturally visible behavior (including exception information) with and without the NTL prefix must be completely identical.
+> - NTL-HYP-05 additionally needs to probe Zicbom; NTL-HYP-06 needs to construct a mapping that is valid in VS-stage but invalid in G-stage. The core assertion strategy follows the "HINT no-side-effect comparison method" of `Zihintntl_test_plan.md`: the architecturally visible behavior (including exception information) with and without the NTL prefix must be completely identical.
 
 ---
 
-## Group 3. Hypervisor × Zcmt Cross Tests
-
-**Spec Reference**:
-- `norm:cm-jt_op` / `norm:cm-jalt_op`: table jumps are ordinary instructions with no privilege-level restrictions; they should execute normally in HS/VS/VU-mode
-- `norm:jvt_base_vm`: when virtual memory is enabled, jvt.base is a virtual address; in VS-mode it undergoes two-stage translation via vsatp
-- `norm:Zcmt_fetch` / `norm:Zcmt_trap`: the second fetch (JVT entry) is also translated; on a fault, xEPC points to the table jump instruction and xTVAL is the faulting fetch address
-- `norm:stateen0_jvt_op`: the JVT bit of stateen0 controls jvt CSR access; it gates only CSR access, not instruction execution
-- `norm:htval_trapval`: htval trap value reporting rules on G-stage faults
-
-**Test Scope**: Verify the behavior of table jump instructions and the jvt CSR in virtualization environments: normal execution in HS/VS/VU-mode without spuriously raising a virtual-instruction exception; in VS-mode, JVT entry fetches undergo two-stage translation and G-stage faults are reported as guest instruction page fault; hstateen0.JVT gates VS/VU jvt access but not instruction execution. The cases in this group are migrated from `zcmt_test_plan.md` (the virtualization portion of the original ZCMT-27/28, ZACC-03/04/05, and the virtualization portion of ZACC-06; HZCMT-08 is a VS-stage fault case supplemented as a counterpart to ZCMT-25).
-
-### 3.1 Table Jump Execution in HS/VS/VU-mode
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZCMT-01 | HS-mode executes table jumps | HS-mode executes cm.jt and cm.jalt (jvt points to a valid table) | both jump and link normally, no exception |
-| HZCMT-02 | VS-mode executes table jumps | VS-mode executes cm.jt and cm.jalt | both execute normally, no virtual-instruction exception |
-| HZCMT-03 | VU-mode executes table jumps | VU-mode executes cm.jt and cm.jalt | both execute normally, no exception |
-
-### 3.2 jvt Access and stateen Gating in VS/VU-mode
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZCMT-04 | VS/VU-mode accesses jvt | With stateen enabled, VS/VU-mode csrr/csrw jvt | access succeeds (jvt permission URW + stateen enabled) |
-| HZCMT-05 | hstateen0.JVT gates VS/VU access | When Smstateen is implemented, zero out the JVT bits of hstateen0/sstateen0 per hierarchy, VS/VU accesses jvt | VS/VU raises virtual-instruction/illegal-instruction (see `Smstateen_test_plan.md` / `Ssstateen_test_plan.md` for detailed cases) |
-| HZCMT-06 | stateen does not gate table jump instruction execution | When Smstateen is implemented, zero out the JVT bits of stateen at all levels, VS-mode executes cm.jt/cm.jalt | instructions execute normally (state enable gates only jvt CSR access, not the instruction itself) |
-
-### 3.3 Table Jumps under Two-Stage Translation in VS-mode
-
-| Test ID | Test Name | Test Description | Expected Result |
-|---------|-----------|------------------|-----------------|
-| HZCMT-07 | VS-mode translation path jumps normally | VS-mode with vsatp enabled, VS-stage maps the table page with X=1, execute cm.jt | jump succeeds (VS-stage translation effective) |
-| HZCMT-08 | VS-mode table page with VS-stage X=0 raises a fault | The table page is mapped in VS-stage but X=0, VS-mode executes cm.jt | instruction page fault delivered per the delegation path, sepc=cm.jt PC, stval=table entry virtual address |
-| HZCMT-09 | VS-mode second fetch G-stage fault | The G-stage mapping of the table page is invalid, VS-mode executes cm.jt | guest instruction page fault (cause=20) delivered to HS-mode, hstatus.GVA=1, htval=faulting table entry GPA>>2 (norm:htval_trapval allows zero) |
-
-> [!NOTE]
-> - All tests in this group must detect the availability of the H extension at runtime via `HAS_H_EXT()`; if unavailable, TEST_SKIP. Zcmt support follows the platform configuration macro `ZCMT_SUPPORTED`; the jvt writability probe result (read-only implementation, allowed by `norm:jvt_op`) determines whether functional cases are applicable.
-> - HZCMT-05 additionally needs to probe Smstateen; HZCMT-07~09 need to enable vsatp (and hgatp) to construct two-stage translation, using a mapping combination of VS-stage valid + G-stage invalid to isolate G-stage faults.
-> - HZCMT-08/09 verify the fault path of the second fetch (JVT entry): vsepc must point to the cm.jt instruction itself rather than the table address (`norm:Zcmt_trap`), and vstval/htval report the table entry fetch address.
-
----
-
-## Group 4. Hypervisor × V Vector Family Cross Tests
+## Group 3. Hypervisor × V Vector Family Cross Tests
 
 **Spec Reference**:
 - `norm:vsstatus_vs_sz_acc`: when the H extension is implemented, vsstatus gains the vector context status field vs (bits[10:9]), defined analogously to fs
@@ -236,7 +181,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the behavior of the VS-level copies of vector context status (vsstatus.vs) and vector floating-point status (vsstatus.fs) in V=1 scenarios: field presence and read/write, Off gating (instructions and vector CSRs), dual Dirty updates, SD linkage, and vector floating-point gating. Vector/vector floating-point instructions are injected with raw encoding (.word), avoiding a build march dependency on the v extension.
 
-### 4.1 vsstatus.vs Field and Vector Instruction/CSR Gating (VS/VU)
+### 3.1 vsstatus.vs Field and Vector Instruction/CSR Gating (VS/VU)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -249,7 +194,7 @@ The following table lists the specification points covered by this plan. Entries
 | HVEC-07 | Linkage between vsstatus.sd and vs | HS-mode writes `vsstatus.vs`=Dirty and reads `vsstatus.sd`; then writes `vsstatus.vs`=Initial (other context fields not Dirty) and reads again | vs=Dirty → sd=1; vs=Initial → sd=0 (`norm:vsstatus_sd_op_vs`) |
 | HVEC-08 | (Recording type) the implementation may promote Clean to Dirty at any time | Set both to Clean (0b02), VS-mode executes a vector instruction then reads both fields back | staying Clean or being promoted to Dirty are both legal (`norm:hw_mstatus_vs_dirty_update`); record the implementation behavior with no mandatory verdict |
 
-### 4.2 Vector Floating-Point Gating (vsstatus.fs, VS/VU)
+### 3.2 Vector Floating-Point Gating (vsstatus.fs, VS/VU)
 
 **Precondition**: F extension (`misa.f`) and vector floating-point instruction support (trap-armed raw encoding probe); if not satisfied, the whole subsection TEST_SKIP.
 
@@ -260,7 +205,7 @@ The following table lists the specification points covered by this plan. Entries
 | HVEC-11 | VU-mode vector floating-point gating | With `vsstatus.fs`=Off, VU-mode executes a vector floating-point instruction | illegal-instruction exception (cause=2) |
 | HVEC-12 | Modifying floating-point state sets both to Dirty | Set both to Initial, VS-mode executes a vector floating-point instruction that modifies floating-point state | `mstatus.fs`=3 (Dirty) and `vsstatus.fs`=3 (Dirty) |
 
-### 4.3 Conditional Cases (misa.v writable)
+### 3.3 Conditional Cases (misa.v writable)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -276,7 +221,7 @@ The following table lists the specification points covered by this plan. Entries
 
 ---
 
-## Group 5. Hypervisor × Zicntr Cross Tests
+## Group 4. Hypervisor × Zicntr Cross Tests
 
 **Intersection points with the Hypervisor**:
 1. **`time` read offset**: when V=1, VS/VU-mode reads of `time` (including the `rdtime` instruction) return `time + htimedelta` (`norm:htimedelta_sz_acc_op`); CSR-level semantics are already covered by HTDLT-01~05 of `Hypervisor_CSR_test_plan.md`, and this group supplements the instruction-level (raw encoding) path
@@ -292,7 +237,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the instruction-level time offset semantics of `rdtime` and the continued control of VU-mode by `scounteren` (`cycle`/`time`/`instret`) when V=1. Counter instructions are injected with raw encoding (`rdcycle`=0xC0002xx3, `rdtime`=0xC0102xx3, `rdinstret`=0xC0202xx3, funct3=2 SYSTEM/csrrs rd, csr, x0), avoiding toolchain alias interference.
 
-### 5.1 Instruction-Level htimedelta Semantics of rdtime (VS/VU)
+### 4.1 Instruction-Level htimedelta Semantics of rdtime (VS/VU)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -303,7 +248,7 @@ The following table lists the specification points covered by this plan. Entries
 | HZCNT-05 | VS-mode rdtime raises virtual-instruction with hcounteren.TM=0 | With `mcounteren.TM`=1 and `hcounteren.TM`=0, VS-mode executes `rdtime` (trap-armed) | virtual-instruction exception (cause=22) (`hcounteren_gate_v1_counter`) |
 | HZCNT-06 | VS-mode rdtime reports illegal with mcounteren.TM=0 | With `mcounteren.TM`=0 and `hcounteren.TM`=0, VS-mode executes `rdtime` | illegal-instruction exception (cause=2) (`mcounteren` level precondition; must not report cause=22) |
 
-### 5.2 Continued Control of VU-mode by scounteren when V=1 (cycle)
+### 4.2 Continued Control of VU-mode by scounteren when V=1 (cycle)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -321,7 +266,7 @@ The following table lists the specification points covered by this plan. Entries
 
 ---
 
-## Group 6. Hypervisor × Zihpm Cross Tests
+## Group 5. Hypervisor × Zihpm Cross Tests
 
 **Intersection points with the Hypervisor**:
 1. **hcounteren HPMn gating**: when bit N of `hcounteren` is clear and the same bit of `mcounteren` is 1, reading `hpmcounterN` while V=1 raises virtual-instruction (`norm:hcounteren_op`); the gating matrix is covered by `Shcounterenw_test_plan.md`, and this group only uses it as a precondition (exception: HZHPM-03 verifies that with gating closed the exception is triggered by gating, regardless of whether the counter is implemented)
@@ -336,7 +281,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the legal behavior space of unimplemented `hpmcounter` when V=1 and the VU three-level gating chain of `hpmcounter`. `hpmcounterN` access is injected with raw encoding (CSR 0xC00+N, csrrs rd, csr, x0 form), avoiding toolchain alias interference.
 
-### 6.1 Behavior of Unimplemented hpmcounter when V=1
+### 5.1 Behavior of Unimplemented hpmcounter when V=1
 
 **Precondition**: probe by writing a non-zero value to `mhpmcounterN` in M-mode and reading it back (following the probing strategy of `Shcounterenw_test_plan.md`), selecting one unimplemented (read-only zero) `hpmcounterN` (N∈3..31); if the platform implements all of them, the whole subsection TEST_SKIP.
 
@@ -347,7 +292,7 @@ The following table lists the specification points covered by this plan. Entries
 | HZHPM-03 | hcounteren[N]=0 blocks an unimplemented counter | Attempt to set `mcounteren[N]`=1; clear `hcounteren[N]`, VS-mode executes `csrr hpmcounterN` | with gating closed the exception is triggered by gating, regardless of whether the counter is implemented: with `mcounteren[N]`=1, virtual-instruction (cause=22); with `mcounteren[N]` read-only zero, illegal-instruction (cause=2) reported by the `mcounteren` level precondition |
 | HZHPM-04 | Recording type: read-back value consistency | Repeat the access of HZHPM-01 several times | if the implementation returns a constant value, multiple read-backs are consistent; if the implementation reports an exception, the exception cause is consistent each time. Record the implementation behavior with no mandatory verdict |
 
-### 6.2 VU Three-Level Gating Chain of hpmcounter (Implemented Counters)
+### 5.2 VU Three-Level Gating Chain of hpmcounter (Implemented Counters)
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -364,7 +309,7 @@ The following table lists the specification points covered by this plan. Entries
 
 ## Key Considerations
 
-1. **Extension detection**: All tests must detect the availability of the required extensions (H, Zkr, Zihintntl, Zcmt, etc.) at runtime; if unavailable, TEST_SKIP. Zkr is detected by probing the presence of the `seed` CSR (0x015); Zihintntl has no independent probe flag and is enabled by platform configuration declaration; Zcmt follows the platform configuration macro `ZCMT_SUPPORTED` and trap-armed probing of the jvt CSR (0x017).
+1. **Extension detection**: All tests must detect the availability of the required extensions (H, Zkr, Zihintntl, V, Zicntr, Zihpm, etc.) at runtime; if unavailable, TEST_SKIP. Zkr is detected by probing the presence of the `seed` CSR (0x015); Zihintntl has no independent probe flag and is enabled by platform configuration declaration; the V extension is determined by `misa.v`; Zicntr/Zihpm follow trap-armed probing of the `cycle`/`time`/`hpmcounterN` CSRs.
 
 2. **SSEED control**: `mseccfg.SSEED` controls S/HS/VS/VU-mode access to the seed CSR. M-mode access is not affected by SSEED (ZKR-HYP-11).
 
@@ -372,30 +317,31 @@ The following table lists the specification points covered by this plan. Entries
 
 4. **Distinguishing virtual-instruction from illegal-instruction**: When VS/VU-mode accesses a controlled CSR, HS-qualified read-write with SSEED=1 raises virtual-instruction (cause=22); SSEED=0 or read-only access raises illegal-instruction (cause=2).
 
-5. **Vector instruction injection and context gating**: The vector/vector floating-point instructions of Group 4 are injected with raw encoding; Off gating of `vsstatus.vs`/`vsstatus.fs` reports illegal-instruction (cause=2), not virtual-instruction; the implementation is permitted to promote Initial/Clean to Dirty at any time (`norm:hw_mstatus_vs_dirty_update`), and the related cases are recording type — they must not be judged failed on the grounds that "state was promoted".
+5. **Vector instruction injection and context gating**: The vector/vector floating-point instructions of Group 3 are injected with raw encoding; Off gating of `vsstatus.vs`/`vsstatus.fs` reports illegal-instruction (cause=2), not virtual-instruction; the implementation is permitted to promote Initial/Clean to Dirty at any time (`norm:hw_mstatus_vs_dirty_update`), and the related cases are recording type — they must not be judged failed on the grounds that "state was promoted".
 
-6. **Group 4 vector context gating key points**: platform V/F support follows the `V_SUPPORTED`/`F_SUPPORTED` macros of `config/<platform>/rvtest_config.h` (no runtime probing); `misa.v` writability must be probed at runtime, and HVEC-13 is conditionally TEST_SKIPped when it is not writable. HVEC-07 (`vsstatus.sd` must be set to 1 when `vsstatus.vs`=Dirty, `norm:vsstatus_sd_op_vs`) and HVEC-12 (a vector floating-point instruction that modifies floating-point state must set both `mstatus.fs` and `vsstatus.fs` to Dirty, `norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`) are **mandatory assertions**: any platform that fails to satisfy them violates the SPEC, the case remains FAIL and is recorded in the `bugs/` directory, and assertions must not be relaxed or special-cased to pass the test.
+6. **Group 3 vector context gating key points**: platform V/F support follows the `V_SUPPORTED`/`F_SUPPORTED` macros of `config/<platform>/rvtest_config.h` (no runtime probing); `misa.v` writability must be probed at runtime, and HVEC-13 is conditionally TEST_SKIPped when it is not writable. HVEC-07 (`vsstatus.sd` must be set to 1 when `vsstatus.vs`=Dirty, `norm:vsstatus_sd_op_vs`) and HVEC-12 (a vector floating-point instruction that modifies floating-point state must set both `mstatus.fs` and `vsstatus.fs` to Dirty, `norm:vsstatus_mstatus_FS_dirty_hypervisor_V_fp`) are **mandatory assertions**: any platform that fails to satisfy them violates the SPEC, the case remains FAIL and is recorded in the `bugs/` directory, and assertions must not be relaxed or special-cased to pass the test.
 
-7. **Group 5/6 counter intersection key points**: `rdtime`/counter accesses are injected with raw encoding; clock comparisons use a difference interval rather than exact equality; both the constant-value and exception behaviors of unimplemented `hpmcounter` are legal implementations (recording-type cases — neither relaxed nor misjudged); the cause distinction of gating exceptions (cause=22 vs cause=2) is a mandatory assertion; the gating matrix itself is not re-verified (covered by `Shcounterenw_test_plan.md`). Note: the assertion of negative-offset `rdtime` must use a signed difference rather than an unsigned comparison — early after boot, when the real `time` is smaller than the offset magnitude, truncation wrap-around makes an unsigned comparison invalid (implementation key point of HZCNT-04).
+7. **Group 4/5 counter intersection key points**: `rdtime`/counter accesses are injected with raw encoding; clock comparisons use a difference interval rather than exact equality; both the constant-value and exception behaviors of unimplemented `hpmcounter` are legal implementations (recording-type cases — neither relaxed nor misjudged); the cause distinction of gating exceptions (cause=22 vs cause=2) is a mandatory assertion; the gating matrix itself is not re-verified (covered by `Shcounterenw_test_plan.md`). Note: the assertion of negative-offset `rdtime` must use a signed difference rather than an unsigned comparison — early after boot, when the real `time` is smaller than the offset magnitude, truncation wrap-around makes an unsigned comparison invalid (implementation key point of HZCNT-04).
 
-8. **Group 5/6 counter probing and branch coverage key points**: the implemented/unimplemented counter probe is M-mode writing a non-zero value to `mhpmcounterN` and reading it back; it **must not** be replaced by read-back probing of `mcounteren` bits (the latter only reflects gating-bit writability and, per `norm:mcounteren_flds_rdonly0`, is not equivalent to counter existence). A read-only-zero `mhpmcounterN` mirror is a legal implementation permitted by the SPEC (`norm:mhpmcounter_mhpmevent_rdonly0`) and is treated as "unimplemented" per the convention of this plan. Case design must cover two legal branches: the `mcounteren` level precondition path when `mcounteren[N]` is read-only zero (reporting illegal-instruction, cause=2), and the dual-legal "constant value / exception" path when gating can be opened; when a platform lacks the precondition of one branch (e.g., gating cannot be opened, or no implemented counter exists), the corresponding case is compliantly TEST_SKIPped. Both branches are legal paths, and success or failure must not be judged by which branch a platform hits.
+8. **Group 4/5 counter probing and branch coverage key points**: the implemented/unimplemented counter probe is M-mode writing a non-zero value to `mhpmcounterN` and reading it back; it **must not** be replaced by read-back probing of `mcounteren` bits (the latter only reflects gating-bit writability and, per `norm:mcounteren_flds_rdonly0`, is not equivalent to counter existence). A read-only-zero `mhpmcounterN` mirror is a legal implementation permitted by the SPEC (`norm:mhpmcounter_mhpmevent_rdonly0`) and is treated as "unimplemented" per the convention of this plan. Case design must cover two legal branches: the `mcounteren` level precondition path when `mcounteren[N]` is read-only zero (reporting illegal-instruction, cause=2), and the dual-legal "constant value / exception" path when gating can be opened; when a platform lacks the precondition of one branch (e.g., gating cannot be opened, or no implemented counter exists), the corresponding case is compliantly TEST_SKIPped. Both branches are legal paths, and success or failure must not be judged by which branch a platform hits.
 
-9. **Atomic/reservation-set extension cross tests migrated out**: the cross cases of Hypervisor × Zalrsc (HZLRSC-01~40) and Hypervisor × Zawrs (HZWRS-01~12) have been migrated entirely to `Hypervisor_Za_test_plan.md` (as Group 1 and Group 2 of that document respectively), with **case IDs unchanged**, and their specification points, coverage matrix, and key considerations migrated out together. This document no longer covers any virtualization behavior of LR/SC and wrs instructions; the cross-reference in the Group 4 (V vector family) NOTE regarding the interrupt-environment principle points to Group 2 of that document. Subsequent cross scenarios of the remaining Za-series extensions (Zaamo, Zabha, Zacas, Zalasr) with the Hypervisor should be added directly to that document and not return to this document.
+9. **Atomic/reservation-set extension cross tests migrated out**: the cross cases of Hypervisor × Zalrsc (HZLRSC-01~40) and Hypervisor × Zawrs (HZWRS-01~12) have been migrated entirely to `Hypervisor_Za_test_plan.md` (as Group 1 and Group 2 of that document respectively), with **case IDs unchanged**, and their specification points, coverage matrix, and key considerations migrated out together. This document no longer covers any virtualization behavior of LR/SC and wrs instructions; the cross-reference in the Group 3 (V vector family) NOTE regarding the interrupt-environment principle points to Group 2 of that document. Subsequent cross scenarios of the remaining Za-series extensions (Zaamo, Zabha, Zacas, Zalasr) with the Hypervisor should be added directly to that document and not return to this document.
+
+10. **Zcmt cross tests migrated out**: the cross cases of Hypervisor × Zcmt (HZCMT-01~09) have been migrated entirely to Group 2 of `Hypervisor_Zc_test_plan.md`, with **case IDs unchanged**, and their specification points (`norm:cm-jt_op`/`norm:cm-jalt_op`/`norm:jvt_base_vm`/`norm:Zcmt_fetch`/`norm:Zcmt_trap`/`norm:stateen0_jvt_op`/`norm:htval_trapval`), coverage matrix, and key considerations migrated out together. This document no longer covers any virtualization behavior of table jump instructions and the jvt CSR; after removing the former Group 3, the V vector family/Zicntr/Zihpm are renumbered to Group 3/4/5 in order. Subsequent cross scenarios of the Zc* family compressed extensions (Zca, Zcb, Zcmp, Zcmop, etc.) with the Hypervisor should be added directly to `Hypervisor_Zc_test_plan.md` and not return to this document.
 
 ---
 
 ## References
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
 - `SPEC/riscv-isa-manual/src/unpriv/zk.adoc` — Zkr Entropy Source Extension
 - `SPEC/riscv-isa-manual/src/unpriv/zihintntl.adoc` — Zihintntl Extension for Non-Temporal Locality Hints
-- `SPEC/riscv-isa-manual/src/unpriv/zcmt.adoc` — Zcmt Extension for Compressed Table Jumps
 - `SPEC/riscv-isa-manual/src/unpriv/vector-common.adoc` — V Vector Extension common definitions (vector context status and Hypervisor interaction)
 - `SPEC/riscv-isa-manual/src/unpriv/zicntr.adoc` — Zicntr Extension for Base Counters and Timers (cycle/time/instret intersection with the Hypervisor)
 - `SPEC/riscv-isa-manual/src/unpriv/zihpm.adoc` — Zihpm Extension for Hardware Performance Counters (hpmcounter intersection with the Hypervisor)
 - `DOCS/testplan/Zkr_test_plan.md` — Zkr standalone test plan
-- `DOCS/testplan/zihintntl_test_plan.md` — Zihintntl standalone test plan
-- `DOCS/testplan/zcmt_test_plan.md` — Zcmt standalone test plan
+- `DOCS/testplan/Zihintntl_test_plan.md` — Zihintntl standalone test plan
+- `DOCS/testplan/Hypervisor_Zc_test_plan.md` — Hypervisor × Zc* compressed instruction extension cross test plan (the Hypervisor × Zcmt cross scenarios migrated out from this plan, including HZCMT-01~09)
 - `DOCS/testplan/Hypervisor_Za_test_plan.md` — Hypervisor × Za atomic extension cross test plan (the Hypervisor × Zalrsc and Hypervisor × Zawrs cross scenarios split out from this plan, including HZLRSC-01~40 and HZWRS-01~12)
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR subset test plan
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor interrupts subset test plan
@@ -421,13 +367,6 @@ The following table indicates which test cases cover each specification point in
 | `norm:seed_ro_illegal` | ZKR-HYP-07, ZKR-HYP-08, ZKR-HYP-12, ZKR-HYP-13, ZKR-HYP-14, ZKR-HYP-15, ZKR-HYP-18 |
 | `norm:NTL_target_definition` | NTL-HYP-01 ~ NTL-HYP-06 |
 | `norm:NTL_range` | NTL-HYP-04 |
-| `norm:cm-jt_op` | HZCMT-01 ~ HZCMT-03, HZCMT-06 ~ HZCMT-09 |
-| `norm:cm-jalt_op` | HZCMT-01 ~ HZCMT-03, HZCMT-06 |
-| `norm:jvt_base_vm` | HZCMT-07 ~ HZCMT-09 |
-| `norm:Zcmt_fetch` | HZCMT-08, HZCMT-09 |
-| `norm:Zcmt_trap` | HZCMT-08, HZCMT-09 |
-| `norm:stateen0_jvt_op` | HZCMT-04 ~ HZCMT-06 |
-| `norm:htval_trapval` | HZCMT-09 |
 | `norm:vsstatus_vs_sz_acc` | HVEC-01 |
 | `norm:vsstatus_vs_mstatus_vs_op_off` | HVEC-02, HVEC-03, HVEC-04 |
 | `norm:vsstatus_vs_mstatus_vs_op_active` | HVEC-05, HVEC-06 |

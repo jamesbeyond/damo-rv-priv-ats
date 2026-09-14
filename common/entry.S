@@ -21,9 +21,64 @@
     #define STORE   sw
 #endif
 
+/* ===================================================================
+ * CLEAR_GPRS - zero x1-x31
+ *
+ * The other register files are cleared in reg_init.S (_fp_reg_init).
+ * The GPR clear has to stay here and be inlined: the first clear runs
+ * before sp exists and must not clobber a return address, so it cannot
+ * be turned into a function call.
+ *
+ * x0 is hardwired to zero and sp (x2) is owned by the caller, so both
+ * are left alone. gp/tp are cleared as well: the framework builds with
+ * -mno-relax and uses no TLS, so neither register is ever read.
+ * =================================================================== */
+.macro CLEAR_GPRS
+    li      x1,  0
+    li      x3,  0
+    li      x4,  0
+    li      x5,  0
+    li      x6,  0
+    li      x7,  0
+    li      x8,  0
+    li      x9,  0
+    li      x10, 0
+    li      x11, 0
+    li      x12, 0
+    li      x13, 0
+    li      x14, 0
+    li      x15, 0
+    li      x16, 0
+    li      x17, 0
+    li      x18, 0
+    li      x19, 0
+    li      x20, 0
+    li      x21, 0
+    li      x22, 0
+    li      x23, 0
+    li      x24, 0
+    li      x25, 0
+    li      x26, 0
+    li      x27, 0
+    li      x28, 0
+    li      x29, 0
+    li      x30, 0
+    li      x31, 0
+.endm
+
     .section .text.init
     .global rvtest_entry_point
 rvtest_entry_point:
+    /* ---- Clear every general-purpose register ----
+     *
+     * Reset leaves the GPR contents undefined: real hardware can power
+     * up with arbitrary values, so a test that happens to read an
+     * uninitialized register would observe platform-dependent data.
+     * Clear them first thing, on every hart, before any other boot
+     * step can pick up a stale value.
+     */
+    CLEAR_GPRS
+
     /* ---- Only hart 0 continues; others spin ---- */
     csrr    a0, mhartid
     bnez    a0, _secondary_spin
@@ -72,6 +127,26 @@ _bss_done:
 
     /* ---- Call platform-specific init (weak symbol, default=nop) ---- */
     call    _platform_init
+
+    /* ---- Clear the floating-point register file (reg_init.S) ----
+     *
+     * Runs after BSS is cleared and mtvec is installed, so an FP access
+     * that unexpectedly traps on a non-conforming DUT is reported by
+     * m_trap_handler (UNEXPECTED TRAP + halt fail) instead of hanging.
+     * The symbol is always linked in: it degenerates to a plain ret when
+     * the platform config declares no FP extension.
+     */
+    call    _fp_reg_init
+
+    /* ---- Clear the GPRs again before entering C ----
+     *
+     * The boot path above (BSS loop, RVMODEL_BOOT, _platform_init,
+     * _fp_reg_init) necessarily uses scratch registers. Re-clearing
+     * here means main() - and therefore every test - starts from an
+     * all-zero register file instead of inheriting boot temporaries.
+     * ra is reloaded by the call itself; sp is already live.
+     */
+    CLEAR_GPRS
 
     /* ---- Jump to C main ---- */
     call    main

@@ -2,9 +2,7 @@
 
 # Hypervisor × Sv* Extensions Cross Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Sv* (Supervisor virtual address translation related) extension families. This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Sv* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans (`Hypervisor_CSR_test_plan.md`, `Hypervisor_Interrupts_test_plan.md`, `Hypervisor_Exceptions_test_plan.md`, `Hypervisor_2_stage_test_plan.md`, `Hypervisor_gstage_test_plan.md`) do not fully cover them.
->
-> Generation date: 2026-06-22
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Sv* (Supervisor virtual address translation related) extension families.
 
 ---
 
@@ -130,7 +128,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the behavior of Svnapot in G-stage translation, including basic translation of G-stage NAPOT PTEs, reserved-encoding exceptions, and two-stage translation correctness when both VS-stage and G-stage use NAPOT simultaneously.
 
-> **Note**: The tests in this group are migrated from `svnapot_test_plan.md` Group 10. The H extension and the Svnapot extension must both be available.
+> **Note**: The tests in this group are migrated from `Svnapot_test_plan.md` Group 10. The H extension and the Svnapot extension must both be available.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -141,7 +139,7 @@ The following table lists the specification points covered by this plan. Entries
 > [!NOTE]
 > - The tests in this group verify the behavior of the Svnapot extension in Hypervisor G-stage translation. The Svnapot specification explicitly states that if the Hypervisor extension is also implemented, NAPOT translation is equally supported in G-stage page tables.
 > - HCROSS-SVNAPOT-01 verifies the basic GPA→SPA translation functionality of 64 KiB NAPOT PTEs in G-stage, complementing the regular PTE tests in `Hypervisor_gstage_test_plan.md`.
-> - HCROSS-SVNAPOT-02 verifies that when a G-stage NAPOT PTE uses a reserved encoding (low 4 bits of ppn[0] not `1000` and N=1), the hardware should raise a guest-page-fault. This is consistent with the reserved-encoding behavior in VS-stage (see `svnapot_test_plan.md` Group 3).
+> - HCROSS-SVNAPOT-02 verifies that when a G-stage NAPOT PTE uses a reserved encoding (low 4 bits of ppn[0] not `1000` and N=1), the hardware should raise a guest-page-fault. This is consistent with the reserved-encoding behavior in VS-stage (see `Svnapot_test_plan.md` Group 3).
 > - HCROSS-SVNAPOT-03 verifies the scenario where both VS-stage and G-stage use NAPOT PTEs in two-stage translation: VS-stage maps GVA→GPA using NAPOT, G-stage maps GPA→SPA also using NAPOT, and the final GVA→SPA translation should be correct.
 
 ---
@@ -154,7 +152,7 @@ The following table lists the specification points covered by this plan. Entries
 
 **Test Scope**: Verify the superimposed override behavior of PBMT attributes in two-stage address translation, including G-stage PBMT overriding PMA, VS-stage PBMT overriding intermediate attributes, two-stage superposition, and the scenario where G-stage override is skipped when `hgatp.MODE=0`.
 
-> **Note**: The tests in this group are migrated from `svpbmt_test_plan.md` Group 10. The H extension and the Svpbmt extension must both be available.
+> **Note**: The tests in this group are migrated from `Svpbmt_test_plan.md` Group 10. The H extension and the Svpbmt extension must both be available.
 
 | Test ID | Test Name | Test Description | Expected Result |
 |---------|-----------|------------------|-----------------|
@@ -203,20 +201,20 @@ The following table lists the specification points covered by this plan. Entries
 
 ## References
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/svadu.adoc` — Svadu Extension
-- `SPEC/svinval.adoc` — Svinval Extension
-- `SPEC/svnapot.adoc` — Svnapot Extension
-- `SPEC/svpbmt.adoc` — Svpbmt Extension
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `svadu.adoc` — Svadu Extension
+- `svinval.adoc` — Svinval Extension
+- `svnapot.adoc` — Svnapot Extension
+- `svpbmt.adoc` — Svpbmt Extension
 - `DOCS/testplan/Hypervisor_CSR_test_plan.md` — Hypervisor CSR subset test plan
 - `DOCS/testplan/Hypervisor_Interrupts_test_plan.md` — Hypervisor interrupts subset test plan
 - `DOCS/testplan/Hypervisor_Exceptions_test_plan.md` — Hypervisor exceptions and trap subset test plan
 - `DOCS/testplan/Hypervisor_2_stage_test_plan.md` — Two-stage translation test plan
 - `DOCS/testplan/Hypervisor_gstage_test_plan.md` — G-stage standalone test plan
-- `DOCS/testplan/svadu_test_plan.md` — Svadu standalone test plan
-- `DOCS/testplan/svinval_test_plan.md` — Svinval standalone test plan
-- `DOCS/testplan/svnapot_test_plan.md` — Svnapot standalone test plan
-- `DOCS/testplan/svpbmt_test_plan.md` — Svpbmt standalone test plan
+- `DOCS/testplan/Svadu_test_plan.md` — Svadu standalone test plan
+- `DOCS/testplan/Svinval_test_plan.md` — Svinval standalone test plan
+- `DOCS/testplan/Svnapot_test_plan.md` — Svnapot standalone test plan
+- `DOCS/testplan/Svpbmt_test_plan.md` — Svpbmt standalone test plan
 - `ideas/hypervisor_gap.md` — Hypervisor test gap analysis
 
 ---
@@ -229,7 +227,7 @@ The following table indicates which test cases cover each specification point in
 |---------|------------------|
 | `norm:henvcfg_adue_op` | HCROSS-SVADU-01~04 |
 | `norm:Svadu_hypervisor_adue_writable` | HCROSS-SVADU-01 |
-| `svadu_hfence_gvma_sync` (self-decomposed) | HCROSS-SVADU-05, HCROSS-SVADU-06 |
+| `svadu_hfence_gvma_sync` | HCROSS-SVADU-05, HCROSS-SVADU-06 |
 | `norm:Svinval_hinval_vvma_gvma` | HCROSS-SINVAL-01~04 |
 | `norm:Svinval_hinval_gvma_uses_vmid` | HCROSS-SINVAL-05, HCROSS-SINVAL-06 |
 | `norm:Svinval_virtual_instruction_vu_vs` | HCROSS-SINVAL-07~10, HCROSS-SINVAL-15 |

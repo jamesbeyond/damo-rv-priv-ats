@@ -557,6 +557,16 @@ unsigned m_trap_handler(void) {
              * values so tests can verify them. */
             hyp_capture_m();
             trap_record.spv = (CSRR(CSR_HSTATUS) & HSTATUS_SPV) ? true : false;
+            /* A trap into M-mode records the prior V bit in mstatus.MPV
+             * (not hstatus.SPV, which is written only for HS-mode traps).
+             * Snapshot MPV/MPP here too so trap_get_mpv/mpp() reflect an
+             * interrupt taken from VS/VU-mode, matching the synchronous
+             * exception path below. */
+            {
+                uintptr_t _ms = CSRR(mstatus);
+                _m_trap_mpv_snap = (((uint64_t)_ms >> 39) & 0x1UL) != 0;
+                _m_trap_mpp_snap = (_ms >> MSTATUS_MPP_OFF) & 0x3UL;
+            }
 #endif
             trap_record.armed       = false;
         }

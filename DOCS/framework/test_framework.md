@@ -39,7 +39,8 @@ common/
 ├── trap.c                # Trap 处理逻辑（arm/disarm、cause 记录）
 ├── trap_asm.S            # Trap 入口汇编（上下文保存/恢复）
 ├── privilege.c           # 特权级切换（goto_priv、run_in_priv）
-├── entry.S               # M-mode 启动引导、BSS 初始化、_platform_init 钩子
+├── entry.S               # M-mode 启动引导、GPR 清零、BSS 初始化、_platform_init 钩子
+├── reg_init.S            # 寄存器堆初始化（_fp_reg_init：f0-f31 + fcsr 清零）
 ├── platform_init.S       # 默认 _platform_init 弱符号实现
 ├── mem_ops.h             # 内存加载/存储/执行/AMO 原语（norvc）
 ├── csr_accessors.c       # 按索引动态读写 CSR
@@ -58,10 +59,15 @@ common/
 ```
 _entry (entry.S)
   │
-  ├── BSS 清零
+  ├── GPR 清零（x1-x31，所有 hart）
   ├── 设置栈指针
-  ├── 调用 _platform_init（弱符号钩子）
   ├── 设置 mtvec → m_trap_entry
+  ├── BSS 清零
+  ├── 调用 _platform_init（弱符号钩子）
+  ├── 调用 _fp_reg_init（reg_init.S）：浮点寄存器清零（f0-f31 + fcsr）
+  │     └── 按 misa.{Q,D,F} 选择 FLQ/FLD/FLW 以匹配 FLEN；临时置
+  │         mstatus.FS=Initial，清零后恢复原值（FS 变更不影响寄存器内容）
+  ├── GPR 再次清零（抹掉引导代码自身留下的临时值）
   │
   └── 跳转到 main()
         │

@@ -51,4 +51,10 @@ Hypervisor_Zihintntl,7,7,0,0
 Hypervisor_Zicntr,9,9,0,0
 Hypervisor_Zihpm,5,4,0,1
 Hypervisor_Vector,13,10,2,1
+Hypervisor_Zalrsc,40,32,7,1
+Hypervisor_Zaamo,31,23,7,1
+Hypervisor_Zacas,36,28,7,1
+Hypervisor_Zabha,39,30,8,1
+Hypervisor_Zalasr,36,33,2,1
 Hypervisor_Zawrs,12,12,0,0
+Hypervisor_Zca,29,29,0,0

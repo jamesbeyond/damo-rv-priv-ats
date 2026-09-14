@@ -89,11 +89,11 @@
 
 ---
 
-# Part A: Hypervisor × Zicfilp（前向控制流 / Landing Pad）
+# Group 1: Hypervisor × Zicfilp（前向控制流 / Landing Pad）
 
 ---
 
-## Group A1. henvcfg.LPE 字段与 VS-mode Zicfilp 使能控制
+## Group 1.1. henvcfg.LPE 字段与 VS-mode Zicfilp 使能控制
 
 **规范依据**：
 - `norm:henvcfg_lpe_op`：LPE=1 时 VS-mode 启用 Zicfilp；LPE=0 时 ELP 保持 NO_LP_EXPECTED，LPAD 为 no-op
@@ -116,7 +116,7 @@
 
 ---
 
-## Group A2. vsstatus.SPELP 字段与 VS-mode trap 保存恢复
+## Group 1.2. vsstatus.SPELP 字段与 VS-mode trap 保存恢复
 
 **规范依据**：
 - `norm:vsstatus_spelp_op`：vsstatus.SPELP 保存 VS-mode 的 previous ELP，编码 0=NO_LP_EXPECTED, 1=LP_EXPECTED
@@ -145,7 +145,7 @@
 
 ---
 
-## Group A3. VS-mode Landing Pad 功能与 software-check exception
+## Group 1.3. VS-mode Landing Pad 功能与 software-check exception
 
 **规范依据**：
 - `norm:lpad_sw_exception`：ELP=LP_EXPECTED 时目标指令非 LPAD → software-check exception
@@ -168,7 +168,7 @@
 
 ---
 
-## Group A4. VS-mode software-check exception 委托
+## Group 1.4. VS-mode software-check exception 委托
 
 **规范依据**：
 - `norm:hedeleg_op`：V=1 时已委托到 HS 的同步异常，若 hedeleg 对应位置位则进一步委托到 VS
@@ -191,7 +191,7 @@
 
 ---
 
-## Group A5. VS-mode Zicfilp trap 中断与异步事件交互
+## Group 1.5. VS-mode Zicfilp trap 中断与异步事件交互
 
 **规范依据**：
 - `norm:Zicfilp_forward_traps`：异步中断和高于 software-check 优先级的同步异常可在 JALR 后目标解码前交付陷阱
@@ -208,11 +208,11 @@
 
 ---
 
-# Part B: Hypervisor × Zicfiss（后向控制流 / Shadow Stack）
+# Group 2: Hypervisor × Zicfiss（后向控制流 / Shadow Stack）
 
 ---
 
-## Group B1. henvcfg.SSE 字段与 VS-mode Zicfiss 使能控制
+## Group 2.1. henvcfg.SSE 字段与 VS-mode Zicfiss 使能控制
 
 **规范依据**：
 - `norm:henvcfg_sse_op`：SSE=1 激活 VS-mode Zicfiss；SSE=0 时指令回退、页表编码保留、senvcfg.SSE 只读零、SSAMOSWAP 触发虚拟指令异常
@@ -240,7 +240,7 @@
 
 ---
 
-## Group B2. ssp CSR 在 VS/VU-mode 的访问控制
+## Group 2.2. ssp CSR 在 VS/VU-mode 的访问控制
 
 **规范依据**：
 - `norm:zicfiss_ssp_csr`：ssp CSR 访问受 envcfg sse 字段控制
@@ -265,7 +265,7 @@
 
 ---
 
-## Group B3. VS-stage 页表 Shadow Stack 页类型
+## Group 2.3. VS-stage 页表 Shadow Stack 页类型
 
 **规范依据**：
 - `norm:ss_page_enc`：R=0, W=1, X=0 表示 SS 页
@@ -296,7 +296,7 @@
 
 ---
 
-## Group B4. G-stage 翻译与 Shadow Stack 交互
+## Group 2.4. G-stage 翻译与 Shadow Stack 交互
 
 **规范依据**：
 - cfi.adoc：G-stage 地址翻译和保护不受 Zicfiss 扩展影响，G-stage pte.xwr=010 保持保留
@@ -315,7 +315,7 @@
 
 ---
 
-## Group B5. satp/vsatp Bare 模式下 Shadow Stack 行为
+## Group 2.5. satp/vsatp Bare 模式下 Shadow Stack 行为
 
 **规范依据**：
 - `norm:satp_mode_bare`：satp.mode（V=1 时为 vsatp.mode）为 Bare 且有效特权级 < M 时，shadow stack 指令引发 store/AMO access-fault
@@ -333,7 +333,7 @@
 
 ---
 
-## Group B6. VS-mode Zicfiss 异常行为与委托
+## Group 2.6. VS-mode Zicfiss 异常行为与委托
 
 **规范依据**：
 - `norm:hedeleg_op`：V=1 时已委托到 HS 的同步异常，若 hedeleg 对应位置位则进一步委托到 VS
@@ -358,7 +358,7 @@
 
 ---
 
-## Group B7. VS-mode Zicfiss 功能完整性
+## Group 2.7. VS-mode Zicfiss 功能完整性
 
 **规范依据**：
 - `norm:henvcfg_sse_op`：SSE=1 时 VS-mode Zicfiss 完全激活
@@ -382,7 +382,7 @@
 
 ---
 
-## Group B8. henvcfg.SSE=0 时 VS-mode Zicfiss 回退行为综合
+## Group 2.8. henvcfg.SSE=0 时 VS-mode Zicfiss 回退行为综合
 
 **规范依据**：
 - `norm:henvcfg_sse_op`：SSE=0 时的完整回退规则列表
@@ -409,7 +409,7 @@
 3. software-check exception (cause=18) 的委托测试需确认 hedeleg bit 18 在平台上的可写性。
 4. Shadow Stack 页类型测试需要 VS-stage 页表的精细控制，确保正确设置 pte.xwr 编码。
 5. 当前已知实现状态（known gap）：
-   - Group A5（HCFI-LP-31/42/43）的异步中断注入窗口（JALR 后、LPAD 解码前）非确定，当前以同步 software-check 异常作为代理验证 ELP 保存/恢复机制。
+   - Group 1.5（HCFI-LP-31/42/43）的异步中断注入窗口（JALR 后、LPAD 解码前）非确定，当前以同步 software-check 异常作为代理验证 ELP 保存/恢复机制。
    - HCFI-SS-04/60/70（16-bit 压缩指令回退/流程）、HCFI-SS-30（真实 CBO 指令）、HCFI-SS-65/66（非幂等内存 / AMOSwap PMA）暂未直接实现，以注释标注为 known gap。
 
 ---

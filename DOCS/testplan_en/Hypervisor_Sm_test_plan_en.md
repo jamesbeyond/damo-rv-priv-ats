@@ -2,9 +2,7 @@
 
 # Hypervisor × Sm* Extensions Cross Test Plan
 
-> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Sm* (Machine-level) extension families. This plan was split out from `Hypervisor_cross_test_plan.md` and retains only the content at the intersection of the Hypervisor and Sm* extensions. These test scenarios were originally marked in the standalone test plans of the respective extensions as "covered by the Hypervisor test plan" or "excluded due to the absence of the H extension", but analysis showed that the existing Hypervisor test plans do not fully cover them.
->
-> Generation date: 2026-06-22
+> This document describes the test plan for cross-scenarios between the Hypervisor (H) extension and other Sm* (Machine-level) extension families.
 
 ---
 
@@ -30,7 +28,7 @@ Official repository:
 
 ### Covered Extension Intersections
 
-- **Hypervisor × Smcsrind**: `mstateen0[60]` (CSRIND) control over S-mode (HS-mode) access to `vsiselect`/`vsireg*`; verification that M-mode access is not controlled by state-enable; including the same-source norm from the Smcdeleg perspective (`norm:smcdeleg_mstateen0_bit60`, migrated in from `Smcdeleg_test_plan.md`)
+- **Hypervisor × Smcsrind**: `mstateen0[60]` (CSRIND) control over S-mode (HS-mode) access to `vsiselect`/`vsireg*`; verification that M-mode access is not controlled by state-enable; including the same-source norm from the Smcdeleg perspective (official label `norm:sscsrind_csrs_access_control`, migrated in from `Smcdeleg_test_plan.md`)
 - **Hypervisor × Smctr**: `hstateen0.CTR` control over VS-mode CTR state access; `mstateen0.CTR=0` blocking of `vsctrctl`; MTE external trap recording behavior from VS/VU-mode to M-mode
 - **Hypervisor × Smcntrpmf**: inhibition of VS/VU-mode cycle/instret counting by the VSINH/VUINH bits of `mcyclecfg`/`minstretcfg`; VSINH/VUINH read-only zero when the H extension is not implemented; orthogonality between `hcounteren` and counting inhibition
 - **Hypervisor × Smstateen**: `mstateen0` control over hstateen CSR access; mstateen0 zero bit propagation to hstateen; blocking of Hypervisor CSRs by the function bits (SE0/ENVCFG/CSRIND/IMSIC/CONTEXT/P1P13); VS/VU-mode virtual-instruction
@@ -58,7 +56,7 @@ The following table lists the specification points covered by this plan. Entries
 | `norm:unimplemented_mode_bits` | `smcntrpmf.adoc` | For each bit in 61:58, if the associated privilege mode is not implemented, the bit is read-only zero. |
 | `norm:counter_inhibited_behavior` | `smcntrpmf.adoc` | The fundamental behavior of cycle and instret is modified in that counting does not occur while executing in an inhibited privilege mode. |
 | `hcounteren_vs_vu_control` | `hypervisor.adoc` | The `hcounteren` CSR controls availability of performance monitoring counters to VS-mode and VU-mode. |
-| `norm:smcdeleg_mstateen0_bit60` | `smcdeleg.adoc` | If extension Smstateen is implemented, setting bit 60 of CSR `mstateen0` to zero prevents access to registers `siselect`, `sireg*`, `vsiselect`, and `vsireg*` from privileged modes less privileged than M-mode. |
+| `norm:sscsrind_csrs_access_control` | `smcsrind.adoc` | If extension Smstateen is implemented, setting bit 60 of CSR `mstateen0` to zero prevents access to registers `siselect`, `sireg*`, `vsiselect`, and `vsireg*` from privileged modes less privileged than M-mode. |
 | `norm:H_pmp` | `hypervisor.adoc` | Machine-level physical memory protection applies to supervisor physical addresses and is in effect regardless of virtualization mode. |
 | `norm:pmp_with_paging` | `machine.adoc` | When paging is enabled, instructions that access virtual memory may result in multiple physical-memory accesses, including implicit references to the page tables. The PMP checks apply to all of these accesses. The effective privilege mode for implicit page-table accesses is S. |
 | `norm:pmp_sfence_required` | `machine.adoc` | When the PMP settings are modified, M-mode software must synchronize the PMP settings with the virtual memory system and any PMP or address-translation caches (SFENCE.VMA with rs1=x0 and rs2=x0 after writing PMP CSRs). |
@@ -75,7 +73,7 @@ The following table lists the specification points covered by this plan. Entries
 **Spec Reference**:
 - `norm:sscsrind_csrs_access_control`: If both Smstateen and Smcsrind are implemented, `mstateen0[60]` (CSRIND) controls access to `siselect`, `sireg*`, `vsiselect`, and `vsireg*`. When `mstateen0[60]=0`, accesses to these CSRs from privilege levels lower than M-mode raise an illegal-instruction exception.
 - `norm:hypervisor_impl_csrs_access_control`: If the Hypervisor extension is implemented, `hstateen0[60]` is also defined, but controls only VS/VU-mode access to `siselect`/`sireg*` (actually `vsiselect`/`vsireg*`). When `hstateen0[60]=0` and `mstateen0[60]=1`, VS/VU-mode access to `siselect`/`sireg*` raises a virtual-instruction exception (not illegal-instruction).
-- `norm:smcdeleg_mstateen0_bit60`: If the Smstateen extension is implemented, setting bit 60 of `mstateen0` to zero prevents access to `siselect`, `sireg*`, `vsiselect`, and `vsireg*` from privilege levels less privileged than M-mode. This is the statement of the same control rule in `smcdeleg.adoc` (same source as `norm:sscsrind_csrs_access_control`); this plan covers its `vsiselect`/`vsireg*` (Hypervisor CSR) portion. Verification of the `siselect`/`sireg*` portion is in `Smcdeleg_test_plan.md` Group 4 and `Smcsrind_test_plan.md` Group 4.
+- The same control rule (`norm:sscsrind_csrs_access_control`) is also stated in `smcdeleg.adoc` (Smcdeleg perspective, migrated in from `Smcdeleg_test_plan.md`); this plan covers its `vsiselect`/`vsireg*` (Hypervisor CSR) portion. Verification of the `siselect`/`sireg*` portion is in `Smcdeleg_test_plan.md` Group 4 and `Smcsrind_test_plan.md` Group 4.
 
 **Test Scope**: Verify CSRIND access control of the Smcsrind extension under Hypervisor scenarios:
 - Group 1.1 (01-08): `mstateen0[60]` control over S-mode (HS-mode) access to `vsiselect`/`vsireg*`. M-mode access is not affected by state-enable.
@@ -281,7 +279,7 @@ The tests in this group verify the behavior of the Smcntrpmf (Cycle and Instret 
 
 ## Group 4. Hypervisor × Smstateen
 
-The tests in this group verify the behavior of the Smstateen extension under Hypervisor scenarios, including hstateen CSR access control and HS-mode/VS-mode/VU-mode privilege level interactions. These tests are migrated from `smstateen_test_plan.md` and specifically target cases that depend on the H extension.
+The tests in this group verify the behavior of the Smstateen extension under Hypervisor scenarios, including hstateen CSR access control and HS-mode/VS-mode/VU-mode privilege level interactions. These tests are migrated from `Smstateen_test_plan.md` and specifically target cases that depend on the H extension.
 
 ### Test ID Mapping Table
 
@@ -415,7 +413,7 @@ The tests in this group verify the behavior of the Smstateen extension under Hyp
 | P1 (Important) | Group 5.1/5.2 (PMP intersection) | HCROSS-PMP-01~06 | `norm:H_pmp` and `norm:pmp_with_paging` are the last line of defense of guest memory isolation; the exception type distinction between explicit accesses and implicit page-table walks is a frequent implementation error point |
 | P2 (Recommended) | Group 5.3/5.4 (PMP synchronization and HLVX) | HCROSS-PMP-07~08 | translation cache PMP attribute synchronization and HLVX boundary behavior; dependent on implementation cache structures and relatively platform-specific |
 
-> Note: The test cases of Smcntrpmf (Group 3) (PMF-CSR-05, PMF-CYC-08/09, PMF-INS-06/07, PMF-CTR-04, HCROSS-PMF-01) were not assigned individual priorities in the original merged plan; it is recommended to follow the priorities in `Smcntrpmf_test_plan.md`.
+> Note: For the test cases of Smcntrpmf (Group 3) (PMF-CSR-05, PMF-CYC-08/09, PMF-INS-06/07, PMF-CTR-04, HCROSS-PMF-01), it is recommended to follow the priorities in `Smcntrpmf_test_plan.md`.
 
 ---
 
@@ -435,18 +433,18 @@ The tests in this group verify the behavior of the Smstateen extension under Hyp
 
 ## References
 
-- `SPEC/hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
-- `SPEC/smstateen.adoc` — Smstateen Extension Specification
-- `SPEC/smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
-- `SPEC/smctr.adoc` — Smctr (Control Transfer Records - Machine-level) Extension
-- `SPEC/smcntrpmf.adoc` — Smcntrpmf (Cycle and Instret Privilege Mode Filtering) Extension
-- `SPEC/smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
-- `SPEC/machine.adoc` — Machine-Level ISA (including the PMP chapter and pmp-vmem: interaction of PMP with paging)
-- `SPEC/pmp.adoc` — Physical Memory Protection (chapter within machine.adoc)
+- `hypervisor.adoc` — RISC-V Hypervisor Extension, Version 1.0
+- `smstateen.adoc` — Smstateen Extension Specification
+- `smcsrind.adoc` — Smcsrind/Sscsrind Extension for Indirect CSR Access
+- `smctr.adoc` — Smctr (Control Transfer Records - Machine-level) Extension
+- `smcntrpmf.adoc` — Smcntrpmf (Cycle and Instret Privilege Mode Filtering) Extension
+- `smcdeleg.adoc` — Smcdeleg and Ssccfg Counter Delegation Extensions
+- `machine.adoc` — Machine-Level ISA (including the PMP chapter and pmp-vmem: interaction of PMP with paging)
+- PMP chapter (within `machine.adoc`) — Physical Memory Protection
 - `DOCS/testplan/Smcsrind_test_plan.md` — Smcsrind Machine Mode test plan
 - `DOCS/testplan/Smctr_test_plan.md` — Smctr Machine Mode test plan
 - `DOCS/testplan/Smcntrpmf_test_plan.md` — Smcntrpmf standalone test plan
-- `DOCS/testplan/smstateen_test_plan.md` — Smstateen standalone test plan
+- `DOCS/testplan/Smstateen_test_plan.md` — Smstateen standalone test plan
 - `DOCS/testplan/Smcdeleg_test_plan.md` — Smcdeleg extension test plan (Machine Mode)
 - `DOCS/testplan/pmp_test_plan.md` — PMP standalone test plan (non-Hypervisor scenarios)
 - `DOCS/testplan/Smepmp_test_plan.md` — Smepmp standalone test plan (non-Hypervisor scenarios)
@@ -465,7 +463,7 @@ The following table indicates which test cases cover each specification point in
 
 | Norm ID | Covered Test IDs |
 |---------|------------------|
-| `hstateen_sstateen_zero_initialization` (self-decomposed) | HCROSS-SMSTA-01 |
+| `hstateen_sstateen_zero_initialization` | HCROSS-SMSTA-01 |
 | `norm:mstateen_lower_priv_roz` | HCROSS-SMSTA-02 |
 | `norm:mstateen_bit_63_op` | HCROSS-SMSTA-03 |
 | `norm:mstateen_bit_63_roz` | HCROSS-SMSTA-04 |
@@ -476,8 +474,7 @@ The following table indicates which test cases cover each specification point in
 | `norm:mstateen0_context_op` | HCROSS-SMSTA-10 |
 | `norm:mstateen0_p1p13_op` | HCROSS-SMSTA-11, HCROSS-SMSTA-12 |
 | `norm:stateen_illegal_state_access` | HCROSS-SMSTA-13, HCROSS-SMSTA-14 |
-| `norm:sscsrind_csrs_access_control` | HCROSS-SMCSRIND-01~08 (see the Sscsrind Group of `Hypervisor_Ss_test_plan.md` for the same-source verification from the VS-mode perspective) |
-| `norm:smcdeleg_mstateen0_bit60` | HCROSS-SMCSRIND-01~08 (same source as `norm:sscsrind_csrs_access_control`; migrated in from `Smcdeleg_test_plan.md`, and this plan covers its `vsiselect`/`vsireg*` portion) |
+| `norm:sscsrind_csrs_access_control` | HCROSS-SMCSRIND-01~08 (see the Sscsrind Group of `Hypervisor_Ss_test_plan.md` for the same-source verification from the VS-mode perspective; the same rule is also stated in `smcdeleg.adoc`, migrated in from `Smcdeleg_test_plan.md`) |
 | `norm:hypervisor_impl_csrs_access_control` | HCROSS-SMCSRIND-09~11 (see the Sscsrind Group of `Hypervisor_Ss_test_plan.md` for the same-source verification from the VS-mode perspective) |
 | `norm:mstateen_ctr0_except1` | HCROSS-SMCTR-01 |
 | `norm:hstateen_ctr` | HCROSS-SMCTR-02, HCROSS-SMCTR-03, HCROSS-SMCTR-04~09 |
@@ -488,7 +485,7 @@ The following table indicates which test cases cover each specification point in
 | `norm:exttrap_implreq` | HCROSS-SMCTR-10~12 (vsctrctl.STE implementation prerequisite) |
 | `norm:unimplemented_mode_bits` | PMF-CSR-05 |
 | `norm:counter_inhibited_behavior` | PMF-CYC-08, PMF-CYC-09, PMF-INS-06, PMF-INS-07, HCROSS-PMF-01 |
-| `hcounteren_vs_vu_control` (self-decomposed) | PMF-CTR-04, HCROSS-PMF-01 |
+| `hcounteren_vs_vu_control` | PMF-CTR-04, HCROSS-PMF-01 |
 | `norm:H_pmp` | HCROSS-PMP-01~06 (see GBARE-04 of `Hypervisor_gstage_test_plan.md` and TS-PMP-01 of `Hypervisor_2_stage_test_plan.md` for the basic scenarios) |
 | `norm:pmp_with_paging` | HCROSS-PMP-05, HCROSS-PMP-06 |
 | `norm:pmp_sfence_required` | HCROSS-PMP-07 |
